@@ -12,7 +12,7 @@ AI-Powered Real-Time Monitoring Desktop Companion
 - 每週額度快重置、卻還剩很多時，桌寵會拿鬧鐘催你趕快用掉（最後一天越催越勤）
 - 看影片、玩遊戲等全螢幕畫面時會自動躲起來
 - 可用 JSON 外掛接上任何 AI 服務
-- 輕量：原生 WPF 程式，約 70 MB 記憶體、0.5% CPU
+- 輕量：原生 WPF 程式，約 90 MB 記憶體、整體 CPU 不到 1%（省電模式更低）
 
 ## 安裝
 
