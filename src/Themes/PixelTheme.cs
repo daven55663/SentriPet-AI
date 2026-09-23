@@ -460,7 +460,7 @@ namespace SentriPet
                 m.Status.Text = status;
                 m.Status.Foreground = G.B(sc);
                 m.Face = !v.HasData ? "normal" : v.Mood == SentriPet.Mood.Empty ? "sleep" : v.Mood == SentriPet.Mood.Critical ? "hurt" : "normal";
-                var p = v.Primary;
+                var p = v.ResetMeter;
                 m.Reset.Set(!v.HasData ? "" : v.Unlimited ? "NO LIMIT" : p != null && p.ResetsAt.HasValue ? (v.Mood == SentriPet.Mood.Empty ? "REVIVE " : "RST ") + Fmt.Clock(p.ResetsAt).Replace(" ", "") : "IDLE", Palette.Hex("#A8C8FF"));
                 int i = 0;
                 foreach (var b in m.Bars)
@@ -483,22 +483,35 @@ namespace SentriPet
             string n = v.Name.ToUpperInvariant();
             if (!v.HasData) return n + " 迷失在迷霧中…（" + (v.Error ?? "沒有資料") + "）";
             if (v.Active) return n + " 正在戰鬥中！";
+            if (v.UseItLevel >= 2 && v.UseIt != null)
+                return n + " 的魔力還剩 " + Fmt.Pct(v.UseIt.Remaining) + "，" + Fmt.Countdown(v.UseIt.ResetsAt) + "後就會消失！快施放大絕招！";
+            if (v.UseItLevel == 1 && v.UseIt != null && messageIdx % 2 == 0)
+                return n + " 的" + v.UseIt.Label + "魔力還有 " + Fmt.Pct(v.UseIt.Remaining) + "，" + Fmt.When(v.UseIt.ResetsAt) + " 前用掉吧！";
             switch (v.Mood)
             {
-                case SentriPet.Mood.Great: return n + " 的 HP 還有 " + Fmt.Pct(v.Remaining) + "！精神百倍！";
-                case SentriPet.Mood.Good: return n + " 的 HP 還有 " + Fmt.Pct(v.Remaining) + "。";
-                case SentriPet.Mood.Worried: return n + " 看起來有點累了…（HP " + Fmt.Pct(v.Remaining) + "）";
+                case SentriPet.Mood.Great: return n + " 的 HP 還有 " + Fmt.Pct(v.HeadlineRemaining) + "！精神百倍！";
+                case SentriPet.Mood.Good: return n + " 的 HP 還有 " + Fmt.Pct(v.HeadlineRemaining) + "。";
+                case SentriPet.Mood.Worried: return n + " 看起來有點累了…（HP " + Fmt.Pct(v.HeadlineRemaining) + "）";
                 case SentriPet.Mood.Critical: return n + " 瀕死！快找地方休息！";
                 case SentriPet.Mood.Empty: return n + " 睡著了… " + (v.Primary != null ? Fmt.Countdown(v.Primary.ResetsAt) + "後復活" : "");
             }
             return n + " 準備就緒。";
         }
 
-        public override void Say(string providerId, string text)
+        public override bool Say(string providerId, string text)
         {
             message = text ?? "";
             messageStart = Time;
             nextMessage = Time + 8;
+            return true;
+        }
+
+        public override bool Poke(string providerId)
+        {
+            var v = View(providerId);
+            if (v == null) return false;
+            Say(providerId, Lines.Poke(v, Rng));
+            return true;
         }
 
         public override void Tick(double dt)

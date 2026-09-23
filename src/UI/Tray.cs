@@ -38,8 +38,7 @@ namespace SentriPet
                 lastSig = sig;
                 SetIcon(Draw(min, active));
             }
-            string tip = views.Count == 0 ? App.DisplayName :
-                string.Join(" · ", views.Select(v => v.Name + " " + (v.HasData ? (v.Unlimited ? "∞" : Fmt.Pct(v.Remaining)) : "?")));
+            string tip = views.Count == 0 ? App.DisplayName : string.Join(" · ", views.Select(v => v.Summary));
             if (tip.Length > 63) tip = tip.Substring(0, 62) + "…";
             if (icon.Text != tip) icon.Text = tip;
         }

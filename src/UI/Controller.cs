@@ -26,6 +26,7 @@ namespace SentriPet
         readonly AlertTracker alerts = new AlertTracker();
         List<ProviderView> views = new List<ProviderView>();
         bool greeted;
+        DateTime greetedAt;
 
         public AppSettings Settings { get; private set; }
         public UsageService Service { get; private set; }
@@ -89,7 +90,7 @@ namespace SentriPet
                     app.Dispatcher.BeginInvoke(new Action(() =>
                     {
                         window.ShowWidget();
-                        if (window.Theme != null) window.Theme.Say(null, "我在這裡！");
+                        window.Say(null, "我在這裡！");
                     }));
                 }
             }) { IsBackground = true };
@@ -114,7 +115,7 @@ namespace SentriPet
                 if (unlocked)
                 {
                     Service.RefreshNow(null);
-                    if (Settings.Chatty && window.Theme != null && views.Count > 0) window.Theme.Say(views[0].Id, "歡迎回來！");
+                    if (Settings.Chatty && views.Count > 0) window.Say(views[0].Id, "歡迎回來！");
                 }
             }));
         }
@@ -133,8 +134,11 @@ namespace SentriPet
             if (!greeted && views.Count > 0 && Service.Providers.All(p => Service.SnapshotFor(p.Id) != null || !IsInstalled(p.Id)))
             {
                 greeted = true;
+                greetedAt = DateTime.UtcNow;
                 Greet();
             }
+            // reminders wait until the greeting has been read
+            if (greeted && (DateTime.UtcNow - greetedAt).TotalSeconds > 8) CheckUseIt();
         }
 
         bool IsInstalled(string id)
@@ -150,13 +154,13 @@ namespace SentriPet
             {
                 Settings.FirstRunDone = true;
                 Settings.Save();
-                window.Theme.Say(views[0].Id, Lines.Greeting(views));
+                window.Say(views[0].Id, Lines.Greeting(views));
                 return;
             }
             if (!Settings.Chatty) return;
             int h = DateTime.Now.Hour;
             string hello = h < 5 ? "這麼晚還在寫 code？別熬夜喔" : h < 11 ? "早安！今天也一起努力吧" : h < 14 ? "午安～吃飽了嗎？" : h < 18 ? "下午好，來杯咖啡？" : h < 22 ? "晚上好！" : "夜深了，早點休息喔";
-            window.Theme.Say(views[0].Id, hello);
+            window.Say(views[0].Id, hello);
         }
 
         // ------------------------------------------------------------------ alerts
@@ -164,18 +168,93 @@ namespace SentriPet
         public void Alert(ProviderView v, Meter m, int level)
         {
             string text = level >= 2 ? Lines.Critical(v, m) : Lines.Warn(v, m);
-            if (window.Theme != null) window.Theme.Say(v.Id, text);
+            window.Say(v.Id, text);
             if (Settings.Notifications) tray.Notify(App.DisplayName, text);
+        }
+
+        // ------------------------------------------------------------------ use it or lose it
+
+        readonly Random rng = new Random();
+        readonly Dictionary<string, DateTime> nextNudge = new Dictionary<string, DateTime>();
+
+        /// <summary>Minutes between reminders for an urgency level (see ProviderView.UseItLevelFor).</summary>
+        static double NudgeMinutes(int level) { return level >= 3 ? 12 : level == 2 ? 25 : 60; }
+
+        /// <summary>
+        /// A weekly/monthly window that resets soon with quota left over: the pet keeps reminding you to spend it,
+        /// more often as the reset gets closer, and a notification goes out whenever the urgency goes up.
+        /// </summary>
+        void CheckUseIt()
+        {
+            if (!Settings.UseItReminder) return;
+            var now = DateTime.UtcNow;
+            foreach (var v in views)
+            {
+                var m = v.UseIt;
+                if (!v.HasData || v.UseItLevel == 0 || m == null || !m.ResetsAt.HasValue) continue;
+                string key = v.Id + "|" + m.Key;
+                if (v.UseItLevel > AnnouncedLevel(key, m.ResetsAt.Value))
+                {
+                    // each level is announced once per window (remembered across restarts)
+                    string text = Lines.UseItAlert(v);
+                    Log.Info("use-it " + key + " level " + v.UseItLevel + ": " + text);
+                    PruneAnnounced(now);
+                    Settings.UseItNotified[key] = m.ResetsAt.Value.ToString("o") + "#" + v.UseItLevel;
+                    Settings.Save();
+                    if (window.CanTalk) window.Say(v.Id, text);
+                    if (Settings.Notifications) tray.Notify(App.DisplayName + " · 額度快過期了", text);
+                    nextNudge[key] = now.AddMinutes(NudgeMinutes(v.UseItLevel));
+                    continue;
+                }
+                DateTime due;
+                if (!nextNudge.TryGetValue(key, out due))
+                {
+                    // first reminder a few minutes after start-up (not on top of the greeting)
+                    nextNudge[key] = now.AddMinutes(Math.Min(6, NudgeMinutes(v.UseItLevel)));
+                    continue;
+                }
+                if (now < due) continue;
+                if (!window.CanTalk || menuOpen) { nextNudge[key] = now.AddMinutes(2); continue; }
+                nextNudge[key] = now.AddMinutes(NudgeMinutes(v.UseItLevel) * (0.85 + 0.3 * rng.NextDouble()));
+                if (v.Active) continue;           // already on it
+                window.Say(v.Id, Lines.UseIt(v, rng));
+            }
+        }
+
+        /// <summary>The level already announced for the window that resets at <paramref name="reset"/> (0 = none).</summary>
+        int AnnouncedLevel(string key, DateTime reset)
+        {
+            string s;
+            if (!Settings.UseItNotified.TryGetValue(key, out s) || s == null) return 0;
+            int hash = s.LastIndexOf('#');
+            DateTime at;
+            int level;
+            if (hash < 0 || !int.TryParse(s.Substring(hash + 1), out level) ||
+                !DateTime.TryParse(s.Substring(0, hash), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out at))
+                return 0;
+            // same window? (an estimated reset time can move a little between readings)
+            return Math.Abs((at.ToUniversalTime() - reset).TotalHours) < 6 ? level : 0;
+        }
+
+        /// <summary>Forgets announcements for windows that have long since reset.</summary>
+        void PruneAnnounced(DateTime now)
+        {
+            foreach (var k in Settings.UseItNotified.Keys.ToList())
+            {
+                string s = Settings.UseItNotified[k] ?? "";
+                int hash = s.LastIndexOf('#');
+                DateTime at;
+                if (hash < 0 || !DateTime.TryParse(s.Substring(0, hash), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out at) ||
+                    at.ToUniversalTime() < now.AddDays(-2))
+                    Settings.UseItNotified.Remove(k);
+            }
         }
 
         public void CelebrateReset(ProviderView v, Meter m, double previousUsed)
         {
             string text = Lines.Reset(v, m);
-            if (window.Theme != null)
-            {
-                window.Theme.Celebrate(v.Id);
-                window.Theme.Say(v.Id, text);
-            }
+            if (window.Theme != null) window.Theme.Celebrate(v.Id);
+            window.Say(v.Id, text);
             if (Settings.Notifications && previousUsed >= 50) tray.Notify(App.DisplayName, text);
         }
 
@@ -203,7 +282,7 @@ namespace SentriPet
             if (apply && window != null)
             {
                 window.SetTheme(pick.Create());
-                window.Theme.Say(null, "新的一天，今天換成「" + pick.Name + "」！");
+                window.Say(null, "新的一天，今天換成「" + pick.Name + "」！");
             }
         }
 
@@ -347,7 +426,7 @@ namespace SentriPet
 
             var title = new StackPanel { Margin = new Thickness(0, 2, 0, 2) };
             title.Children.Add(G.T(App.DisplayName, 13.5, Colors.White, FontWeights.Bold, G.Ui));
-            string sum = views.Count == 0 ? "正在偵測 AI…" : string.Join("  ", views.Select(v => v.Name + " " + (v.HasData ? (v.Unlimited ? "∞" : Fmt.Pct(v.Remaining)) : "?")));
+            string sum = views.Count == 0 ? "正在偵測 AI…" : string.Join("  ·  ", views.Select(v => v.Summary));
             title.Children.Add(G.T(sum, 11, Palette.Hex("#8F98A8")));
             menu.Items.Add(new MenuItem { Header = title, Icon = Glyph(""), IsHitTestVisible = false });
             menu.Items.Add(new Separator());
@@ -377,7 +456,7 @@ namespace SentriPet
                 var mi = Item(t.Mood, null, () =>
                 {
                     ChangeTheme(info.Id, true);
-                    window.Theme.Say(null, "收到！今天是「" + info.Mood + "」模式 ✦");
+                    window.Say(null, "收到！今天是「" + info.Mood + "」模式 ✦");
                 });
                 mi.InputGestureText = t.Name;
                 mood.Items.Add(mi);
@@ -388,13 +467,13 @@ namespace SentriPet
                 var choices = ThemeCatalog.All.Where(x => x.Id != Settings.Theme).ToList();
                 var pick = choices[new Random().Next(choices.Count)];
                 ChangeTheme(pick.Id, true);
-                window.Theme.Say(null, "命運選擇了「" + pick.Name + "」！");
+                window.Say(null, "命運選擇了「" + pick.Name + "」！");
             }));
             menu.Items.Add(mood);
             menu.Items.Add(Item("立即更新", "", () =>
             {
                 Service.RefreshNow(null);
-                if (window.Theme != null && views.Count > 0) window.Theme.Say(views[0].Id, "更新中…");
+                if (views.Count > 0) window.Say(views[0].Id, "更新中…");
             }));
             menu.Items.Add(new Separator());
 
@@ -440,6 +519,7 @@ namespace SentriPet
             }));
             menu.Items.Add(Toggle("會說話", "", Settings.Chatty, v => Settings.Chatty = v));
             menu.Items.Add(Toggle("額度提醒通知", "", Settings.Notifications, v => Settings.Notifications = v));
+            menu.Items.Add(Toggle("催我用完週額度（重置前提醒）", "", Settings.UseItReminder, v => { Settings.UseItReminder = v; RefreshViews(); }));
             menu.Items.Add(new Separator());
             menu.Items.Add(Item("設定…", "", OpenSettings));
             menu.Items.Add(Toggle("開機自動啟動", "", Settings.AutoStart, v => { Settings.AutoStart = v; Autostart.Set(v); }));

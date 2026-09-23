@@ -267,10 +267,14 @@ namespace SentriPet
             {
                 var v = View(g.Id);
                 if (v == null) continue;
-                var p = v.Primary;
-                g.TargetValue = v.HasData ? (v.Unlimited ? 100 : v.Remaining) : 0;
-                g.Pct.Text = !v.HasData ? "--" : v.Unlimited ? "∞" : Math.Round(v.Remaining) + "%";
-                g.Pct.Foreground = G.B(!v.HasData ? Palette.Hex("#6B7280") : v.Remaining < 20 ? Palette.Hex("#FF6B5E") : Colors.White);
+                // needle and number: the headline (5-hour) window; the LCD counts down to the reset that matters most
+                bool useIt = v.UseItLevel > 0 && v.UseIt != null;
+                var p = useIt ? v.UseIt : v.ResetMeter;
+                double head = v.HeadlineRemaining;
+                g.TargetValue = v.HasData ? (v.Unlimited ? 100 : head) : 0;
+                g.Pct.Text = !v.HasData ? "--" : v.Unlimited ? "∞" : Math.Round(head) + "%";
+                g.Pct.Foreground = G.B(!v.HasData ? Palette.Hex("#6B7280") : head < 20 ? Palette.Hex("#FF6B5E") : Colors.White);
+                g.Label.Foreground = G.B(useIt && v.HasData ? G.UseItAccent(v.UseItLevel) : Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
                 if (!v.HasData)
                 {
                     g.Label.Text = v.Error ?? "沒有資料";
@@ -287,7 +291,7 @@ namespace SentriPet
                 }
                 else
                 {
-                    g.Label.Text = p.Label + " · 重置倒數";
+                    g.Label.Text = useIt ? p.Label + "剩 " + Fmt.Pct(p.Remaining) + " · 快用掉！" : p.Label + " · 重置倒數";
                     g.Lcd.SetText(LcdText(p.ResetsAt.Value));
                     g.Approx.Visibility = p.ResetApprox ? Visibility.Visible : Visibility.Collapsed;
                 }

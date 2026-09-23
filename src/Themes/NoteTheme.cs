@@ -250,10 +250,13 @@ namespace SentriPet
                 }
                 if (it.Reset != null)
                 {
-                    var p = v.Primary;
-                    string txt = v.Unlimited ? "沒有額度限制" : p != null && p.ResetsAt.HasValue ? "↻ " + G.ResetText(p) + "後重置" : "閒置中";
+                    var p = v.ResetMeter;
+                    string txt = v.Unlimited ? "沒有額度限制" : p != null && p.ResetsAt.HasValue ? v.LabelOf(p) + "↻ " + G.ResetText(p) + "後重置" : "閒置中";
+                    bool useIt = v.UseItLevel > 0 && v.UseIt != null;
+                    if (useIt) txt = "記得！" + Lines.QuotaName(v.UseIt) + "剩 " + Fmt.Pct(v.UseIt.Remaining) + "，" + Fmt.When(v.UseIt.ResetsAt) + " 前用掉";
                     if (v.Stale) txt += "（資料舊了）";
                     it.Reset.Text = txt;
+                    it.Reset.Foreground = G.B(useIt ? Palette.Hex("#C0392B") : InkSoft);
                 }
             }
         }

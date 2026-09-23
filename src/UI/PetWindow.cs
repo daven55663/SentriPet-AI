@@ -28,6 +28,9 @@ namespace SentriPet
         IntPtr hwnd;
         bool positioned, dragging, userHidden, fullscreenHidden;
 
+        // floating speech bubble (themes without speech of their own)
+        SpeechWindow speech;
+
         // hover card
         DetailWindow card;
         string hoverId, shownId, forcedId;
@@ -76,7 +79,7 @@ namespace SentriPet
             IsVisibleChanged += (s, e) =>
             {
                 if (IsVisible) { lastFrame = DateTime.UtcNow; frame.Start(); }
-                else { frame.Stop(); HideDetail(); }
+                else { frame.Stop(); HideDetail(); HideSpeech(); }
             };
         }
 
@@ -85,6 +88,7 @@ namespace SentriPet
         public void SetTheme(Theme t)
         {
             HideDetail();
+            HideSpeech();
             hoverId = null;
             lastScan = DateTime.MinValue;
             if (theme != null)
@@ -148,12 +152,18 @@ namespace SentriPet
             else if (!show && IsVisible) Hide();
         }
 
+        bool paused;
+
         /// <summary>No animation while the session is locked (nobody is looking).</summary>
         public void SetPaused(bool paused)
         {
-            if (paused) { frame.Stop(); HideDetail(); }
+            this.paused = paused;
+            if (paused) { frame.Stop(); HideDetail(); HideSpeech(); }
             else if (IsVisible) { lastFrame = DateTime.UtcNow; frame.Start(); }
         }
+
+        /// <summary>True when a line said now would be seen (the widget is on screen and the session unlocked).</summary>
+        public bool CanTalk { get { return IsVisible && !paused && theme != null; } }
 
         int ticks;
 
@@ -181,6 +191,7 @@ namespace SentriPet
                     PlaceDetail();
                 }
             }
+            if (speech != null && speech.IsVisible) PlaceSpeech();
         }
 
         // ------------------------------------------------------------------ animation
@@ -197,6 +208,7 @@ namespace SentriPet
             }
             try { PollHover(now); }
             catch (Exception ex) { Log.Error("hover", ex); }
+            if (speech != null && speech.IsVisible && now >= speech.Until) HideSpeech();
         }
 
         // ------------------------------------------------------------------ mouse
@@ -228,6 +240,7 @@ namespace SentriPet
                 return;
             }
             HideDetail();
+            HideSpeech();
             hoverId = null;
             var before = new Point(Left, Top);
             var hostPoint = e.GetPosition(host);
@@ -243,9 +256,68 @@ namespace SentriPet
                 if (theme != null && theme.Click(rootPoint)) return;
                 FrameworkElement el;
                 var id = HitProvider(hostPoint, out el);
-                if (id != null && theme != null) theme.Poke(id);
+                if (id != null && theme != null && !theme.Poke(id))
+                {
+                    // themes without a reaction of their own answer in a floating bubble
+                    var v = ctl.Views.FirstOrDefault(x => x.Id == id);
+                    if (v != null) ShowSpeech(id, Lines.Poke(v, rng));
+                }
             }
             else AfterMove();
+        }
+
+        // ------------------------------------------------------------------ speech
+
+        /// <summary>
+        /// Says a line through the theme (bubble, dialog box, terminal comment…) or, when the theme has no speech of
+        /// its own, in a floating bubble next to the widget.
+        /// </summary>
+        public void Say(string providerId, string text)
+        {
+            if (theme == null || string.IsNullOrEmpty(text)) return;
+            bool handled = true;
+            try { handled = theme.Say(providerId, text); }
+            catch (Exception ex) { Log.Error("say", ex); }
+            if (!handled) ShowSpeech(providerId, text);
+            // the hover card would cover the line: step aside for a moment
+            HideDetail();
+            quietUntil = DateTime.UtcNow.AddSeconds(4);
+        }
+
+        void ShowSpeech(string providerId, string text)
+        {
+            if (!CanTalk || hwnd == IntPtr.Zero || string.IsNullOrEmpty(text)) return;
+            var v = providerId != null ? ctl.Views.FirstOrDefault(x => x.Id == providerId) : null;
+            if (v == null) providerId = null;
+            if (speech == null) speech = new SpeechWindow(this);
+            speech.SetText(providerId, text, v != null ? v.Color : Palette.Hex("#94A3B8"), 3.5 + Math.Min(6, text.Length * 0.12));
+            HideDetail();
+            quietUntil = speech.Until.AddSeconds(-1);
+            PlaceSpeech();
+            if (!speech.IsVisible) speech.Show();
+            PlaceSpeech();
+        }
+
+        /// <summary>Above the widget (or wherever there is room), the tail pointing at the speaker.</summary>
+        void PlaceSpeech()
+        {
+            if (speech == null || hwnd == IntPtr.Zero) return;
+            if (tagged.Count == 0 || (speech.ProviderId != null && ProviderScreenRect(speech.ProviderId).IsEmpty)) ScanTagged();
+            var dpi = VisualTreeHelper.GetDpi(this);
+            var size = speech.MeasurePx(dpi.DpiScaleX, dpi.DpiScaleY);
+            var content = ContentScreenRect();
+            var provider = speech.ProviderId != null ? ProviderScreenRect(speech.ProviderId) : Rect.Empty;
+            if (provider.IsEmpty) provider = content;
+            var wa = ScreenFor(PixelRect()).WorkingArea;
+            double gap = 4 - SpeechWindow.Pad * dpi.DpiScaleY;
+            var r = DetailPlacement.Compute(content, provider, new Rect(wa.Left, wa.Top, wa.Width, wa.Height), size.Width, size.Height, gap);
+            speech.SetPointer(r.Side, r.PointerX / dpi.DpiScaleX);
+            speech.MoveTo(r.X, r.Y);
+        }
+
+        void HideSpeech()
+        {
+            if (speech != null && speech.IsVisible) speech.Hide();
         }
 
         // ------------------------------------------------------------------ position (physical pixels)
@@ -503,6 +575,7 @@ namespace SentriPet
         {
             var v = ctl.Views.FirstOrDefault(x => x.Id == id);
             if (v == null) { HideDetail(); return; }
+            HideSpeech();
             if (card == null) card = new DetailWindow(this);
             card.SetView(v);
             shownId = id;

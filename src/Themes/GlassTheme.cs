@@ -201,6 +201,10 @@ namespace SentriPet
                     ring.Unit.Visibility = m.Unlimited ? Visibility.Collapsed : Visibility.Visible;
                     ring.Value.Foreground = G.B(m.Unlimited || m.Remaining >= 20 ? Colors.White : Palette.Hex("#FF8A8A"));
                     ring.Reset.Text = m.Unlimited ? "無限制" : m.ResetsAt.HasValue ? G.ResetText(m) : (m.Used <= 0 ? "閒置中" : "—");
+                    // this window resets soon with quota left over: say so under its ring
+                    bool useIt = m == v.UseIt && v.UseItLevel > 0;
+                    if (useIt) ring.Reset.Text = "快用掉 · " + ring.Reset.Text;
+                    ring.Reset.Foreground = G.B(useIt ? G.UseItAccent(v.UseItLevel) : Color.FromArgb(0x88, 0xFF, 0xFF, 0xFF));
                 }
             }
         }

@@ -75,10 +75,13 @@ namespace SentriPet
         protected abstract void Refresh();
         /// <summary>Animation frame.</summary>
         public virtual void Tick(double dt) { Time += dt; }
-        /// <summary>Show a speech line for a provider (null = whole widget).</summary>
-        public virtual void Say(string providerId, string text) { }
-        /// <summary>User clicked a provider.</summary>
-        public virtual void Poke(string providerId) { }
+        /// <summary>
+        /// Show a speech line for a provider (null = whole widget). Return false when the theme has no speech of
+        /// its own — the window then shows the line in a floating bubble.
+        /// </summary>
+        public virtual bool Say(string providerId, string text) { return false; }
+        /// <summary>User clicked a provider. Return false when the theme has no reaction of its own.</summary>
+        public virtual bool Poke(string providerId) { return false; }
         /// <summary>Clicked somewhere in the widget; return true when the theme handled it.</summary>
         public virtual bool Click(Point rootPoint) { return false; }
         /// <summary>"reset" | "warn" | "critical" events from the controller.</summary>
@@ -308,6 +311,35 @@ namespace SentriPet
             }
             g.Freeze();
             return g;
+        }
+
+        /// <summary>A little alarm clock (a 24×24 drawing scaled to <paramref name="size"/>): "use it before it resets".</summary>
+        public static Viewbox AlarmClock(double size, Color ring)
+        {
+            var c = new Canvas { Width = 24, Height = 24 };
+            var ink = B(Palette.Hex("#2B211E"));
+            var bell = B(ring);
+            c.Children.Add(P("M 2.6,9.2 A 5.2,5.2 0 0 1 9.4,2.9 Z", bell, ink, 1.1));
+            c.Children.Add(P("M 21.4,9.2 A 5.2,5.2 0 0 0 14.6,2.9 Z", bell, ink, 1.1));
+            c.Children.Add(P("M 6.8,19.6 L 4.6,22.6 M 17.2,19.6 L 19.4,22.6", null, ink, 1.8));
+            c.Children.Add(P("M 12,5.2 L 12,3.2 M 10.4,3.2 L 13.6,3.2", null, ink, 1.6));
+            c.Children.Add(Circle(12, 13.4, 8, B(Colors.White), bell, 2.2));
+            c.Children.Add(P("M 12,13.4 L 12,8.6 M 12,13.4 L 15.4,15", null, ink, 1.6));
+            c.Children.Add(Circle(12, 13.4, 1.1, ink, null, 0));
+            return new Viewbox { Width = size, Height = size, Child = c };
+        }
+
+        /// <summary>Background, border and text colours for the "use it" urgency levels 1–3.</summary>
+        public static void UseItColors(int level, out Color bg, out Color edge, out Color ink)
+        {
+            if (level >= 3) { bg = Palette.Hex("#FEE2E2"); edge = Palette.Hex("#F87171"); ink = Palette.Hex("#991B1B"); }
+            else if (level == 2) { bg = Palette.Hex("#FFEDD5"); edge = Palette.Hex("#FB923C"); ink = Palette.Hex("#9A3412"); }
+            else { bg = Palette.Hex("#FEF3C7"); edge = Palette.Hex("#FBBF24"); ink = Palette.Hex("#92400E"); }
+        }
+
+        public static Color UseItAccent(int level)
+        {
+            return level >= 3 ? Palette.Hex("#EF4444") : level == 2 ? Palette.Hex("#F97316") : Palette.Hex("#F59E0B");
         }
 
         public static Border Pill(UIElement child, Brush bg, double radius, Thickness pad)

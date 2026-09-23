@@ -20,6 +20,8 @@ namespace SentriPet
         public bool ClaudeEstimate = true;    // fill the gaps between desktop samples from Claude Code transcripts
         public bool Chatty = true;            // idle speech bubbles
         public bool Notifications = true;
+        public bool UseItReminder = true;     // nag to spend a weekly/monthly quota before it resets unused
+        public Dictionary<string, string> UseItNotified = new Dictionary<string, string>();   // "provider|meter" → "resetUtc#level" already announced
         public int WarnAt = 80;               // used %
         public int CriticalAt = 95;           // used %
         public bool AutoStart = true;
@@ -60,6 +62,9 @@ namespace SentriPet
                 s.ClaudeEstimate = Json.Bool(Json.Get(o, "claudeEstimate")) ?? true;
                 s.Chatty = Json.Bool(Json.Get(o, "chatty")) ?? true;
                 s.Notifications = Json.Bool(Json.Get(o, "notifications")) ?? true;
+                s.UseItReminder = Json.Bool(Json.Get(o, "useItReminder")) ?? true;
+                var un = Json.Obj(Json.Get(o, "useItNotified"));
+                if (un != null) foreach (var kv in un) { var str = Json.Str(kv.Value); if (str != null) s.UseItNotified[kv.Key] = str; }
                 s.WarnAt = (int)Clamp(Json.Num(Json.Get(o, "warnAt")) ?? 80, 10, 99);
                 s.CriticalAt = (int)Clamp(Json.Num(Json.Get(o, "criticalAt")) ?? 95, 10, 100);
                 s.AutoStart = Json.Bool(Json.Get(o, "autoStart")) ?? true;
@@ -100,6 +105,8 @@ namespace SentriPet
                 o["claudeEstimate"] = ClaudeEstimate;
                 o["chatty"] = Chatty;
                 o["notifications"] = Notifications;
+                o["useItReminder"] = UseItReminder;
+                o["useItNotified"] = UseItNotified.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
                 o["warnAt"] = WarnAt;
                 o["criticalAt"] = CriticalAt;
                 o["autoStart"] = AutoStart;

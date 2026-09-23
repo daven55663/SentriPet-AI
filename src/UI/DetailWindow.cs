@@ -90,8 +90,9 @@ namespace SentriPet
         public FrameworkElement Root { get; private set; }
         string signature;
         Canvas arrowUp, arrowDown;
-        Border busy;
-        TextBlock error, status, note;
+        Border busy, useIt, useItIcon;
+        TextBlock error, status, note, useItText;
+        int useItLevel;
         readonly List<MeterUi> meters = new List<MeterUi>();
 
         public static string SignatureOf(ProviderView v)
@@ -127,6 +128,28 @@ namespace SentriPet
                 head.Children.Add(plan);
             }
             sp.Children.Add(head);
+
+            // "use it before it resets" banner (shown by Update when a weekly/monthly window is about to expire unused)
+            var ug = new Grid();
+            ug.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            ug.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            d.useItIcon = new Border { Width = 20, Height = 20, Margin = new Thickness(0, 0, 9, 0), VerticalAlignment = VerticalAlignment.Center };
+            d.useItText = G.T("", 11.5, Text, FontWeights.SemiBold, G.Ui);
+            d.useItText.TextWrapping = TextWrapping.Wrap;
+            d.useItText.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(d.useItText, 1);
+            ug.Children.Add(d.useItIcon);
+            ug.Children.Add(d.useItText);
+            d.useIt = new Border
+            {
+                Child = ug,
+                CornerRadius = new CornerRadius(9),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(9, 7, 10, 7),
+                Margin = new Thickness(0, 10, 0, 0),
+                Visibility = Visibility.Collapsed,
+            };
+            sp.Children.Add(d.useIt);
 
             if (!v.HasData)
             {
@@ -225,6 +248,21 @@ namespace SentriPet
         {
             busy.Visibility = v.Active ? Visibility.Visible : Visibility.Collapsed;
             if (error != null) error.Text = v.Error ?? "沒有資料";
+            int level = v.HasData && v.UseIt != null ? v.UseItLevel : 0;
+            useIt.Visibility = level > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (level > 0)
+            {
+                useItText.Text = Lines.UseItAlert(v);
+                if (level != useItLevel)
+                {
+                    var accent = G.UseItAccent(level);
+                    useIt.Background = G.B(accent, 0.15);
+                    useIt.BorderBrush = G.B(accent, 0.55);
+                    useItText.Foreground = G.B(Palette.Lighten(accent, 0.5));
+                    useItIcon.Child = G.AlarmClock(20, accent);
+                }
+            }
+            useItLevel = level;
             foreach (var ui in meters)
             {
                 var m = v.Meters.FirstOrDefault(x => x.Key == ui.Key);
@@ -262,15 +300,14 @@ namespace SentriPet
     }
 
     /// <summary>
-    /// The hover card as its own window: owned by the widget (so Windows always keeps it above the widget),
+    /// A window that floats next to the widget: owned by it (so Windows always keeps it above the widget),
     /// click-through and never activated (so it can not steal the mouse from the widget).
     /// </summary>
-    class DetailWindow : Window
+    class OverlayWindow : Window
     {
         IntPtr hwnd;
-        DetailCardView view;
 
-        public DetailWindow(Window owner)
+        public OverlayWindow(Window owner)
         {
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
@@ -296,21 +333,6 @@ namespace SentriPet
 
         public IntPtr Handle { get { return hwnd; } }
 
-        public void SetView(ProviderView v)
-        {
-            if (view == null || !view.Matches(v))
-            {
-                view = DetailCardView.Build(v);
-                Content = view.Root;
-            }
-            else view.Update(v);
-        }
-
-        public void SetPointer(DetailPlacement.Side side, double xDip)
-        {
-            if (view != null) view.SetPointer(side, xDip);
-        }
-
         /// <summary>Size the window will take for its current content, in physical pixels.</summary>
         public Size MeasurePx(double dpiX, double dpiY)
         {
@@ -325,6 +347,92 @@ namespace SentriPet
         {
             if (hwnd != IntPtr.Zero)
                 Native.SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0, Native.SWP_NOSIZE | 0x4 | Native.SWP_NOACTIVATE);
+        }
+    }
+
+    /// <summary>The hover card as its own window.</summary>
+    class DetailWindow : OverlayWindow
+    {
+        DetailCardView view;
+
+        public DetailWindow(Window owner) : base(owner) { }
+
+        public void SetView(ProviderView v)
+        {
+            if (view == null || !view.Matches(v))
+            {
+                view = DetailCardView.Build(v);
+                Content = view.Root;
+            }
+            else view.Update(v);
+        }
+
+        public void SetPointer(DetailPlacement.Side side, double xDip)
+        {
+            if (view != null) view.SetPointer(side, xDip);
+        }
+    }
+
+    /// <summary>
+    /// A floating speech bubble next to the widget, for themes that have no speech of their own
+    /// (reminders, pokes, greetings).
+    /// </summary>
+    class SpeechWindow : OverlayWindow
+    {
+        public const double Pad = 10;                 // transparent room around the bubble (for the shadow)
+        const double TailW = 14, TailH = 8, MaxText = 230;
+        static readonly Color Paper = Color.FromArgb(0xF8, 0xFF, 0xFF, 0xFF);
+        readonly TextBlock text;
+        readonly Border bubble;
+        readonly Canvas tailUp, tailDown;
+        readonly StackPanel column;
+
+        public string ProviderId { get; private set; }
+        public DateTime Until { get; private set; }
+
+        public SpeechWindow(Window owner) : base(owner)
+        {
+            text = new TextBlock { FontFamily = G.Ui, FontSize = 12, Foreground = G.B(Palette.Hex("#2B2B35")), TextWrapping = TextWrapping.Wrap, MaxWidth = MaxText };
+            bubble = new Border { Child = text, Background = G.B(Paper), BorderThickness = new Thickness(1.4), CornerRadius = new CornerRadius(12), Padding = new Thickness(11, 7, 11, 8) };
+            tailUp = Tail(true);
+            tailDown = Tail(false);
+            column = new StackPanel { Margin = new Thickness(Pad), Effect = G.Shadow(10, 2, 0.28, Colors.Black) };
+            column.Children.Add(tailUp);
+            column.Children.Add(bubble);
+            column.Children.Add(tailDown);
+            TextOptions.SetTextFormattingMode(column, TextFormattingMode.Display);
+            Content = column;
+        }
+
+        static Canvas Tail(bool up)
+        {
+            var c = new Canvas { Height = TailH, HorizontalAlignment = HorizontalAlignment.Stretch };
+            c.Children.Add(new Path { Data = Geometry.Parse(up ? "M 0,8.9 L 7,0 L 14,8.9 Z" : "M 0,-0.9 L 14,-0.9 L 7,8 Z"), Fill = G.B(Paper) });
+            c.Children.Add(new Path { Data = Geometry.Parse(up ? "M 0,8 L 7,0 L 14,8" : "M 0,0 L 7,8 L 14,0"), StrokeThickness = 1.4, StrokeLineJoin = PenLineJoin.Round });
+            return c;
+        }
+
+        public void SetText(string providerId, string s, Color accent, double seconds)
+        {
+            ProviderId = providerId;
+            text.Text = s;
+            var edge = G.B(Palette.Lighten(accent, 0.2));
+            bubble.BorderBrush = edge;
+            ((Path)tailUp.Children[1]).Stroke = edge;
+            ((Path)tailDown.Children[1]).Stroke = edge;
+            Until = DateTime.UtcNow.AddSeconds(seconds);
+        }
+
+        /// <summary>Points the tail at the speaker. <paramref name="x"/> is in DIPs from the window's left.</summary>
+        public void SetPointer(DetailPlacement.Side side, double x)
+        {
+            tailUp.Visibility = side == DetailPlacement.Side.Below ? Visibility.Visible : Visibility.Hidden;
+            tailDown.Visibility = side == DetailPlacement.Side.Above ? Visibility.Visible : Visibility.Hidden;
+            column.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double w = column.DesiredSize.Width - 2 * Pad;
+            double left = Math.Max(12, Math.Min(w - 12 - TailW, x - Pad - TailW / 2));
+            foreach (Path p in tailUp.Children) Canvas.SetLeft(p, left);
+            foreach (Path p in tailDown.Children) Canvas.SetLeft(p, left);
         }
     }
 }

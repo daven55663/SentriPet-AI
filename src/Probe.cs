@@ -38,6 +38,13 @@ namespace SentriPet
                         m.ResetApprox ? " ≈" : "", m.WasReset ? " [rolled-over]" : "", m.ValueText != null ? "  " + m.ValueText : "",
                         m.UsedApprox ? " (estimated)" : ""));
                 }
+                if (s.Meters.Count > 0)
+                {
+                    var v = UsageService.MakeView(p, s);
+                    sb.AppendLine("  headline: " + (v.Headline != null ? v.Headline.Label + " " + Fmt.Pct(v.HeadlineRemaining) : "-") +
+                                  "   reset line: " + (v.ResetMeter != null ? v.ResetMeter.Label : "-") +
+                                  "   use-it: " + (v.UseItLevel > 0 ? "level " + v.UseItLevel + " — " + Lines.UseItAlert(v) : "none"));
+                }
                 var cp = p as ClaudeProvider;
                 if (cp != null)
                     sb.AppendLine(string.Format("  calibration: 5h {0}   weekly {1}",

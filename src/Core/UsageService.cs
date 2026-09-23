@@ -197,7 +197,9 @@ namespace SentriPet
                 var snap = SnapshotFor(p.Id);
                 if (snap == null) continue;           // not fetched yet
                 if (snap.Offline && !includeHidden) continue;
-                views.Add(MakeView(p, snap));
+                var v = MakeView(p, snap);
+                if (!s.UseItReminder) { v.UseIt = null; v.UseItLevel = 0; }
+                views.Add(v);
             }
             return views;
         }
@@ -221,8 +223,19 @@ namespace SentriPet
             v.HasData = snap.Meters.Count > 0;
             v.Unlimited = v.HasData && limited.Count == 0;
             v.Primary = limited.OrderByDescending(m => m.Used).ThenBy(m => m.WindowMinutes).FirstOrDefault() ?? snap.Meters.FirstOrDefault();
-            v.Secondary = snap.Meters.FirstOrDefault(m => m != v.Primary);
             v.Remaining = v.Primary == null ? 100 : v.Primary.Remaining;
+            // the big number always shows the shortest (5-hour) window, so it never jumps between windows
+            v.Headline = limited.Where(m => m.WindowMinutes > 0).OrderBy(m => m.WindowMinutes).FirstOrDefault() ?? v.Primary;
+            v.HeadlineRemaining = v.Headline == null ? 100 : v.Headline.Remaining;
+            v.Secondary = snap.Meters.FirstOrDefault(m => m != v.Headline);
+            // "use it before it resets" — unless another window is used up, then nothing can be spent right now anyway
+            var now = DateTime.UtcNow;
+            if (!limited.Any(m => m.Remaining < 2))
+                foreach (var m in limited)
+                {
+                    int level = ProviderView.UseItLevelFor(m, now);
+                    if (level > v.UseItLevel) { v.UseItLevel = level; v.UseIt = m; }
+                }
             v.Mood = !v.HasData ? Mood.Unknown : ProviderView.MoodFor(v.Remaining);
             if (!v.HasData) v.StatusText = snap.Error ?? "沒有資料";
             else

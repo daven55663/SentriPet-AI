@@ -199,6 +199,15 @@ namespace SentriPet
                     nl.Add(l);
                     first = false;
                 }
+                if (v.UseItLevel > 0 && v.UseIt != null)
+                {
+                    // use it or lose it: quota left over in a window that resets soon
+                    var l = new List<Seg>();
+                    var warn = v.UseItLevel >= 3 ? Palette.Hex("#FF5A5A") : Palette.Hex("#FFB43A");
+                    add(l, new string(' ', 9) + "!! ", warn);
+                    add(l, "use it or lose it: " + AsciiLabel(v.UseIt) + " " + Fmt.Pct(v.UseIt.Remaining) + " · " + Fmt.Clock(v.UseIt.ResetsAt), warn);
+                    nl.Add(l);
+                }
                 if (v.Stale)
                 {
                     var l = new List<Seg>();
@@ -290,13 +299,14 @@ namespace SentriPet
         string sayText;
         double sayUntil;
 
-        public override void Say(string providerId, string text)
+        public override bool Say(string providerId, string text)
         {
-            if (string.IsNullOrEmpty(text)) return;
+            if (string.IsNullOrEmpty(text)) return true;
             // printed as a comment line above the prompt for a few seconds
             sayText = "# " + (providerId != null ? providerId + ": " : "") + text;
             sayUntil = Time + 6 + text.Length * 0.1;
             Refresh();
+            return true;
         }
     }
 }

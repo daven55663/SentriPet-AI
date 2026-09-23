@@ -245,7 +245,7 @@ namespace SentriPet
                 var v = View(r.Id);
                 if (v == null) continue;
                 r.Tag.Text = (v.Plan ?? (v.HasData ? "ONLINE" : "OFFLINE")).ToUpperInvariant() + (v.Active ? " · BUSY" : "") + (v.Stale ? " · STALE" : "");
-                string big = !v.HasData ? "ERR" : v.Unlimited ? "∞" : Fmt.Pct(v.Remaining);
+                string big = !v.HasData ? "ERR" : v.Unlimited ? "∞" : Fmt.Pct(v.HeadlineRemaining);
                 r.Big.Text = r.BigR.Text = r.BigC.Text = big;
                 if (r.Error != null) r.Error.Text = "> " + (v.Error ?? "NO SIGNAL");
                 foreach (var b in r.Bars)

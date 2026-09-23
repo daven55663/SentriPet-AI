@@ -87,47 +87,78 @@ namespace SentriPet
             }
         }
 
+        static readonly byte[] AssistantMark = Encoding.ASCII.GetBytes("\"type\":\"assistant\"");
+
+        /// <summary>
+        /// Reads the complete lines appended since the last call, one line at a time: transcripts grow to tens of MB,
+        /// and loading one whole made the process keep that much memory. A half-written last line is read next time.
+        /// </summary>
         void ReadFrom(string path, FileState st, DateTime cutoff)
         {
-            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096))
             {
-                fs.Seek(st.Offset, SeekOrigin.Begin);
-                var buf = new byte[fs.Length - st.Offset];
-                int read = 0;
-                while (read < buf.Length)
+                long end = fs.Length;
+                long pos = st.Offset;
+                fs.Seek(pos, SeekOrigin.Begin);
+                var buf = new byte[64 * 1024];
+                var line = new MemoryStream();
+                while (pos < end)
                 {
-                    int n = fs.Read(buf, read, buf.Length - read);
+                    int n = fs.Read(buf, 0, (int)Math.Min(buf.Length, end - pos));
                     if (n <= 0) break;
-                    read += n;
-                }
-                // only complete lines; a half-written last line is read next time
-                int end = Array.LastIndexOf(buf, (byte)'\n', Math.Max(0, read - 1));
-                if (end < 0) return;
-                string text = Encoding.UTF8.GetString(buf, 0, end + 1);
-                st.Offset += end + 1;
-                foreach (var line in text.Split('\n'))
-                {
-                    DateTime t;
-                    double w;
-                    string key;
-                    if (!TryParse(line, out t, out w, out key) || t < cutoff) continue;
-                    if (key == null)
+                    int start = 0;
+                    for (int i = 0; i < n; i++)
                     {
-                        keyless.Add(new Event { T = t, W = w });
-                        dirty = true;
-                        continue;
+                        if (buf[i] != (byte)'\n') continue;
+                        line.Write(buf, start, i - start);
+                        Consume(line, cutoff);
+                        line.SetLength(0);
+                        start = i + 1;
+                        st.Offset = pos + i + 1;   // everything up to here is done
                     }
-                    Event old;
-                    if (byKey.TryGetValue(key, out old))
-                    {
-                        // Claude Code writes one line per content block with the same message id; keep the largest
-                        if (w > old.W) { byKey[key] = new Event { T = old.T, W = w }; dirty = true; }
-                        continue;
-                    }
-                    byKey[key] = new Event { T = t, W = w };
-                    dirty = true;
+                    line.Write(buf, start, n - start);
+                    pos += n;
                 }
             }
+        }
+
+        void Consume(MemoryStream line, DateTime cutoff)
+        {
+            byte[] bytes = line.GetBuffer();
+            int len = (int)line.Length;
+            // only assistant replies carry usage: skip the rest (tool results, prompts) without decoding it
+            if (len < 20 || IndexOf(bytes, len, AssistantMark) < 0) return;
+            DateTime t;
+            double w;
+            string key;
+            if (!TryParse(Encoding.UTF8.GetString(bytes, 0, len), out t, out w, out key) || t < cutoff) return;
+            if (key == null)
+            {
+                keyless.Add(new Event { T = t, W = w });
+                dirty = true;
+                return;
+            }
+            Event old;
+            if (byKey.TryGetValue(key, out old))
+            {
+                // Claude Code writes one line per content block with the same message id; keep the largest
+                if (w > old.W) { byKey[key] = new Event { T = old.T, W = w }; dirty = true; }
+                return;
+            }
+            byKey[key] = new Event { T = t, W = w };
+            dirty = true;
+        }
+
+        static int IndexOf(byte[] hay, int len, byte[] needle)
+        {
+            for (int i = 0, last = len - needle.Length; i <= last; i++)
+            {
+                if (hay[i] != needle[0]) continue;
+                int j = 1;
+                while (j < needle.Length && hay[i + j] == needle[j]) j++;
+                if (j == needle.Length) return i;
+            }
+            return -1;
         }
 
         static bool TryParse(string line, out DateTime t, out double w, out string key)

@@ -79,6 +79,29 @@ namespace SentriPet
                     }
                 }
             }
+            // the hover card and the floating speech bubble for the first provider of each set
+            foreach (var set in sets)
+            {
+                if (set.Value.Count == 0 || only != null) continue;
+                try
+                {
+                    var v = set.Value[0];
+                    var card = DetailCardView.Build(v);
+                    card.SetPointer(DetailPlacement.Side.Above, 90);
+                    Render(card.Root, Path.Combine(outDir, "detail_" + set.Key + ".png"), scale, true);
+                    var speech = new SpeechWindow(null);
+                    speech.SetText(v.Id, v.UseItLevel > 0 ? Lines.UseItAlert(v) : Lines.Poke(v, new Random(5)), v.Color, 5);
+                    speech.SetPointer(DetailPlacement.Side.Above, 60);
+                    var content = (FrameworkElement)speech.Content;
+                    speech.Content = null;
+                    Render(content, Path.Combine(outDir, "speech_" + set.Key + ".png"), scale, true);
+                    speech.Close();
+                }
+                catch (Exception ex)
+                {
+                    File.WriteAllText(Path.Combine(outDir, "detail_" + set.Key + "_error.txt"), ex.ToString());
+                }
+            }
             return 0;
         }
 
@@ -161,7 +184,7 @@ namespace SentriPet
             claude.Meters.Add(M("sd", "每週", "週", 18, 33.5, true, 10080));
             var codex = new Snapshot { Source = "Codex 官方 app-server", ObservedAt = DateTime.UtcNow, Plan = "Plus", Active = true };
             codex.Meters.Add(M("codex:300", "5 小時", "5h", 4, 4.9, false, 300));
-            codex.Meters.Add(M("codex:10080", "每週", "週", 23, 105, false, 10080));
+            codex.Meters.Add(M("codex:10080", "每週", "週", 23, 3.5, false, 10080));
             var copilot = new Snapshot { Source = "Copilot CLI 快取", ObservedAt = DateTime.UtcNow.AddDays(-11), Stale = true, Plan = "Pro" };
             copilot.Meters.Add(new Meter { Key = "premium_interactions", Label = "進階請求", ShortLabel = "PR", Used = 0, ResetsAt = DateTime.UtcNow.AddDays(7.7), WindowMinutes = 43200, ValueText = "200 / 200" });
             return new List<ProviderView> { View(new ClaudeProvider(), claude), View(new CodexProvider(), codex), View(new CopilotProvider(), copilot) };

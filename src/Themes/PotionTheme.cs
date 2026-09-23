@@ -246,7 +246,8 @@ namespace SentriPet
                 if (!v.HasData) { grp.Reset.Text = v.Error ?? "沒有資料"; }
                 else
                 {
-                    var parts = v.Meters.Take(3).Select(m => m.ShortLabel + " " + (m.Unlimited ? "∞" : m.ResetsAt.HasValue ? "↻" + G.ResetText(m) : "閒置"));
+                    var parts = v.Meters.Take(3).Select(m => m.ShortLabel + " " + (m.Unlimited ? "∞" : m.ResetsAt.HasValue ? "↻" + G.ResetText(m) : "閒置") +
+                                                             (m == v.UseIt && v.UseItLevel > 0 ? " 快用掉！" : ""));
                     grp.Reset.Text = string.Join("\n", parts) + (v.Stale ? "\n（資料較舊）" : "");
                 }
                 foreach (var f in grp.Flasks)

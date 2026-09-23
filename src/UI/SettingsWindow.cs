@@ -423,6 +423,8 @@ namespace SentriPet
         {
             var body = Section(root, "提醒", "", null);
             Row(body, "額度提醒通知", "用量越過門檻、或額度重置時跳出 Windows 通知", Toggle(S.Notifications, v => { S.Notifications = v; SaveSoon(); }));
+            Row(body, "催我用完週額度", "每週／每月額度快重置、卻還剩不少時，桌寵會拿鬧鐘催你把它用掉：剩 2 天（還有 30% 以上）開始提醒，最後一天、最後 6 小時會越催越勤，並各跳一次通知",
+                Toggle(S.UseItReminder, v => { S.UseItReminder = v; SaveSoon(); ctl.RefreshViews(); }));
             Row(body, "提醒門檻", "用量超過這個比例時提醒一次", SliderBox(50, 95, S.WarnAt, 5, v => "用掉 " + Math.Round(v) + "%", v => { S.WarnAt = (int)Math.Round(v); SaveSoon(); }));
             Row(body, "緊急門檻", "快用完時再提醒一次", SliderBox(60, 100, S.CriticalAt, 1, v => "用掉 " + Math.Round(v) + "%", v => { S.CriticalAt = (int)Math.Round(v); SaveSoon(); }));
         }

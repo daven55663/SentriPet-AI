@@ -79,9 +79,13 @@ namespace SentriPet
         public Color Color;
         public Snapshot Snap;
         public List<Meter> Meters = new List<Meter>();
-        public Meter Primary;         // most constrained window
+        public Meter Primary;         // most constrained window (drives the mood)
         public Meter Secondary;       // second window (if any)
         public double Remaining;      // primary remaining (100 when unlimited / unknown)
+        public Meter Headline;        // the big number: the short (5-hour) window when there is one
+        public double HeadlineRemaining;
+        public Meter UseIt;           // a weekly/monthly window that resets soon with quota left over
+        public int UseItLevel;        // 0 none · 1 last 2 days · 2 last day · 3 last hours
         public Mood Mood;
         public bool HasData;
         public bool Stale;
@@ -94,6 +98,37 @@ namespace SentriPet
         public Color Dark { get { return Palette.Darken(Color, 0.35); } }
         public Color Light { get { return Palette.Lighten(Color, 0.55); } }
 
+        /// <summary>
+        /// The window a one-line "↻ resets in …" status talks about: the one that is nearly used up (it is what
+        /// blocks you), otherwise the headline window, otherwise the next window that is counting down.
+        /// </summary>
+        public Meter ResetMeter
+        {
+            get
+            {
+                if (Primary != null && !Primary.Unlimited && Primary.ResetsAt.HasValue && Primary.Remaining < 12) return Primary;
+                if (Headline != null && Headline.ResetsAt.HasValue) return Headline;
+                return Meters.FirstOrDefault(m => !m.Unlimited && m.ResetsAt.HasValue) ?? Headline;
+            }
+        }
+
+        /// <summary>"5h " / "週 " when there is more than one window, so a one-line status says which one it means.</summary>
+        public string LabelOf(Meter m)
+        {
+            return m != null && Meters.Count > 1 && !string.IsNullOrEmpty(m.ShortLabel) ? m.ShortLabel + " " : "";
+        }
+
+        /// <summary>"Claude 5h 100% 週 61%" — every window, for the tray tooltip and the menu.</summary>
+        public string Summary
+        {
+            get
+            {
+                if (!HasData) return Name + " ?";
+                if (Unlimited) return Name + " ∞";
+                return Name + " " + string.Join(" ", Meters.Take(2).Select(m => LabelOf(m) + (m.Unlimited ? "∞" : Fmt.Pct(m.Remaining))));
+            }
+        }
+
         public static Mood MoodFor(double remaining)
         {
             if (remaining >= 60) return Mood.Great;
@@ -101,6 +136,23 @@ namespace SentriPet
             if (remaining >= 12) return Mood.Worried;
             if (remaining > 0.5) return Mood.Critical;
             return Mood.Empty;
+        }
+
+        /// <summary>
+        /// "Use it or lose it": how urgently the left-over quota of a weekly/monthly window should be spent
+        /// before it resets. 3 = last 6 hours (≥5% left), 2 = last day (≥10%), 1 = last 2 days (≥30%).
+        /// Short windows (5 hours, daily) come back too soon to be worth nagging about.
+        /// </summary>
+        public static int UseItLevelFor(Meter m, DateTime nowUtc)
+        {
+            if (m == null || m.Unlimited || m.WindowMinutes < 3 * 1440 || !m.ResetsAt.HasValue) return 0;
+            double hours = (m.ResetsAt.Value - nowUtc).TotalHours;
+            double left = m.Remaining;
+            if (hours <= 0) return 0;
+            if (hours <= 6 && left >= 5) return 3;
+            if (hours <= 24 && left >= 10) return 2;
+            if (hours <= 48 && left >= 30) return 1;
+            return 0;
         }
     }
 

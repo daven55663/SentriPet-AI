@@ -56,6 +56,12 @@ namespace SentriPet
             public UIElement AccBlink, AccGlow;
             public TextBlock NameText, PctText, ResetText, ErrorText;
             public List<MeterRow> Rows = new List<MeterRow>();
+            public Border UseItPill;                 // "weekly quota left, resets soon — use it!"
+            public Grid UseItRow;
+            public TextBlock UseItTop, UseItBottom;
+            public FrameworkElement Clock;           // alarm clock next to the pet while there is quota to use up
+            public RotateTransform ClockTilt;
+            public int UseItLevel;
             public Border Bubble;
             public TextBlock BubbleText;
             public Path BubbleTail;
@@ -247,8 +253,52 @@ namespace SentriPet
                 StrokeThickness = 1.4,
                 Visibility = Visibility.Collapsed,
             };
-            c.Level.Value = c.Level.Target = v.HasData ? v.Remaining : 0;
+            c.Level.Value = c.Level.Target = v.HasData ? (v.Unlimited ? 100 : v.HeadlineRemaining) : 0;
             return c;
+        }
+
+        /// <summary>Shows, hides or recolours the "use it before it resets" pill and alarm clock.</summary>
+        void ApplyUseIt(Card c, ProviderView v)
+        {
+            int level = v.HasData && v.UseIt != null ? v.UseItLevel : 0;
+            var m = v.UseIt;
+            if (c.UseItPill != null && level > 0)
+            {
+                string pct = Fmt.Pct(m.Remaining);
+                string shortLabel = string.IsNullOrEmpty(m.ShortLabel) ? "" : m.ShortLabel;
+                c.UseItTop.Text = level == 1 ? shortLabel + "額度剩 " + pct : shortLabel + "剩 " + pct + " 快用掉";
+                c.UseItBottom.Text = level >= 3 ? "只剩 " + Fmt.Countdown(m.ResetsAt) + "！" : Fmt.When(m.ResetsAt) + (level == 2 ? " 清空" : " 重置");
+            }
+            if (level == c.UseItLevel) return;
+            c.UseItLevel = level;
+            if (c.Clock != null) { c.Fx.Children.Remove(c.Clock); c.Clock = null; }
+            if (c.UseItPill != null)
+            {
+                c.UseItPill.Visibility = level > 0 ? Visibility.Visible : Visibility.Collapsed;
+                c.UseItPill.Opacity = 1;
+                if (c.UseItRow.Children.Count > 1) c.UseItRow.Children.RemoveAt(1);
+            }
+            if (level == 0) return;
+
+            Color bg, edge, ink;
+            G.UseItColors(level, out bg, out edge, out ink);
+            if (c.UseItPill != null)
+            {
+                c.UseItPill.Background = G.B(bg);
+                c.UseItPill.BorderBrush = G.B(edge);
+                c.UseItTop.Foreground = c.UseItBottom.Foreground = G.B(ink);
+                var icon = G.AlarmClock(14, G.UseItAccent(level));
+                icon.VerticalAlignment = VerticalAlignment.Center;
+                icon.HorizontalAlignment = HorizontalAlignment.Left;
+                c.UseItRow.Children.Add(icon);
+            }
+            var clock = G.AlarmClock(22, G.UseItAccent(level));
+            c.ClockTilt = new RotateTransform(0);
+            clock.RenderTransformOrigin = new Point(0.5, 0.85);
+            clock.RenderTransform = c.ClockTilt;
+            G.Place(clock, 3, 14);
+            c.Fx.Children.Add(clock);
+            c.Clock = clock;
         }
 
         static Canvas MakeEye(double cx, double cy, out ScaleTransform scale, out TranslateTransform move)
@@ -411,6 +461,28 @@ namespace SentriPet
                 c.ResetText.Margin = new Thickness(0, 3, 0, 0);
                 c.ResetText.TextTrimming = TextTrimming.CharacterEllipsis;
                 sp.Children.Add(c.ResetText);
+
+                c.UseItTop = G.T("", 9, Colors.Black, FontWeights.Bold, G.Ui);
+                c.UseItBottom = G.T("", 9, Colors.Black, FontWeights.Normal, G.Ui);
+                c.UseItTop.TextTrimming = c.UseItBottom.TextTrimming = TextTrimming.CharacterEllipsis;
+                var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+                lines.Children.Add(c.UseItTop);
+                lines.Children.Add(c.UseItBottom);
+                Grid.SetColumn(lines, 1);
+                c.UseItRow = new Grid();
+                c.UseItRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(17) });
+                c.UseItRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                c.UseItRow.Children.Add(lines);
+                c.UseItPill = new Border
+                {
+                    Child = c.UseItRow,
+                    CornerRadius = new CornerRadius(6),
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(3, 2, 4, 3),
+                    Margin = new Thickness(-3, 4, -3, 0),
+                    Visibility = Visibility.Collapsed,
+                };
+                sp.Children.Add(c.UseItPill);
             }
             else
             {
@@ -440,9 +512,11 @@ namespace SentriPet
                 var v = shown.FirstOrDefault(x => x.Id == c.Id);
                 if (v == null) continue;
                 c.V = v;
-                c.Level.Target = v.HasData ? (v.Unlimited ? 100 : v.Remaining) : 0;
+                // belly and big number: the headline (5-hour) window; the face still reacts to the tightest window
+                c.Level.Target = v.HasData ? (v.Unlimited ? 100 : v.HeadlineRemaining) : 0;
                 c.NameText.Text = v.Name;
                 c.NameText.Foreground = G.B(v.Stale ? Palette.Hex("#8A8F9C") : Palette.Hex("#2B2B35"));
+                ApplyUseIt(c, v);
                 if (!v.HasData)
                 {
                     c.PctText.Text = "?";
@@ -450,8 +524,9 @@ namespace SentriPet
                     if (c.ErrorText != null) c.ErrorText.Text = v.Error ?? "沒有資料";
                     continue;
                 }
-                c.PctText.Text = v.Unlimited ? "∞" : (v.Primary != null && v.Primary.UsedApprox ? "≈" : "") + Fmt.Pct(v.Remaining);
-                c.PctText.Foreground = G.B(v.Unlimited ? Palette.Hex("#7C3AED") : LevelInk(v.Remaining));
+                var head = v.Headline;
+                c.PctText.Text = v.Unlimited ? "∞" : (head != null && head.UsedApprox ? "≈" : "") + Fmt.Pct(v.HeadlineRemaining);
+                c.PctText.Foreground = G.B(v.Unlimited ? Palette.Hex("#7C3AED") : LevelInk(v.HeadlineRemaining));
                 foreach (var r in c.Rows)
                 {
                     var m = v.Meters.FirstOrDefault(x => x.Key == r.Key);
@@ -462,10 +537,15 @@ namespace SentriPet
                 }
                 if (c.ResetText != null)
                 {
-                    var p = v.Primary;
+                    var p = v.ResetMeter;
+                    string lbl = v.LabelOf(p);          // "5h " / "週 " says which window; a lone window gets "↻ "
+                    if (lbl.Length == 0) lbl = "↻ ";
                     if (v.Unlimited) c.ResetText.Text = v.Snap != null && v.Snap.Note != null ? v.Snap.Note : "沒有額度限制";
-                    else if (p != null && p.ResetsAt.HasValue) c.ResetText.Text = (v.Stale ? "舊資料 · ↻ " + G.ResetText(p) : "↻ " + G.ResetText(p) + " 後重置");
+                    else if (p != null && p.ResetsAt.HasValue) c.ResetText.Text = v.Stale ? "舊資料 · " + lbl + G.ResetText(p) : lbl + G.ResetText(p) + "後重置";
                     else c.ResetText.Text = p != null && p.Used <= 0 ? "閒置中，用了才開始計時" : "重置時間未知";
+                    // the pill already says when the window that is about to reset does so
+                    bool dup = c.UseItLevel > 0 && p == v.UseIt && !v.Stale;
+                    c.ResetText.Visibility = dup ? Visibility.Collapsed : Visibility.Visible;
                 }
             }
         }
@@ -677,6 +757,20 @@ namespace SentriPet
                     G.Place(c.Dots[i], headX + 26 + i * 9, headY - 6 - b * 5);
                 }
             }
+            if (c.Clock != null)
+            {
+                // the alarm clock rings in bursts, more often as the reset gets closer; the pet jumps at the last call
+                double angle = 4 * Math.Sin(t * 1.7);
+                double period = c.UseItLevel >= 3 ? 1.8 : c.UseItLevel == 2 ? 3.4 : 0;
+                if (period > 0)
+                {
+                    double ph = t % period;
+                    if (ph < 0.6) angle = 14 * Math.Sin(ph * 60) * (1 - ph / 0.6);
+                    if (c.UseItLevel >= 3 && ph < dt && c.JumpT < 0 && Rng.NextDouble() < 0.25) c.JumpT = 0;
+                }
+                c.ClockTilt.Angle = Math.Round(angle, 1);
+                if (c.UseItLevel >= 3 && c.UseItPill != null) c.UseItPill.Opacity = 0.72 + 0.28 * Math.Abs(Math.Sin(t * 2.6));
+            }
             if (c.Question.Visibility == Visibility.Visible)
                 Canvas.SetTop(c.Question, headY - 18 + Math.Sin(Time * 3) * 3);
 
@@ -759,22 +853,25 @@ namespace SentriPet
 
         // ------------------------------------------------------------------ interactions
 
-        public override void Say(string providerId, string text)
+        public override bool Say(string providerId, string text)
         {
-            if (string.IsNullOrEmpty(text) || cards.Count == 0) return;
+            if (cards.Count == 0) return false;
+            if (string.IsNullOrEmpty(text)) return true;
             var c = cards.FirstOrDefault(x => x.Id == providerId) ?? cards[0];
             foreach (var o in cards) if (o != c) o.BubbleUntil = Math.Min(o.BubbleUntil, Time);
             c.BubbleText.Text = text;
             c.BubbleUntil = Time + 3.5 + Math.Min(6, text.Length * 0.12);
+            return true;
         }
 
-        public override void Poke(string providerId)
+        public override bool Poke(string providerId)
         {
             var c = cards.FirstOrDefault(x => x.Id == providerId);
-            if (c == null) return;
+            if (c == null) return false;
             if (c.JumpT < 0) c.JumpT = 0;
             c.SquintUntil = Time + 1.1;
             if (c.V != null) Say(c.Id, Lines.Poke(c.V, Rng));
+            return true;
         }
 
         public override void Celebrate(string providerId)

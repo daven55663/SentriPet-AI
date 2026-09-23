@@ -31,9 +31,51 @@ namespace SentriPet
             failures += Case(sb, "右螢幕貼右邊", right, new Rect(3480, 852, 360, 164), new Rect(3720, 852, 120, 164), w, h, gap, margin);
             failures += Case(sb, "高清單（上下都放不下）", primary, new Rect(800, 40, 360, 950), new Rect(800, 500, 360, 120), w, h, gap, margin);
             failures += Case(sb, "高清單貼右邊", primary, new Rect(1560, 40, 360, 950), new Rect(1560, 500, 360, 120), w, h, gap, margin);
+
+            // "use it before it resets" urgency
+            sb.AppendLine();
+            var now = new DateTime(2026, 9, 24, 12, 0, 0, DateTimeKind.Utc);
+            failures += Level(sb, "週剩 61%，還有 3 天", 10080, 39, now.AddHours(72), now, 0);
+            failures += Level(sb, "週剩 61%，還有 40 小時", 10080, 39, now.AddHours(40), now, 1);
+            failures += Level(sb, "週剩 25%，還有 40 小時", 10080, 75, now.AddHours(40), now, 0);
+            failures += Level(sb, "週剩 61%，最後一天", 10080, 39, now.AddHours(11), now, 2);
+            failures += Level(sb, "週剩 8%，最後一天", 10080, 92, now.AddHours(11), now, 0);
+            failures += Level(sb, "週剩 20%，最後 3 小時", 10080, 80, now.AddHours(3), now, 3);
+            failures += Level(sb, "月剩 50%，還有 30 小時", 43200, 50, now.AddHours(30), now, 1);
+            failures += Level(sb, "5 小時額度不催", 300, 10, now.AddHours(1), now, 0);
+            failures += Level(sb, "每日額度不催", 1440, 10, now.AddHours(3), now, 0);
+            failures += Level(sb, "已經過了重置時間", 10080, 10, now.AddHours(-1), now, 0);
+
+            // the big number stays on the 5-hour window; no nagging while another window is used up
+            var snap = new Snapshot();
+            snap.Meters.Add(new Meter { Key = "fh", Label = "5 小時", ShortLabel = "5h", Used = 0, WindowMinutes = 300 });
+            snap.Meters.Add(new Meter { Key = "sd", Label = "每週", ShortLabel = "週", Used = 39, WindowMinutes = 10080, ResetsAt = DateTime.UtcNow.AddHours(11) });
+            var v = UsageService.MakeView(new ClaudeProvider(), snap);
+            failures += Check(sb, "大數字 = 5 小時（週用得比較多時也一樣）", v.Headline == snap.Meters[0] && Math.Abs(v.HeadlineRemaining - 100) < 0.01 && v.Primary == snap.Meters[1],
+                "headline=" + v.Headline.Key + " " + v.HeadlineRemaining + "% primary=" + v.Primary.Key);
+            failures += Check(sb, "5 小時閒置時重置列顯示週", v.ResetMeter == snap.Meters[1] && v.LabelOf(v.ResetMeter) == "週 ", "reset line=" + v.ResetMeter.Key);
+            failures += Check(sb, "最後一天會催", v.UseItLevel == 2 && v.UseIt == snap.Meters[1], "level=" + v.UseItLevel + " → " + Lines.UseItAlert(v));
+            snap.Meters[0].Used = 100;
+            snap.Meters[0].ResetsAt = DateTime.UtcNow.AddHours(2);
+            v = UsageService.MakeView(new ClaudeProvider(), snap);
+            failures += Check(sb, "5 小時用完時先不催", v.UseItLevel == 0, "level=" + v.UseItLevel);
+            failures += Check(sb, "5 小時用完時重置列顯示 5 小時", v.ResetMeter == snap.Meters[0], "reset line=" + v.ResetMeter.Key);
             sb.AppendLine(failures == 0 ? "ALL PASS" : failures + " FAILED");
             if (outFile != null) File.WriteAllText(outFile, sb.ToString(), new UTF8Encoding(false));
             return failures;
+        }
+
+        static int Level(StringBuilder sb, string name, int window, double used, DateTime reset, DateTime now, int expected)
+        {
+            var m = new Meter { Key = "t", Label = "t", Used = used, WindowMinutes = window, ResetsAt = reset };
+            int got = ProviderView.UseItLevelFor(m, now);
+            return Check(sb, name, got == expected, "level=" + got + " expected=" + expected);
+        }
+
+        static int Check(StringBuilder sb, string name, bool ok, string detail)
+        {
+            sb.AppendLine((ok ? "PASS " : "FAIL ") + name + "  " + detail);
+            return ok ? 0 : 1;
         }
 
         static int Case(StringBuilder sb, string name, Rect work, Rect content, Rect provider, double w, double h, double gap, double margin)
