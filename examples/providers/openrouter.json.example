@@ -1,0 +1,17 @@
+{
+  "id": "openrouter",
+  "name": "OpenRouter",
+  "color": "#6467F2",
+  "mascot": "antenna",
+  "detect": { "env": ["OPENROUTER_API_KEY"] },
+  "intervalSeconds": 300,
+  "source": {
+    "type": "http",
+    "url": "https://openrouter.ai/api/v1/credits",
+    "headers": { "Authorization": "Bearer ${env:OPENROUTER_API_KEY}" }
+  },
+  "sourceLabel": "OpenRouter API",
+  "meters": [
+    { "label": "儲值額度", "used": "$.data.total_usage", "total": "$.data.total_credits", "valueText": "${used} / ${total}" }
+  ]
+}

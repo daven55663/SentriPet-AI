@@ -1,0 +1,13 @@
+{
+  "id": "my-script",
+  "name": "我的 AI",
+  "color": "#F472B6",
+  "mascot": "cat",
+  "intervalSeconds": 60,
+  "source": {
+    "type": "command",
+    "command": "python",
+    "args": ["%APPDATA%\\SentriPet\\providers\\my_usage_example.py"],
+    "timeoutSeconds": 20
+  }
+}
