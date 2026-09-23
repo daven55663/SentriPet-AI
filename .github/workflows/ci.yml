@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build + self-test (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build with the C# compiler that ships with Windows
+        shell: cmd
+        run: call build.cmd
+
+      - name: Self-test (every automated check)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath bin\SentriPet.exe -ArgumentList '--selftest', 'test-report.txt' -Wait -PassThru
+          $report = Get-Content test-report.txt -Encoding utf8
+          $report
+          $summary = $report | Select-Object -Last 1
+          "### Self-test`n$summary`n" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          $fails = $report | Where-Object { $_ -like 'FAIL *' }
+          if ($fails) { ($fails | ForEach-Object { "- $_" }) -join "`n" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8 }
+          if ($p.ExitCode -ne 0) { Write-Error "$($p.ExitCode) check(s) failed"; exit 1 }
+
+      - name: Probe on a clean machine (no AI tools installed)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath bin\SentriPet.exe -ArgumentList '--probe', 'probe.txt' -Wait -PassThru
+          Get-Content probe.txt -Encoding utf8
+          if ($p.ExitCode -ne 0) { Write-Error "probe exited with $($p.ExitCode)"; exit 1 }
+
+      - name: Render every theme (mock data)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath bin\SentriPet.exe -ArgumentList '--snapshot', 'shots', '--mock' -Wait -PassThru
+          $errors = @(Get-ChildItem shots -Filter *_error.txt)
+          foreach ($e in $errors) { Get-Content $e.FullName }
+          $count = @(Get-ChildItem shots -Filter *.png).Count
+          "Rendered $count images"
+          "Rendered $count theme screenshots (artifact: test-results)" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          if ($p.ExitCode -ne 0 -or $errors.Count -gt 0 -or $count -lt 50) { Write-Error "theme rendering failed"; exit 1 }
+
+      - name: Render the menu and the settings page
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath bin\SentriPet.exe -ArgumentList '--snapshot-ui', 'ui-shots' -Wait -PassThru
+          Get-ChildItem ui-shots | Format-Table Name, Length
+          if ($p.ExitCode -ne 0 -or -not (Test-Path ui-shots\settings.png) -or -not (Test-Path ui-shots\menu.png)) { Write-Error "UI rendering failed"; exit 1 }
+
+      - name: Upload test report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: |
+            test-report.txt
+            probe.txt
+            shots/
+            ui-shots/
+          if-no-files-found: warn
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v7
+        with:
+          name: SentriPet-${{ github.sha }}
+          path: |
+            bin/SentriPet.exe
+            bin/SentriPet.exe.config
+            bin/examples/

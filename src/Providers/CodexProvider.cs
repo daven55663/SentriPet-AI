@@ -59,6 +59,9 @@ namespace SentriPet
         string codexExe;
         DateTime codexExeCheckedAt = DateTime.MinValue;
 
+        /// <summary>Set by the self-test to talk to a fake app-server instead of the installed codex.</summary>
+        internal static string ExeOverride, ArgsOverride;
+
         public CodexProvider()
         {
             Id = "codex";
@@ -333,6 +336,7 @@ namespace SentriPet
 
         string FindCodexExe()
         {
+            if (ExeOverride != null) return ExeOverride;
             if (codexExe != null && (DateTime.UtcNow - codexExeCheckedAt).TotalMinutes < 30 && File.Exists(codexExe)) return codexExe;
             codexExeCheckedAt = DateTime.UtcNow;
             var cands = new List<FileInfo>();
@@ -364,7 +368,7 @@ namespace SentriPet
                 else
                 {
                     psi.FileName = exe;
-                    psi.Arguments = "app-server";
+                    psi.Arguments = ArgsOverride ?? "app-server";
                 }
                 psi.UseShellExecute = false;
                 psi.CreateNoWindow = true;

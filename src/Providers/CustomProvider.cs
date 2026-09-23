@@ -36,11 +36,16 @@ namespace SentriPet
 
         public static List<CustomProvider> LoadAll()
         {
+            return LoadFrom(AppPaths.ProvidersDir);
+        }
+
+        internal static List<CustomProvider> LoadFrom(string dir)
+        {
             var list = new List<CustomProvider>();
             try
             {
-                if (!Directory.Exists(AppPaths.ProvidersDir)) return list;
-                foreach (var f in Directory.GetFiles(AppPaths.ProvidersDir, "*.json"))
+                if (!Directory.Exists(dir)) return list;
+                foreach (var f in Directory.GetFiles(dir, "*.json"))
                 {
                     try
                     {
@@ -112,7 +117,7 @@ namespace SentriPet
                 else if (type == "command")
                 {
                     string cmd = AppPaths.Expand(Json.Str(Json.Get(src, "command")) ?? "");
-                    var args = Strings(Json.Get(src, "args")).Select(AppPaths.Expand).ToList();
+                    var args = Strings(Json.Get(src, "args")).Select(AppPaths.ExpandArg).ToList();
                     bool shell = Json.Bool(Json.Get(src, "shell")) ?? false;
                     int timeout = (int)((Json.Num(Json.Get(src, "timeoutSeconds")) ?? 20) * 1000);
                     int code;
@@ -125,11 +130,11 @@ namespace SentriPet
                 }
                 else if (type == "http")
                 {
-                    string url = AppPaths.Expand(Json.Str(Json.Get(src, "url")) ?? "");
+                    string url = AppPaths.ExpandVars(Json.Str(Json.Get(src, "url")) ?? "");
                     var headers = new Dictionary<string, string>();
                     var h = Json.Obj(Json.Get(src, "headers"));
-                    if (h != null) foreach (var kv in h) headers[kv.Key] = AppPaths.Expand(Json.Str(kv.Value) ?? "");
-                    string body = Json.Get(src, "body") is string ? AppPaths.Expand((string)Json.Get(src, "body")) :
+                    if (h != null) foreach (var kv in h) headers[kv.Key] = AppPaths.ExpandVars(Json.Str(kv.Value) ?? "");
+                    string body = Json.Get(src, "body") is string ? AppPaths.ExpandVars((string)Json.Get(src, "body")) :
                                   Json.Get(src, "body") != null ? Json.Serialize(Json.Get(src, "body"), false) : null;
                     int status;
                     string text = Net.Request(Json.Str(Json.Get(src, "method")) ?? "GET", url, headers, body, 15000, out status);

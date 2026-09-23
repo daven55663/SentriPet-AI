@@ -130,7 +130,7 @@ namespace SentriPet
             views = Service.BuildViews(Settings, false);
             if (window.Theme != null) window.Theme.Update(views);
             tray.Update(views);
-            alerts.Check(this, views);
+            alerts.Check(Settings, views, Alert, CelebrateReset);
             if (!greeted && views.Count > 0 && Service.Providers.All(p => Service.SnapshotFor(p.Id) != null || !IsInstalled(p.Id)))
             {
                 greeted = true;
@@ -175,10 +175,7 @@ namespace SentriPet
         // ------------------------------------------------------------------ use it or lose it
 
         readonly Random rng = new Random();
-        readonly Dictionary<string, DateTime> nextNudge = new Dictionary<string, DateTime>();
-
-        /// <summary>Minutes between reminders for an urgency level (see ProviderView.UseItLevelFor).</summary>
-        static double NudgeMinutes(int level) { return level >= 3 ? 12 : level == 2 ? 25 : 60; }
+        readonly UseItTracker useIt = new UseItTracker();
 
         /// <summary>
         /// A weekly/monthly window that resets soon with quota left over: the pet keeps reminding you to spend it,
@@ -186,67 +183,17 @@ namespace SentriPet
         /// </summary>
         void CheckUseIt()
         {
-            if (!Settings.UseItReminder) return;
-            var now = DateTime.UtcNow;
-            foreach (var v in views)
+            foreach (var e in useIt.Check(Settings, views, DateTime.UtcNow, window.CanTalk && !menuOpen, rng))
             {
-                var m = v.UseIt;
-                if (!v.HasData || v.UseItLevel == 0 || m == null || !m.ResetsAt.HasValue) continue;
-                string key = v.Id + "|" + m.Key;
-                if (v.UseItLevel > AnnouncedLevel(key, m.ResetsAt.Value))
+                if (!e.Announce)
                 {
-                    // each level is announced once per window (remembered across restarts)
-                    string text = Lines.UseItAlert(v);
-                    Log.Info("use-it " + key + " level " + v.UseItLevel + ": " + text);
-                    PruneAnnounced(now);
-                    Settings.UseItNotified[key] = m.ResetsAt.Value.ToString("o") + "#" + v.UseItLevel;
-                    Settings.Save();
-                    if (window.CanTalk) window.Say(v.Id, text);
-                    if (Settings.Notifications) tray.Notify(App.DisplayName + " · 額度快過期了", text);
-                    nextNudge[key] = now.AddMinutes(NudgeMinutes(v.UseItLevel));
+                    window.Say(e.View.Id, e.Text);
                     continue;
                 }
-                DateTime due;
-                if (!nextNudge.TryGetValue(key, out due))
-                {
-                    // first reminder a few minutes after start-up (not on top of the greeting)
-                    nextNudge[key] = now.AddMinutes(Math.Min(6, NudgeMinutes(v.UseItLevel)));
-                    continue;
-                }
-                if (now < due) continue;
-                if (!window.CanTalk || menuOpen) { nextNudge[key] = now.AddMinutes(2); continue; }
-                nextNudge[key] = now.AddMinutes(NudgeMinutes(v.UseItLevel) * (0.85 + 0.3 * rng.NextDouble()));
-                if (v.Active) continue;           // already on it
-                window.Say(v.Id, Lines.UseIt(v, rng));
-            }
-        }
-
-        /// <summary>The level already announced for the window that resets at <paramref name="reset"/> (0 = none).</summary>
-        int AnnouncedLevel(string key, DateTime reset)
-        {
-            string s;
-            if (!Settings.UseItNotified.TryGetValue(key, out s) || s == null) return 0;
-            int hash = s.LastIndexOf('#');
-            DateTime at;
-            int level;
-            if (hash < 0 || !int.TryParse(s.Substring(hash + 1), out level) ||
-                !DateTime.TryParse(s.Substring(0, hash), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out at))
-                return 0;
-            // same window? (an estimated reset time can move a little between readings)
-            return Math.Abs((at.ToUniversalTime() - reset).TotalHours) < 6 ? level : 0;
-        }
-
-        /// <summary>Forgets announcements for windows that have long since reset.</summary>
-        void PruneAnnounced(DateTime now)
-        {
-            foreach (var k in Settings.UseItNotified.Keys.ToList())
-            {
-                string s = Settings.UseItNotified[k] ?? "";
-                int hash = s.LastIndexOf('#');
-                DateTime at;
-                if (hash < 0 || !DateTime.TryParse(s.Substring(0, hash), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out at) ||
-                    at.ToUniversalTime() < now.AddDays(-2))
-                    Settings.UseItNotified.Remove(k);
+                Log.Info("use-it " + e.View.Id + "|" + e.View.UseIt.Key + " level " + e.View.UseItLevel + ": " + e.Text);
+                Settings.Save();
+                if (window.CanTalk) window.Say(e.View.Id, e.Text);
+                if (Settings.Notifications) tray.Notify(App.DisplayName + " · 額度快過期了", e.Text);
             }
         }
 
@@ -526,37 +473,6 @@ namespace SentriPet
             menu.Items.Add(Item(window.UserHidden ? "顯示桌寵" : "先藏起來（點系統匣叫回）", "", ToggleWidget));
             menu.Items.Add(Item("結束", "", Quit));
             return menu;
-        }
-    }
-
-    /// <summary>Notices when a window crosses the warning thresholds or resets.</summary>
-    class AlertTracker
-    {
-        readonly Dictionary<string, double> used = new Dictionary<string, double>();
-        readonly Dictionary<string, int> level = new Dictionary<string, int>();
-
-        public void Check(Controller c, List<ProviderView> views)
-        {
-            var s = c.Settings;
-            foreach (var v in views)
-            {
-                if (!v.HasData) continue;
-                foreach (var m in v.Meters)
-                {
-                    if (m.Unlimited) continue;
-                    string key = v.Id + "|" + m.Key;
-                    int lv = m.Used >= s.CriticalAt ? 2 : m.Used >= s.WarnAt ? 1 : 0;
-                    double prevUsed;
-                    int prevLv;
-                    if (used.TryGetValue(key, out prevUsed) && level.TryGetValue(key, out prevLv))
-                    {
-                        if (lv > prevLv) c.Alert(v, m, lv);
-                        else if (prevUsed >= 30 && m.Used <= 3) c.CelebrateReset(v, m, prevUsed);
-                    }
-                    used[key] = m.Used;
-                    level[key] = lv;
-                }
-            }
         }
     }
 }

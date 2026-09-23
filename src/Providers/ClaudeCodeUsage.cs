@@ -33,7 +33,8 @@ namespace SentriPet
         List<Event> events = new List<Event>();   // sorted by time, rebuilt when something changed
         bool dirty;
 
-        static string Root
+        /// <summary>Claude Code's transcript folder (honours CLAUDE_CONFIG_DIR).</summary>
+        internal static string Root
         {
             get
             {

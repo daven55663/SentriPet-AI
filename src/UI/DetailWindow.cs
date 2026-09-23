@@ -103,6 +103,10 @@ namespace SentriPet
 
         public bool Matches(ProviderView v) { return signature == SignatureOf(v); }
 
+        /// <summary>For the self-test: the "use it before it resets" banner.</summary>
+        internal bool BannerShown { get { return useIt.Visibility == Visibility.Visible; } }
+        internal string BannerText { get { return useItText.Text; } }
+
         public static DetailCardView Build(ProviderView v)
         {
             var d = new DetailCardView { signature = SignatureOf(v) };

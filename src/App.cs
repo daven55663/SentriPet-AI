@@ -9,14 +9,14 @@ using System.Threading;
 [assembly: AssemblyProduct("SentriPet")]
 [assembly: AssemblyDescription("AI 用量監控桌寵")]
 [assembly: AssemblyCopyright("Copyright © 2026 歐育典 · MIT License")]
-[assembly: AssemblyVersion("1.2.1.0")]
-[assembly: AssemblyFileVersion("1.2.1.0")]
+[assembly: AssemblyVersion("1.2.2.0")]
+[assembly: AssemblyFileVersion("1.2.2.0")]
 
 namespace SentriPet
 {
     static class App
     {
-        public const string Version = "1.2.1";
+        public const string Version = "1.2.2";
         public const string DisplayName = "SentriPet";
 
         [STAThread]
@@ -26,7 +26,8 @@ namespace SentriPet
 
             // diagnostic modes never touch the real profile
             string mode = args.Length > 0 ? args[0] : "";
-            bool diagnostic = mode == "--probe" || mode == "--snapshot" || mode == "--make-icon" || mode == "--snapshot-ui" || mode == "--selftest";
+            bool diagnostic = mode == "--probe" || mode == "--snapshot" || mode == "--make-icon" || mode == "--snapshot-ui" || mode == "--selftest" ||
+                              mode == "--fake-codex-app-server";
             if (diagnostic || Array.IndexOf(args, "--dev") >= 0) AppPaths.UseDevProfile();
 
             switch (mode)
@@ -36,6 +37,7 @@ namespace SentriPet
                 case "--make-icon": return IconMaker.Run(args);
                 case "--snapshot-ui": return new Controller().SnapshotUi(args.Length > 1 ? args[1] : System.IO.Path.GetTempPath());
                 case "--selftest": return SelfTest.Run(args.Length > 1 ? args[1] : null);
+                case "--fake-codex-app-server": return FakeCodexServer.Run(args.Length > 1 ? args[1] : null);
             }
 
             string suffix = AppPaths.Dev ? ".dev" : "";

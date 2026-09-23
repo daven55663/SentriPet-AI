@@ -18,7 +18,10 @@ namespace SentriPet
 
         public static void UseDevProfile() { Dev = true; }
 
-        public static string DataDir { get { return Path.Combine(AppData, Dev ? "SentriPet-dev" : "SentriPet"); } }
+        /// <summary>Set by the self-test so settings and logs go to a throwaway folder.</summary>
+        internal static string DataDirOverride;
+
+        public static string DataDir { get { return DataDirOverride ?? Path.Combine(AppData, Dev ? "SentriPet-dev" : "SentriPet"); } }
         public static string SettingsFile { get { return Path.Combine(DataDir, "settings.json"); } }
         public static string ProvidersDir { get { return Path.Combine(AppData, "SentriPet", "providers"); } }
         public static string LogDir { get { return Path.Combine(DataDir, "logs"); } }
@@ -71,12 +74,27 @@ namespace SentriPet
 
         static readonly Regex EnvToken = new Regex(@"\$\{env:([A-Za-z0-9_]+)\}", RegexOptions.Compiled);
 
-        /// <summary>Expands ~, %VAR% and ${env:VAR}.</summary>
+        /// <summary>Expands %VAR% and ${env:VAR} only — for URLs, headers, request bodies and arguments, whose slashes must stay.</summary>
+        public static string ExpandVars(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            s = EnvToken.Replace(s, m => Environment.GetEnvironmentVariable(m.Groups[1].Value) ?? "");
+            return Environment.ExpandEnvironmentVariables(s);
+        }
+
+        /// <summary>A command-line argument: variables, plus a leading ~ for the home folder (slashes kept, so "/c" stays "/c").</summary>
+        public static string ExpandArg(string a)
+        {
+            string s = ExpandVars(a);
+            if (s == "~" || (s != null && (s.StartsWith("~/") || s.StartsWith("~\\")))) s = Home + s.Substring(1);
+            return s;
+        }
+
+        /// <summary>Expands ~, %VAR% and ${env:VAR} in a file path (and turns / into \).</summary>
         public static string Expand(string p)
         {
             if (string.IsNullOrEmpty(p)) return p;
-            string s = EnvToken.Replace(p, m => Environment.GetEnvironmentVariable(m.Groups[1].Value) ?? "");
-            s = Environment.ExpandEnvironmentVariables(s);
+            string s = ExpandVars(p);
             if (s == "~") return Home;
             if (s.StartsWith("~/") || s.StartsWith("~\\")) s = Path.Combine(Home, s.Substring(2));
             return s.Replace('/', '\\');
@@ -133,6 +151,12 @@ namespace SentriPet
         }
 
         static readonly Dictionary<string, string> whichCache = new Dictionary<string, string>();
+
+        /// <summary>Forgets PATH lookups (the self-test changes PATH).</summary>
+        internal static void ClearWhichCache()
+        {
+            lock (whichCache) whichCache.Clear();
+        }
 
         /// <summary>Finds an executable on PATH (honours PATHEXT). Returns null when missing.</summary>
         public static string Which(string name)

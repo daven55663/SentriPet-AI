@@ -14,7 +14,7 @@ All of these run with a separate dev profile automatically:
 
 - `bin\SentriPet.exe --snapshot <dir> --mock [--theme id] [--frames N]` renders every theme to PNG (mock set `c` = quota about to expire unused at levels 1–3; `--frames` adds N frames 0.25 s apart to check animations).
 - `--snapshot-ui <dir>` renders the menu, settings page and hover card.
-- `--selftest <file>` checks hover-card placement (exit code = failures).
+- `--selftest <file>` runs every automated check (~300, a few seconds; exit code = failures): core logic, each provider against sample files and local fake servers (`src/Tests`), the service, all themes and the hover card. Run it before every push; CI (`.github/workflows/ci.yml`) runs it plus `--probe`, `--snapshot --mock` and `--snapshot-ui` on every push and uploads the report, screenshots and exe.
 - `--probe <file>` prints detection + live usage (incl. the Claude estimate calibration) for every provider.
 - `--dev --show-detail <id>` runs a separate profile and forces one hover card open for 45 s.
 - The desktop app's `get_usage` tool (ccd_session_mgmt) returns the official live Claude numbers — use it to check the Claude estimate.

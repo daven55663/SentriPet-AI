@@ -26,6 +26,9 @@ namespace SentriPet
 
         public event Action Changed;
 
+        /// <summary>Where the providers come from (the self-test swaps in stubs).</summary>
+        internal Func<List<Provider>> Factory = ProviderRegistry.CreateAll;
+
         public UsageService(AppSettings settings)
         {
             this.settings = settings;
@@ -43,7 +46,7 @@ namespace SentriPet
             lock (gate)
             {
                 old = providers;
-                providers = ProviderRegistry.CreateAll();
+                providers = Factory();
                 snaps.Clear();
                 nextDue.Clear();
                 lastDetect = DateTime.MinValue;

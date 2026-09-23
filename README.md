@@ -1,5 +1,7 @@
 # SentriPet-AI
 
+[![CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml)
+
 AI-Powered Real-Time Monitoring Desktop Companion
 
 **SentriPet** 是放在 Windows 桌面上的 AI 用量監控桌寵。它會自動偵測電腦上的 AI 工具（Claude、Codex、Copilot…），
@@ -98,8 +100,18 @@ uninstall.cmd  關閉程式、移除開機啟動、刪除安裝資料夾
 - 新增內建 AI：在 `src\Providers` 新增一個繼承 `Provider` 的類別，並加到 `ProviderRegistry`。
 - `SentriPet.exe --dev`：獨立設定檔、不碰開機啟動。
 - `--snapshot 資料夾 --mock`：把所有造型畫成 PNG；`--snapshot-ui 資料夾`：畫出選單、設定頁與詳情卡。
-- `--probe 檔案`：輸出偵測與用量報告；`--selftest 檔案`：檢查詳情卡在各種螢幕位置的擺放。
+- `--probe 檔案`：輸出偵測與用量報告。
 - `--dev --show-detail claude`：強制顯示某隻的詳情卡 45 秒。
+
+### 自動測試與 CI
+
+`SentriPet.exe --selftest 報告.txt` 會跑全部自動檢查（約 300 項、幾秒鐘），結束代碼 = 失敗的數量：
+
+- 格式化、JSON、大數字與重置時間的選擇、快用掉提醒的等級與時機、用量提醒、設定檔
+- 每個資料來源：Claude（對話紀錄、桌面版紀錄、即時推算）、Codex（本機紀錄、官方 app-server 協定）、Copilot、Ollama、外掛（檔案／指令／HTTP）——全部用範例檔和本機假伺服器，不碰你的真實資料
+- 背景更新服務、8 種造型、果凍的表情、詳情卡、泡泡、桌寵說的每句話、詳情卡擺放位置
+
+每次推送到 GitHub，[CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) 會在 Windows 上重新編譯、跑完整測試、在沒裝任何 AI 的乾淨電腦上跑偵測，並把所有造型、選單、設定頁畫成截圖；測試報告、截圖和編譯好的 `SentriPet.exe` 都可以在該次執行的 Artifacts 下載。
 
 ## 檔案位置
 

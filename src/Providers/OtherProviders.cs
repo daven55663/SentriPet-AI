@@ -21,8 +21,12 @@ namespace SentriPet
 
         public override int IntervalSeconds { get { return 60; } }
 
+        /// <summary>Set by the self-test to read a sample cache file.</summary>
+        internal static string CacheOverride;
+
         static string FindCache()
         {
+            if (CacheOverride != null) return File.Exists(CacheOverride) ? CacheOverride : null;
             var cands = new List<string>();
             cands.AddRange(AppPaths.Glob(@"%LOCALAPPDATA%\copilot\*user*cache*.json"));
             cands.AddRange(AppPaths.Glob(@"~\.copilot\*user*cache*.json"));

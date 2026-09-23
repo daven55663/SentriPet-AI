@@ -100,6 +100,6 @@
 | `meters[].valueText` | 額外顯示文字，可用 `{used}` `{remaining}` `{total}` `{percent}` |
 | `meters[].unlimited` | `true` 代表沒有上限（顯示 ∞） |
 
-路徑語法：`$.a.b[0].c`。字串裡可以用 `%USERPROFILE%`、`~`、`${env:NAME}`。
+路徑語法：`$.a.b[0].c`。字串裡可以用 `%USERPROFILE%`、`${env:NAME}`；檔案路徑和指令參數開頭還可以用 `~` 代表家目錄（網址、標頭、參數裡的 `/` 會保持原樣）。
 
 出問題時可以看記錄檔：`%APPDATA%\SentriPet\logs\app.log`。

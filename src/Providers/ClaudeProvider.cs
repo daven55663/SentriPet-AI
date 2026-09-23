@@ -13,12 +13,15 @@ namespace SentriPet
     /// </summary>
     class ClaudeProvider : Provider
     {
-        class Sample
+        internal class Sample
         {
             public long T;
             public string Org;
             public Dictionary<string, double> U = new Dictionary<string, double>();
         }
+
+        /// <summary>Set by the self-test to read a sample history file instead of the desktop app's.</summary>
+        internal static string HistoryOverride;
 
         ActivityWatcher activity;
         readonly ClaudeCodeUsage usage = new ClaudeCodeUsage();
@@ -49,6 +52,7 @@ namespace SentriPet
 
         static string FindHistory()
         {
+            if (HistoryOverride != null) return File.Exists(HistoryOverride) ? HistoryOverride : null;
             string best = null;
             DateTime bt = DateTime.MinValue;
             foreach (var c in HistoryCandidates())
@@ -78,7 +82,7 @@ namespace SentriPet
 
         public override Snapshot Fetch(bool force, AppSettings settings)
         {
-            if (activity == null) activity = new ActivityWatcher(Path.Combine(AppPaths.Home, ".claude", "projects"), "*.jsonl");
+            if (activity == null) activity = new ActivityWatcher(ClaudeCodeUsage.Root, "*.jsonl");
             activity.Ensure();
 
             string f = FindHistory();
@@ -223,7 +227,7 @@ namespace SentriPet
             return k > 0 ? k : (double?)null;
         }
 
-        static DateTime? RoundToHour(DateTime? t)
+        internal static DateTime? RoundToHour(DateTime? t)
         {
             if (!t.HasValue) return null;
             var v = t.Value.AddMinutes(30);
@@ -237,7 +241,7 @@ namespace SentriPet
 
         // ------------------------------------------------------------------ parsing
 
-        static List<Sample> ParseHistory(string text)
+        internal static List<Sample> ParseHistory(string text)
         {
             var list = new List<Sample>();
             var root = Json.TryParse(text);
@@ -312,7 +316,7 @@ namespace SentriPet
         /// The start lies between the last zero sample and the first non-zero one; when Claude Code replies are
         /// known, the first one in that interval pins it down to the minute.
         /// </summary>
-        static DateTime? EstimateFromFirstUse(List<Sample> ss, string key, int windowMin, ClaudeCodeUsage events)
+        internal static DateTime? EstimateFromFirstUse(List<Sample> ss, string key, int windowMin, ClaudeCodeUsage events)
         {
             int n = ss.Count;
             if (n == 0) return null;
@@ -349,7 +353,7 @@ namespace SentriPet
         /// Weekly limit that resets at a fixed moment each week: intersect every observed
         /// "dropped back to ~0" interval modulo one period.
         /// </summary>
-        static DateTime? EstimateFixedSchedule(List<Sample> ss, string key, int windowMin)
+        internal static DateTime? EstimateFixedSchedule(List<Sample> ss, string key, int windowMin)
         {
             long period = windowMin * 60000L;
             var intervals = new List<long[]>();

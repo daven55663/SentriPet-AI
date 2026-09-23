@@ -100,6 +100,28 @@ namespace SentriPet
             return root;
         }
 
+        /// <summary>For the self-test: the face a pet shows right now ("happy", "hurry2", …).</summary>
+        internal string ExpressionOf(string id)
+        {
+            var c = cards.FirstOrDefault(x => x.Id == id);
+            return c == null ? null : c.Expr;
+        }
+
+        /// <summary>For the self-test: the key of the window whose bar blinks, and at which level.</summary>
+        internal string UrgentBarOf(string id)
+        {
+            var c = cards.FirstOrDefault(x => x.Id == id);
+            var r = c == null ? null : c.Rows.FirstOrDefault(x => x.Urgent > 0);
+            return r == null ? null : r.Key + "#" + r.Urgent;
+        }
+
+        /// <summary>For the self-test: whether a pet's alarm clock is out.</summary>
+        internal bool HasClock(string id)
+        {
+            var c = cards.FirstOrDefault(x => x.Id == id);
+            return c != null && c.Clock != null;
+        }
+
         /// <summary>Only the pets and their plates; the speech-bubble zone above them is empty most of the time.</summary>
         public override Rect ContentBounds(Visual relativeTo)
         {
