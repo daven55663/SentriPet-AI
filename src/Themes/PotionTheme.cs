@@ -246,8 +246,7 @@ namespace SentriPet
                 if (!v.HasData) { grp.Reset.Text = v.Error ?? "沒有資料"; }
                 else
                 {
-                    var parts = v.Meters.Take(3).Select(m => m.ShortLabel + " " + (m.Unlimited ? "∞" : m.ResetsAt.HasValue ? "↻" + G.ResetText(m) : "閒置") +
-                                                             (m == v.UseIt && v.UseItLevel > 0 ? " 快用掉！" : ""));
+                    var parts = v.Meters.Take(3).Select(m => m.ShortLabel + " " + (m.Unlimited ? "∞" : m.ResetsAt.HasValue ? "↻" + G.ResetText(m) : "閒置"));
                     grp.Reset.Text = string.Join("\n", parts) + (v.Stale ? "\n（資料較舊）" : "");
                 }
                 foreach (var f in grp.Flasks)
@@ -317,7 +316,10 @@ namespace SentriPet
                     sm.Width = sm.Height = 5 + u * 8;
                     sm.Opacity = (1 - u) * 0.7;
                 }
-                if (v != null && v.Mood == SentriPet.Mood.Critical) f.Liquid.Opacity = 0.65 + 0.35 * Math.Abs(Math.Sin(Time * 4));
+                // a potion that expires unused soon fades in and out
+                int urgent = v != null && v.UseIt != null && v.UseIt.Key == f.Key ? v.UseItLevel : 0;
+                if (urgent > 0) f.Liquid.Opacity = G.UrgentPulse(urgent, Time);
+                else if (v != null && v.Mood == SentriPet.Mood.Critical) f.Liquid.Opacity = 0.65 + 0.35 * Math.Abs(Math.Sin(Time * 4));
                 else f.Liquid.Opacity = 1;
             }
         }

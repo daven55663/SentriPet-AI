@@ -57,6 +57,7 @@ namespace SentriPet
             public Rectangle[] Cells;
             public StackPanel Host;
             public TextBlock Pct, Reset;
+            public int Urgent;              // "use it before it resets" level: the tube blinks
         }
 
         class Row
@@ -262,6 +263,8 @@ namespace SentriPet
                     b.Pct.Text = m.Unlimited ? "∞" : Fmt.Pct(rem);
                     b.Pct.Foreground = G.B(Palette.Lighten(col, 0.3));
                     b.Reset.Text = m.Unlimited ? "NO LIMIT" : m.ResetsAt.HasValue ? "RST " + G.ClockText(m) : "IDLE";
+                    b.Urgent = m == v.UseIt ? v.UseItLevel : 0;
+                    if (b.Urgent == 0) b.Host.Opacity = 1;
                 }
             }
         }
@@ -289,6 +292,8 @@ namespace SentriPet
                 ((TranslateTransform)r.Big.RenderTransform).X = glitch ? (Rng.NextDouble() - 0.5) * 2 : 0;
                 var v = View(r.Id);
                 r.Big.Opacity = v != null && v.Mood == SentriPet.Mood.Critical ? 0.6 + 0.4 * Math.Abs(Math.Sin(Time * 5)) : 1;
+                foreach (var b in r.Bars)
+                    if (b.Urgent > 0) b.Host.Opacity = G.UrgentPulse(b.Urgent, Time);   // expires unused soon
             }
         }
     }

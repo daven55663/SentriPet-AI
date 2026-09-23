@@ -272,6 +272,7 @@ namespace SentriPet
             public Rectangle Fill, Shine;
             public PixelFont.Label Val;
             public Anim W = new Anim(0);
+            public int Urgent;              // "use it before it resets" level: the bar blinks
         }
 
         class Member
@@ -470,6 +471,8 @@ namespace SentriPet
                     double rem = meter.Unlimited ? 100 : meter.Remaining;
                     b.W.Target = rem;
                     b.Fill.Fill = G.B(HpColor(rem, i));
+                    b.Urgent = meter == v.UseIt ? v.UseItLevel : 0;
+                    if (b.Urgent == 0) b.Fill.Opacity = b.Shine.Opacity = 1;
                     b.Val.Set(meter.Unlimited ? "INF" : ((int)Math.Round(rem)).ToString().PadLeft(3) + "/100", rem < 20 ? Palette.Hex("#FF7070") : Colors.White);
                     i++;
                 }
@@ -543,6 +546,8 @@ namespace SentriPet
                     double w = Math.Round(Math.Max(0, Math.Min(100, b.W.Value)) / P) * P;
                     b.Fill.Width = w;
                     b.Shine.Width = w;
+                    // a quota that expires unused soon blinks, in hard pixel steps
+                    if (b.Urgent > 0) b.Fill.Opacity = b.Shine.Opacity = G.UrgentPulse(b.Urgent, Time) > 0.6 ? 1 : 0.25;
                 }
             }
         }

@@ -9,14 +9,14 @@ using System.Threading;
 [assembly: AssemblyProduct("SentriPet")]
 [assembly: AssemblyDescription("AI 用量監控桌寵")]
 [assembly: AssemblyCopyright("Copyright © 2026 歐育典 · MIT License")]
-[assembly: AssemblyVersion("1.2.0.0")]
-[assembly: AssemblyFileVersion("1.2.0.0")]
+[assembly: AssemblyVersion("1.2.1.0")]
+[assembly: AssemblyFileVersion("1.2.1.0")]
 
 namespace SentriPet
 {
     static class App
     {
-        public const string Version = "1.2.0";
+        public const string Version = "1.2.1";
         public const string DisplayName = "SentriPet";
 
         [STAThread]

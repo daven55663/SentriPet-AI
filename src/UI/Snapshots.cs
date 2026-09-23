@@ -46,6 +46,8 @@ namespace SentriPet
             double scale = 1.5;
             double s;
             if (double.TryParse(Arg(args, "--scale") ?? "", System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out s)) scale = s;
+            int frames;                         // --frames N: also N more frames, 0.25 s apart (to check animations)
+            if (!int.TryParse(Arg(args, "--frames") ?? "", out frames)) frames = 0;
             Directory.CreateDirectory(outDir);
             var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
 
@@ -54,6 +56,7 @@ namespace SentriPet
             {
                 sets.Add(new KeyValuePair<string, List<ProviderView>>("a", MockA()));
                 sets.Add(new KeyValuePair<string, List<ProviderView>>("b", MockB()));
+                sets.Add(new KeyValuePair<string, List<ProviderView>>("c", MockC()));
             }
             else sets.Add(new KeyValuePair<string, List<ProviderView>>("live", LiveViews()));
 
@@ -72,6 +75,11 @@ namespace SentriPet
                         for (int i = 0; i < 12; i++) theme.Tick(1 / 30.0);
                         Render(theme.Root, Path.Combine(outDir, info.Id + "_" + set.Key + ".png"), scale, false);
                         Render(theme.Root, Path.Combine(outDir, info.Id + "_" + set.Key + "_desk.png"), scale, true);
+                        for (int f = 1; f <= frames; f++)
+                        {
+                            for (int i = 0; i < 8; i++) theme.Tick(1 / 32.0);
+                            Render(theme.Root, Path.Combine(outDir, info.Id + "_" + set.Key + "_f" + f + ".png"), scale, true);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -203,6 +211,20 @@ namespace SentriPet
             var gemini = new CustomProviderStub("gemini", "Gemini", "cat", "#4C8DF6");
             var ollama = new Snapshot { Error = "Ollama 沒有在執行" };
             return new List<ProviderView> { View(new ClaudeProvider(), claude), View(new CodexProvider(), codex), View(gemini, worried), View(new CustomProviderStub("err", "Kiro", "antenna", "#9D7CFF"), ollama) };
+        }
+
+        /// <summary>Quota about to expire unused, at urgency levels 1, 2 and 3 (nobody working).</summary>
+        public static List<ProviderView> MockC()
+        {
+            var claude = new Snapshot { Source = "Claude 桌面版快取", ObservedAt = DateTime.UtcNow.AddMinutes(-3) };
+            claude.Meters.Add(M("fh", "5 小時", "5h", 20, 3.1, true, 300));
+            claude.Meters.Add(M("sd", "每週", "週", 45, 30, true, 10080));
+            var codex = new Snapshot { Source = "Codex 官方 app-server", ObservedAt = DateTime.UtcNow, Plan = "Plus" };
+            codex.Meters.Add(M("codex:300", "5 小時", "5h", 10, 4.2, false, 300));
+            codex.Meters.Add(M("codex:10080", "每週", "週", 30, 14, false, 10080));
+            var copilot = new Snapshot { Source = "Copilot CLI 快取", ObservedAt = DateTime.UtcNow, Plan = "Pro" };
+            copilot.Meters.Add(new Meter { Key = "premium_interactions", Label = "進階請求", ShortLabel = "PR", Used = 40, ResetsAt = DateTime.UtcNow.AddHours(3), WindowMinutes = 43200, ValueText = "120 / 200" });
+            return new List<ProviderView> { View(new ClaudeProvider(), claude), View(new CodexProvider(), codex), View(new CopilotProvider(), copilot) };
         }
 
         class CustomProviderStub : Provider

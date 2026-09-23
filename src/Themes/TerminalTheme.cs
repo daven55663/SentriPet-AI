@@ -25,11 +25,13 @@ namespace SentriPet
         readonly List<Ellipse> lights = new List<Ellipse>();
         int colorIdx;
         Color bright, dim;
-        struct Seg { public string Text; public Color Color; }
+        struct Seg { public string Text; public Color Color; public int Blink; }
         List<List<Seg>> lines = new List<List<Seg>>();
         int revealTotal, revealShown = int.MaxValue;
         double revealClock;
         readonly List<Run> spinners = new List<Run>();
+        // bars of a quota that expires unused soon: run, level, lit brush, dim brush
+        readonly List<Tuple<Run, int, Brush, Brush>> blinkers = new List<Tuple<Run, int, Brush, Brush>>();
         Run cursor;
         string lastSig;
 
@@ -189,7 +191,9 @@ namespace SentriPet
                         int full = (int)Math.Round(m.Remaining / 100 * cells);
                         var lc = LevelColor(m.Remaining);
                         add(l, "[", dim);
-                        add(l, new string('█', full), lc);
+                        if (m == v.UseIt && v.UseItLevel > 0)
+                            l.Add(new Seg { Text = new string('█', full), Color = v.UseItLevel >= 3 ? Palette.Hex("#FF5A5A") : Palette.Hex("#FFB43A"), Blink = v.UseItLevel });
+                        else add(l, new string('█', full), lc);
                         add(l, new string('░', cells - full), G.Desaturate(dim, 0.2));
                         add(l, "]", dim);
                         add(l, Fmt.Pct(m.Remaining).PadLeft(5), lc);
@@ -198,15 +202,6 @@ namespace SentriPet
                     }
                     nl.Add(l);
                     first = false;
-                }
-                if (v.UseItLevel > 0 && v.UseIt != null)
-                {
-                    // use it or lose it: quota left over in a window that resets soon
-                    var l = new List<Seg>();
-                    var warn = v.UseItLevel >= 3 ? Palette.Hex("#FF5A5A") : Palette.Hex("#FFB43A");
-                    add(l, new string(' ', 9) + "!! ", warn);
-                    add(l, "use it or lose it: " + AsciiLabel(v.UseIt) + " " + Fmt.Pct(v.UseIt.Remaining) + " · " + Fmt.Clock(v.UseIt.ResetsAt), warn);
-                    nl.Add(l);
                 }
                 if (v.Stale)
                 {
@@ -243,6 +238,7 @@ namespace SentriPet
         {
             screen.Inlines.Clear();
             spinners.Clear();
+            blinkers.Clear();
             int budget = revealShown;
             for (int i = 0; i < lines.Count && budget > 0; i++)
             {
@@ -254,6 +250,7 @@ namespace SentriPet
                     budget -= s.Text.Length;
                     var run = new Run(t) { Foreground = G.B(s.Color) };
                     if (t == "*") spinners.Add(run);
+                    if (s.Blink > 0) blinkers.Add(Tuple.Create(run, s.Blink, (Brush)G.B(s.Color), (Brush)G.B(s.Color, 0.22)));
                     screen.Inlines.Add(run);
                 }
             }
@@ -275,6 +272,11 @@ namespace SentriPet
             if (cursor != null) cursor.Foreground = ((int)(Time * 2) % 2 == 0) ? G.B(bright) : Brushes.Transparent;
             string spin = "|/-\\".Substring((int)(Time * 8) % 4, 1);
             foreach (var r in spinners) r.Text = spin;
+            foreach (var b in blinkers)
+            {
+                var brush = G.UrgentPulse(b.Item2, Time) > 0.6 ? b.Item3 : b.Item4;
+                if (b.Item1.Foreground != brush) b.Item1.Foreground = brush;
+            }
             scanMove.Y = (Time * 6) % 3;
             if (Rng.NextDouble() < 0.08) root.Opacity = 0.93 + Rng.NextDouble() * 0.07;
         }

@@ -342,6 +342,18 @@ namespace SentriPet
             return level >= 3 ? Palette.Hex("#EF4444") : level == 2 ? Palette.Hex("#F97316") : Palette.Hex("#F59E0B");
         }
 
+        /// <summary>
+        /// Opacity of a bar whose quota is about to expire unused: a slow breath at level 1, quicker on the last day,
+        /// a fast blink in the last hours.
+        /// </summary>
+        public static double UrgentPulse(int level, double t)
+        {
+            double period = level >= 3 ? 0.7 : level == 2 ? 1.2 : 2.4;
+            double low = level >= 3 ? 0.15 : level == 2 ? 0.3 : 0.5;
+            double s = 0.5 + 0.5 * Math.Cos(2 * Math.PI * t / period);
+            return Math.Round(low + (1 - low) * s, 2);
+        }
+
         public static Border Pill(UIElement child, Brush bg, double radius, Thickness pad)
         {
             return new Border { Child = child, Background = bg, CornerRadius = new CornerRadius(radius), Padding = pad };

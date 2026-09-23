@@ -29,8 +29,10 @@ namespace SentriPet
         {
             public string Key;
             public Border Fill;
+            public Brush NormalFill;
             public TextBlock Pct;
             public Anim Width = new Anim(0);
+            public int Urgent;                       // "use it before it resets" level of this window (the bar blinks)
         }
 
         class Card
@@ -48,7 +50,9 @@ namespace SentriPet
             public TranslateTransform EyeLMove, EyeRMove;
             public Path HappyL, HappyR, SleepL, SleepR, Mouth, BrowL, BrowR, Sweat;
             public Ellipse BlushL, BlushR;
-            public TextBlock Question;
+            public TextBlock Question, Exclaim;
+            public ScaleTransform ExclaimPop;
+            public TranslateTransform BrowLiftL, BrowLiftR;
             public TextBlock[] Zzz;
             public Ellipse[] Dots;
             public Path[] Sparkles;
@@ -56,12 +60,10 @@ namespace SentriPet
             public UIElement AccBlink, AccGlow;
             public TextBlock NameText, PctText, ResetText, ErrorText;
             public List<MeterRow> Rows = new List<MeterRow>();
-            public Border UseItPill;                 // "weekly quota left, resets soon — use it!"
-            public Grid UseItRow;
-            public TextBlock UseItTop, UseItBottom;
             public FrameworkElement Clock;           // alarm clock next to the pet while there is quota to use up
             public RotateTransform ClockTilt;
             public int UseItLevel;
+            public double NextGlance, GlanceUntil = -1, LastRing = -1, JumpHeight = 20;
             public Border Bubble;
             public TextBlock BubbleText;
             public Path BubbleTail;
@@ -195,6 +197,10 @@ namespace SentriPet
             c.SleepR = G.P("M 48,32 Q 53,37 58,32", null, G.B(Ink), 2.2);
             c.BrowL = G.P("M 20.5,24.5 L 30,21.5", null, G.B(Ink), 1.9);
             c.BrowR = G.P("M 50,21.5 L 59.5,24.5", null, G.B(Ink), 1.9);
+            c.BrowLiftL = new TranslateTransform();
+            c.BrowLiftR = new TranslateTransform();
+            c.BrowL.RenderTransform = c.BrowLiftL;
+            c.BrowR.RenderTransform = c.BrowLiftR;
             c.Mouth = G.P("M 35.5,43 Q 40,47.5 44.5,43", null, G.B(Ink), 1.8);
             foreach (var e in new UIElement[] { c.HappyL, c.HappyR, c.SleepL, c.SleepR, c.BrowL, c.BrowR, c.Mouth })
                 c.Body.Children.Add(e);
@@ -209,6 +215,14 @@ namespace SentriPet
             c.Question = G.T("?", 20, dark, FontWeights.Black, G.Num);
             G.Place(c.Question, CardW / 2 + 22, 4);
             c.Fx.Children.Add(c.Question);
+            // "!" when the alarm clock rings
+            c.Exclaim = G.T("!", 21, Palette.Hex("#EF4444"), FontWeights.Black, G.Num);
+            c.ExclaimPop = new ScaleTransform(1, 1);
+            c.Exclaim.RenderTransformOrigin = new Point(0.5, 1);
+            c.Exclaim.RenderTransform = c.ExclaimPop;
+            c.Exclaim.Visibility = Visibility.Collapsed;
+            G.Place(c.Exclaim, CardW / 2 + 24, 2);
+            c.Fx.Children.Add(c.Exclaim);
             c.Zzz = new TextBlock[3];
             for (int i = 0; i < 3; i++)
             {
@@ -257,41 +271,27 @@ namespace SentriPet
             return c;
         }
 
-        /// <summary>Shows, hides or recolours the "use it before it resets" pill and alarm clock.</summary>
+        /// <summary>
+        /// "Use it before it resets": the alarm clock next to the pet and the blinking bar of that window. The words
+        /// stay in the hover card; the pet shows it with its face (see ExpressionFor).
+        /// </summary>
         void ApplyUseIt(Card c, ProviderView v)
         {
             int level = v.HasData && v.UseIt != null ? v.UseItLevel : 0;
-            var m = v.UseIt;
-            if (c.UseItPill != null && level > 0)
+            foreach (var r in c.Rows)
             {
-                string pct = Fmt.Pct(m.Remaining);
-                string shortLabel = string.IsNullOrEmpty(m.ShortLabel) ? "" : m.ShortLabel;
-                c.UseItTop.Text = level == 1 ? shortLabel + "額度剩 " + pct : shortLabel + "剩 " + pct + " 快用掉";
-                c.UseItBottom.Text = level >= 3 ? "只剩 " + Fmt.Countdown(m.ResetsAt) + "！" : Fmt.When(m.ResetsAt) + (level == 2 ? " 清空" : " 重置");
+                int urgent = level > 0 && r.Key == v.UseIt.Key ? level : 0;
+                if (urgent == r.Urgent) continue;
+                r.Urgent = urgent;
+                var accent = G.UseItAccent(urgent);
+                r.Fill.Background = urgent > 0 ? G.Lg(Palette.Lighten(accent, 0.3), accent, 0) : r.NormalFill;
+                r.Fill.Effect = urgent >= 2 ? G.Glow(accent, 7, 0.9) : null;
+                r.Fill.Opacity = 1;
             }
             if (level == c.UseItLevel) return;
             c.UseItLevel = level;
             if (c.Clock != null) { c.Fx.Children.Remove(c.Clock); c.Clock = null; }
-            if (c.UseItPill != null)
-            {
-                c.UseItPill.Visibility = level > 0 ? Visibility.Visible : Visibility.Collapsed;
-                c.UseItPill.Opacity = 1;
-                if (c.UseItRow.Children.Count > 1) c.UseItRow.Children.RemoveAt(1);
-            }
             if (level == 0) return;
-
-            Color bg, edge, ink;
-            G.UseItColors(level, out bg, out edge, out ink);
-            if (c.UseItPill != null)
-            {
-                c.UseItPill.Background = G.B(bg);
-                c.UseItPill.BorderBrush = G.B(edge);
-                c.UseItTop.Foreground = c.UseItBottom.Foreground = G.B(ink);
-                var icon = G.AlarmClock(14, G.UseItAccent(level));
-                icon.VerticalAlignment = VerticalAlignment.Center;
-                icon.HorizontalAlignment = HorizontalAlignment.Left;
-                c.UseItRow.Children.Add(icon);
-            }
             var clock = G.AlarmClock(22, G.UseItAccent(level));
             c.ClockTilt = new RotateTransform(0);
             clock.RenderTransformOrigin = new Point(0.5, 0.85);
@@ -447,6 +447,7 @@ namespace SentriPet
                     bar.HorizontalAlignment = HorizontalAlignment.Left;
                     Grid.SetColumn(bar, 1);
                     r.Fill = fill;
+                    r.NormalFill = fill.Background;
                     r.Pct = G.T("", 9, Palette.Hex("#4B5563"), FontWeights.SemiBold, G.Num);
                     r.Pct.HorizontalAlignment = HorizontalAlignment.Right;
                     Grid.SetColumn(r.Pct, 2);
@@ -461,28 +462,6 @@ namespace SentriPet
                 c.ResetText.Margin = new Thickness(0, 3, 0, 0);
                 c.ResetText.TextTrimming = TextTrimming.CharacterEllipsis;
                 sp.Children.Add(c.ResetText);
-
-                c.UseItTop = G.T("", 9, Colors.Black, FontWeights.Bold, G.Ui);
-                c.UseItBottom = G.T("", 9, Colors.Black, FontWeights.Normal, G.Ui);
-                c.UseItTop.TextTrimming = c.UseItBottom.TextTrimming = TextTrimming.CharacterEllipsis;
-                var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                lines.Children.Add(c.UseItTop);
-                lines.Children.Add(c.UseItBottom);
-                Grid.SetColumn(lines, 1);
-                c.UseItRow = new Grid();
-                c.UseItRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(17) });
-                c.UseItRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                c.UseItRow.Children.Add(lines);
-                c.UseItPill = new Border
-                {
-                    Child = c.UseItRow,
-                    CornerRadius = new CornerRadius(6),
-                    BorderThickness = new Thickness(1),
-                    Padding = new Thickness(3, 2, 4, 3),
-                    Margin = new Thickness(-3, 4, -3, 0),
-                    Visibility = Visibility.Collapsed,
-                };
-                sp.Children.Add(c.UseItPill);
             }
             else
             {
@@ -533,7 +512,9 @@ namespace SentriPet
                     if (m == null) continue;
                     r.Width.Target = 50 * m.Remaining / 100;
                     r.Pct.Text = m.Unlimited ? "∞" : (m.UsedApprox ? "≈" : "") + Fmt.Pct(m.Remaining);
-                    r.Pct.Foreground = G.B(m.Unlimited ? Palette.Hex("#7C3AED") : LevelInk(m.Remaining));
+                    Color bg, edge, ink;
+                    G.UseItColors(r.Urgent, out bg, out edge, out ink);
+                    r.Pct.Foreground = G.B(m.Unlimited ? Palette.Hex("#7C3AED") : r.Urgent > 0 ? ink : LevelInk(m.Remaining));
                 }
                 if (c.ResetText != null)
                 {
@@ -543,9 +524,6 @@ namespace SentriPet
                     if (v.Unlimited) c.ResetText.Text = v.Snap != null && v.Snap.Note != null ? v.Snap.Note : "沒有額度限制";
                     else if (p != null && p.ResetsAt.HasValue) c.ResetText.Text = v.Stale ? "舊資料 · " + lbl + G.ResetText(p) : lbl + G.ResetText(p) + "後重置";
                     else c.ResetText.Text = p != null && p.Used <= 0 ? "閒置中，用了才開始計時" : "重置時間未知";
-                    // the pill already says when the window that is about to reset does so
-                    bool dup = c.UseItLevel > 0 && p == v.UseIt && !v.Stale;
-                    c.ResetText.Visibility = dup ? Visibility.Collapsed : Visibility.Visible;
                 }
             }
         }
@@ -555,6 +533,9 @@ namespace SentriPet
             var v = c.V;
             if (c.SquintUntil > Time || c.CelebrateUntil > Time) return "squint";
             if (v == null || !v.HasData) return "unknown";
+            // quota about to expire unused: anxious (unless it is working on it, or the pet is running out anyway)
+            if (c.UseItLevel > 0 && !v.Active && v.Mood != SentriPet.Mood.Critical && v.Mood != SentriPet.Mood.Empty)
+                return "hurry" + Math.Min(3, c.UseItLevel);
             switch (v.Mood)
             {
                 case SentriPet.Mood.Great: return "happy";
@@ -571,19 +552,27 @@ namespace SentriPet
         static readonly Geometry MouthFlat = Frozen("M 36,45 L 44,45");
         static readonly Geometry MouthWavy = Frozen("M 34.5,45.5 Q 37,43 39.5,45.5 T 44.5,45.5");
         static readonly Geometry MouthO = Frozen("M 37.9,45 A 2.1,2.4 0 1 1 42.1,45 A 2.1,2.4 0 1 1 37.9,45 Z");
+        static readonly Geometry MouthGasp = Frozen("M 36.9,45.6 A 3.1,3.8 0 1 1 43.1,45.6 A 3.1,3.8 0 1 1 36.9,45.6 Z");
+        static readonly Geometry MouthPanic = Frozen("M 37.4,42.6 Q 40,41.8 42.6,42.6 Q 46.2,50.2 40,50.4 Q 33.8,50.2 37.4,42.6 Z");
 
         void ApplyExpression(Card c, string expr)
         {
             c.Expr = expr;
+            bool hurry = expr.StartsWith("hurry");
+            int urgency = hurry ? expr[expr.Length - 1] - '0' : 0;   // hurry1..hurry3
             bool open = expr != "sleep" && expr != "squint";
             c.EyeL.Visibility = c.EyeR.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
             c.HappyL.Visibility = c.HappyR.Visibility = expr == "squint" ? Visibility.Visible : Visibility.Collapsed;
             c.SleepL.Visibility = c.SleepR.Visibility = expr == "sleep" ? Visibility.Visible : Visibility.Collapsed;
-            bool brows = expr == "worried" || expr == "critical";
+            bool brows = expr == "worried" || expr == "critical" || hurry;
             c.BrowL.Visibility = c.BrowR.Visibility = brows ? Visibility.Visible : Visibility.Collapsed;
-            c.Sweat.Visibility = brows ? Visibility.Visible : Visibility.Collapsed;
+            // anxious brows sit higher (alarmed) than the tired "running low" ones
+            c.BrowLiftL.Y = c.BrowLiftR.Y = hurry ? -1.5 - urgency * 0.6 : 0;
+            c.Sweat.Visibility = (brows && !hurry) || urgency >= 2 ? Visibility.Visible : Visibility.Collapsed;
             c.BlushL.Opacity = c.BlushR.Opacity = (expr == "happy" || expr == "squint") ? 1 : expr == "content" ? 0.55 : 0.2;
             c.Question.Visibility = expr == "unknown" ? Visibility.Visible : Visibility.Collapsed;
+            if (!hurry) c.Exclaim.Visibility = Visibility.Collapsed;
+            else c.Exclaim.Foreground = G.B(G.UseItAccent(urgency));
             foreach (var z in c.Zzz) z.Visibility = expr == "sleep" ? Visibility.Visible : Visibility.Collapsed;
 
             Geometry mouth;
@@ -594,7 +583,10 @@ namespace SentriPet
                 case "squint": mouth = MouthOpen; fill = G.B(Palette.Hex("#7A2B35")); break;
                 case "content": mouth = MouthSmile; break;
                 case "worried":
-                case "critical": mouth = MouthWavy; break;
+                case "critical":
+                case "hurry1": mouth = MouthWavy; break;
+                case "hurry2": mouth = MouthGasp; fill = G.B(Palette.Hex("#7A2B35")); break;
+                case "hurry3": mouth = MouthPanic; fill = G.B(Palette.Hex("#7A2B35")); break;
                 case "sleep": mouth = MouthO; fill = G.B(Palette.Hex("#7A2B35")); break;
                 default: mouth = MouthFlat; break;
             }
@@ -628,10 +620,28 @@ namespace SentriPet
             if (expr != c.Expr) ApplyExpression(c, expr);
             bool active = v != null && v.Active;
             bool sleeping = expr == "sleep";
+            double t = Time + c.Phase;
+
+            // ---- quota about to expire unused: the alarm clock rings in bursts (more often as the reset gets closer);
+            // the anxious pet jumps at each ring with a "!" and looks at the clock, then back at you
+            bool hurry = expr.StartsWith("hurry");
+            int urgency = hurry ? c.UseItLevel : 0;
+            double ringPeriod = active || c.Clock == null ? 0 : c.UseItLevel >= 3 ? 1.8 : c.UseItLevel == 2 ? 3.4 : 0;
+            double ringPh = ringPeriod > 0 ? t % ringPeriod : -1;
+            if (hurry && ringPh >= 0 && ringPh < dt)
+            {
+                if (c.JumpT < 0) { c.JumpT = 0; c.JumpHeight = urgency >= 3 ? 11 : 8; }
+                c.GlanceUntil = Time + 0.9;
+                c.LastRing = Time;
+            }
+            if (hurry && ringPeriod == 0)
+            {
+                c.NextGlance -= dt;
+                if (c.NextGlance <= 0) { c.GlanceUntil = Time + 0.8; c.NextGlance = 3.5 + Rng.NextDouble() * 4; }
+            }
 
             // ---- body motion
             c.Level.Step(dt, 2.5);
-            double t = Time + c.Phase;
             double breathe = Math.Sin(t * (active ? 7.5 : 2.1));
             double sx = 1 - 0.025 * breathe, sy = 1 + 0.03 * breathe;
             if (sleeping) { sx = 1.04 + 0.02 * Math.Sin(t * 1.3); sy = 0.9 - 0.025 * Math.Sin(t * 1.3); }
@@ -640,11 +650,11 @@ namespace SentriPet
             {
                 c.JumpT += dt;
                 double u = c.JumpT / 0.5;
-                if (u >= 1) { c.JumpT = -1; c.LandT = 0; }
+                if (u >= 1) { c.JumpT = -1; c.LandT = 0; c.JumpHeight = 20; }
                 else
                 {
                     double s = Math.Sin(Math.PI * u);
-                    jy = -20 * s;
+                    jy = -c.JumpHeight * s;
                     sy *= 1 + 0.1 * s;
                     sx *= 1 - 0.06 * s;
                 }
@@ -662,7 +672,7 @@ namespace SentriPet
                 }
             }
             if (active && c.JumpT < 0 && c.LandT < 0) jy = -3.5 * Math.Abs(Math.Sin(t * 7));
-            double tx = expr == "critical" ? Math.Sin(Time * 38) * 0.7 : 0;
+            double tx = expr == "critical" ? Math.Sin(Time * 38) * 0.7 : urgency >= 3 ? Math.Sin(Time * 34) * 0.5 : 0;
             c.BodyScale.ScaleX = sx;
             c.BodyScale.ScaleY = sy;
             c.BodyMove.X = tx;
@@ -672,7 +682,7 @@ namespace SentriPet
             c.Shadow.Opacity = 1 - 0.5 * lift;
 
             // idle hop
-            if (!sleeping && v != null && v.HasData && (v.Mood == SentriPet.Mood.Great || v.Mood == SentriPet.Mood.Good))
+            if (!sleeping && !hurry && v != null && v.HasData && (v.Mood == SentriPet.Mood.Great || v.Mood == SentriPet.Mood.Good))
             {
                 c.NextHop -= dt;
                 if (c.NextHop <= 0 && c.JumpT < 0) { c.JumpT = 0; c.NextHop = 18 + Rng.NextDouble() * 30; }
@@ -689,6 +699,7 @@ namespace SentriPet
                 r.Width.Step(dt, 4);
                 double w = Math.Max(0, Math.Min(50, r.Width.Value));
                 r.Fill.Width = r.Width.Target > 0.25 ? Math.Max(5, w) : w;
+                if (r.Urgent > 0) r.Fill.Opacity = G.UrgentPulse(r.Urgent, t);   // the quota that is about to expire blinks
             }
 
             // ---- eyes
@@ -703,7 +714,9 @@ namespace SentriPet
                 else open = 0.1 + 0.9 * Math.Abs(1 - 2 * u);
             }
             if (expr == "critical") open *= 0.55;
-            c.EyeLScale.ScaleY = c.EyeRScale.ScaleY = open;
+            double wide = urgency >= 3 ? 1.14 : urgency == 2 ? 1.08 : 1;   // wide-eyed when it is getting late
+            c.EyeLScale.ScaleX = c.EyeRScale.ScaleX = wide;
+            c.EyeLScale.ScaleY = c.EyeRScale.ScaleY = open * wide;
 
             Point? cur = Host != null ? Host.CursorIn(c.Body) : null;
             double lx, ly;
@@ -718,6 +731,7 @@ namespace SentriPet
             }
             else { lx = Math.Sin(t * 0.7) * 2.2; ly = Math.Sin(t * 0.43) * 1.2; }
             if (active) ly = 1.6;
+            if (hurry && c.GlanceUntil > Time) { lx = -2.9; ly = -1.9; }   // a nervous look at the alarm clock
             c.LookX.Target = lx;
             c.LookY.Target = ly;
             c.LookX.Step(dt, 9);
@@ -734,7 +748,8 @@ namespace SentriPet
             double headX = CardW / 2, headY = StageH - 10 - BodyH + jy;
             if (c.Sweat.Visibility == Visibility.Visible)
             {
-                double u = ((Time + c.Phase) % 1.8) / 1.8;
+                double sweatPeriod = hurry ? 1.1 : 1.8;
+                double u = ((Time + c.Phase) % sweatPeriod) / sweatPeriod;
                 Canvas.SetTop(c.Sweat, 12 + u * 12);
                 c.Sweat.Opacity = u < 0.8 ? 1 : (1 - u) * 5;
             }
@@ -759,18 +774,19 @@ namespace SentriPet
             }
             if (c.Clock != null)
             {
-                // the alarm clock rings in bursts, more often as the reset gets closer; the pet jumps at the last call
                 double angle = 4 * Math.Sin(t * 1.7);
-                double period = c.UseItLevel >= 3 ? 1.8 : c.UseItLevel == 2 ? 3.4 : 0;
-                if (period > 0)
-                {
-                    double ph = t % period;
-                    if (ph < 0.6) angle = 14 * Math.Sin(ph * 60) * (1 - ph / 0.6);
-                    if (c.UseItLevel >= 3 && ph < dt && c.JumpT < 0 && Rng.NextDouble() < 0.25) c.JumpT = 0;
-                }
+                if (ringPh >= 0 && ringPh < 0.6) angle = 14 * Math.Sin(ringPh * 60) * (1 - ringPh / 0.6);
                 c.ClockTilt.Angle = Math.Round(angle, 1);
-                if (c.UseItLevel >= 3 && c.UseItPill != null) c.UseItPill.Opacity = 0.72 + 0.28 * Math.Abs(Math.Sin(t * 2.6));
             }
+            if (hurry && urgency >= 2 && c.LastRing >= 0 && Time - c.LastRing < 1.0)
+            {
+                double u = Time - c.LastRing;
+                c.Exclaim.Visibility = Visibility.Visible;
+                c.ExclaimPop.ScaleX = c.ExclaimPop.ScaleY = u < 0.12 ? 0.5 + u / 0.12 * 0.8 : 1.3 - Math.Min(0.3, (u - 0.12) * 1.5);
+                c.Exclaim.Opacity = u > 0.75 ? (1 - u) * 4 : 1;
+                Canvas.SetTop(c.Exclaim, headY - 22);
+            }
+            else if (c.Exclaim.Visibility == Visibility.Visible) c.Exclaim.Visibility = Visibility.Collapsed;
             if (c.Question.Visibility == Visibility.Visible)
                 Canvas.SetTop(c.Question, headY - 18 + Math.Sin(Time * 3) * 3);
 

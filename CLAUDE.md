@@ -12,7 +12,7 @@ Windows desktop widget (C# 5 / WPF on .NET Framework 4.8) that shows AI plan usa
 
 All of these run with a separate dev profile automatically:
 
-- `bin\SentriPet.exe --snapshot <dir> --mock [--theme id]` renders every theme to PNG.
+- `bin\SentriPet.exe --snapshot <dir> --mock [--theme id] [--frames N]` renders every theme to PNG (mock set `c` = quota about to expire unused at levels 1–3; `--frames` adds N frames 0.25 s apart to check animations).
 - `--snapshot-ui <dir>` renders the menu, settings page and hover card.
 - `--selftest <file>` checks hover-card placement (exit code = failures).
 - `--probe <file>` prints detection + live usage (incl. the Claude estimate calibration) for every provider.

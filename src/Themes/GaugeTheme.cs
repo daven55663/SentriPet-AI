@@ -88,6 +88,7 @@ namespace SentriPet
             public string SubKey;
             public double Sweep, TargetValue;
             public Color Accent;
+            public int UrgentLeds, UrgentArc, Lit;     // "use it before it resets": what blinks, at which level
         }
 
         Border root;
@@ -268,13 +269,15 @@ namespace SentriPet
                 var v = View(g.Id);
                 if (v == null) continue;
                 // needle and number: the headline (5-hour) window; the LCD counts down to the reset that matters most
-                bool useIt = v.UseItLevel > 0 && v.UseIt != null;
-                var p = useIt ? v.UseIt : v.ResetMeter;
+                var p = v.ResetMeter;
                 double head = v.HeadlineRemaining;
                 g.TargetValue = v.HasData ? (v.Unlimited ? 100 : head) : 0;
                 g.Pct.Text = !v.HasData ? "--" : v.Unlimited ? "∞" : Math.Round(head) + "%";
                 g.Pct.Foreground = G.B(!v.HasData ? Palette.Hex("#6B7280") : head < 20 ? Palette.Hex("#FF6B5E") : Colors.White);
-                g.Label.Foreground = G.B(useIt && v.HasData ? G.UseItAccent(v.UseItLevel) : Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
+                // a window about to expire unused blinks (its LED bar, or the dial when it is the headline one)
+                int urgent = v.HasData && v.UseIt != null ? v.UseItLevel : 0;
+                g.UrgentLeds = urgent > 0 && v.UseIt.Key == g.SubKey ? urgent : 0;
+                g.UrgentArc = urgent > 0 && v.UseIt == v.Headline ? urgent : 0;
                 if (!v.HasData)
                 {
                     g.Label.Text = v.Error ?? "沒有資料";
@@ -291,7 +294,7 @@ namespace SentriPet
                 }
                 else
                 {
-                    g.Label.Text = useIt ? p.Label + "剩 " + Fmt.Pct(p.Remaining) + " · 快用掉！" : p.Label + " · 重置倒數";
+                    g.Label.Text = p.Label + " · 重置倒數";
                     g.Lcd.SetText(LcdText(p.ResetsAt.Value));
                     g.Approx.Visibility = p.ResetApprox ? Visibility.Visible : Visibility.Collapsed;
                 }
@@ -303,13 +306,16 @@ namespace SentriPet
                     var sub = v.Meters.FirstOrDefault(m => m.Key == g.SubKey);
                     double rem = sub == null ? 0 : sub.Remaining;
                     int lit = (int)Math.Round(rem / 10);
-                    var col = rem >= 50 ? Palette.Hex("#34D399") : rem >= 20 ? Palette.Hex("#FBBF24") : Palette.Hex("#F87171");
+                    var col = g.UrgentLeds > 0 ? G.UseItAccent(g.UrgentLeds) : rem >= 50 ? Palette.Hex("#34D399") : rem >= 20 ? Palette.Hex("#FBBF24") : Palette.Hex("#F87171");
                     for (int i = 0; i < g.Leds.Length; i++)
                     {
                         g.Leds[i].Fill = G.B(i < lit ? col : Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF));
+                        if (g.UrgentLeds == 0) g.Leds[i].Opacity = 1;
                     }
+                    g.Lit = lit;
                     g.SubPct.Text = sub == null ? "" : Fmt.Pct(rem);
                 }
+                if (g.UrgentArc == 0) g.ValueArc.Opacity = 1;
             }
         }
 
@@ -336,6 +342,12 @@ namespace SentriPet
                 g.Needle.Angle = -135 + 270 * val / 100;
                 double shown = Math.Max(0, Math.Min(100, val));
                 g.ValueArc.Data = shown < 0.3 ? Geometry.Empty : G.Arc(C, 45, -135, -135 + 270 * shown / 100);
+                if (g.UrgentLeds > 0 && g.Leds != null)
+                {
+                    double o = G.UrgentPulse(g.UrgentLeds, Time);
+                    for (int i = 0; i < g.Leds.Length && i < g.Lit; i++) g.Leds[i].Opacity = o;
+                }
+                if (g.UrgentArc > 0) g.ValueArc.Opacity = G.UrgentPulse(g.UrgentArc, Time);
             }
         }
     }

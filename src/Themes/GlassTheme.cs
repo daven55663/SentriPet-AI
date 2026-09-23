@@ -20,6 +20,9 @@ namespace SentriPet
             public TextBlock Value, Unit, Reset;
             public Anim A = new Anim(0);
             public double Drawn = -1;
+            public Brush NormalStroke;
+            public Color NormalGlow;
+            public int Urgent;                 // "use it before it resets" level: the ring blinks
         }
 
         class Row
@@ -146,6 +149,8 @@ namespace SentriPet
                         StrokeEndLineCap = PenLineCap.Round,
                         Effect = G.Glow(c2, 10, 0.55),
                     };
+                    ring.NormalStroke = ring.Arc.Stroke;
+                    ring.NormalGlow = c2;
                     var arcHost = new Canvas { Width = RingSize, Height = RingSize };
                     arcHost.Children.Add(ring.Arc);
                     canvas.Children.Add(arcHost);
@@ -201,10 +206,16 @@ namespace SentriPet
                     ring.Unit.Visibility = m.Unlimited ? Visibility.Collapsed : Visibility.Visible;
                     ring.Value.Foreground = G.B(m.Unlimited || m.Remaining >= 20 ? Colors.White : Palette.Hex("#FF8A8A"));
                     ring.Reset.Text = m.Unlimited ? "無限制" : m.ResetsAt.HasValue ? G.ResetText(m) : (m.Used <= 0 ? "閒置中" : "—");
-                    // this window resets soon with quota left over: say so under its ring
-                    bool useIt = m == v.UseIt && v.UseItLevel > 0;
-                    if (useIt) ring.Reset.Text = "快用掉 · " + ring.Reset.Text;
-                    ring.Reset.Foreground = G.B(useIt ? G.UseItAccent(v.UseItLevel) : Color.FromArgb(0x88, 0xFF, 0xFF, 0xFF));
+                    // this window resets soon with quota left over: its ring blinks
+                    int urgent = m == v.UseIt ? v.UseItLevel : 0;
+                    if (urgent != ring.Urgent)
+                    {
+                        ring.Urgent = urgent;
+                        var accent = G.UseItAccent(urgent);
+                        ring.Arc.Stroke = urgent > 0 ? G.Lg(Palette.Lighten(accent, 0.35), accent, 90) : ring.NormalStroke;
+                        ring.Arc.Effect = G.Glow(urgent > 0 ? accent : ring.NormalGlow, 10, urgent > 0 ? 0.8 : 0.55);
+                        ring.Arc.Opacity = 1;
+                    }
                 }
             }
         }
@@ -221,6 +232,7 @@ namespace SentriPet
                 if (v != null && r.Dot != null) r.Dot.Opacity = v.Active ? 0.5 + 0.5 * Math.Abs(Math.Sin(Time * 4)) : 1;
                 foreach (var ring in r.Rings)
                 {
+                    if (ring.Urgent > 0) ring.Arc.Opacity = G.UrgentPulse(ring.Urgent, Time);
                     ring.A.Step(dt, 3.2);
                     if (Math.Abs(ring.A.Value - ring.Drawn) < 0.05) continue;
                     ring.Drawn = ring.A.Value;
