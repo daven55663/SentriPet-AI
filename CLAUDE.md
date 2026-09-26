@@ -23,6 +23,7 @@ All of these run with a separate dev profile automatically:
 
 - The Traditional Chinese text in the code is the translation key: wrap user-facing text in `L.T("…")`, sentences with values in `L.F("…{0}…", x)` (never build sentences by concatenation), and texts stored in tables in `L.N("…")` (translated later with `L.T`). `Lines` uses named placeholders (`{name}`, `{pct}`…).
 - Translations live in `src/Lang/{zh-CN,en,ja,ko}.json`, embedded by `build.cmd` and `SentriPet.Core.csproj` as `SentriPet.Lang.<code>.json`. The self-test fails when any CJK string literal in `src`/`xplat` (tests excluded) has no entry in every file, or placeholders differ. Lines that must not be translated (regex, font names, language names) carry `// i18n-ignore`.
+- Korean: WPF and Avalonia break Korean between any two syllables, so `L.KeepWords` puts U+2060 WORD JOINER between a syllable and any non-space neighbour (applied to the ko table, `L.F` and `Lines`). Text glued together outside `L.T`/`L.F` must go through `L.Finish(...)` before it is shown; the self-test checks every Korean text on screen.
 - `--lang <code>` forces a language (diagnostic modes default to zh-TW); `--snapshot-ui <dir> --switch-lang en` exercises the runtime switch. Check layout in each language with `--snapshot <dir> --mock --lang <code>` — Japanese/Korean phrases often need to be shorter than the Chinese ones to fit the pet plates.
 
 ## Claude desktop (MSIX) virtualization
