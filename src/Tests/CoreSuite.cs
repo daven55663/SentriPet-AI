@@ -22,6 +22,7 @@ namespace SentriPet
             ProviderTests.Run(t);
             ServiceTests.Run(t);
             PlatformTests.Run(t);
+            I18nTests.Run(t);
         }
 
         public static string Report(TestKit t, TimeSpan elapsed, string runner)

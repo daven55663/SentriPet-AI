@@ -82,9 +82,9 @@ namespace SentriPet
         double nextChat = 25, chatCooldown;
 
         public override string Id { get { return "pet"; } }
-        public override string Name { get { return "果凍桌寵"; } }
-        public override string Mood { get { return "元氣滿滿"; } }
-        public override string Blurb { get { return "果凍小怪獸，額度越多肚子越滿"; } }
+        public override string Name { get { return L.T("果凍桌寵"); } }
+        public override string Mood { get { return L.T("元氣滿滿"); } }
+        public override string Blurb { get { return L.T("果凍小怪獸，額度越多肚子越滿"); } }
 
         protected override FrameworkElement CreateRoot()
         {
@@ -136,7 +136,7 @@ namespace SentriPet
                 if (Views.Count > 0) return Views;
                 return new List<ProviderView>
                 {
-                    new ProviderView { Id = "_", Name = "偵測中", Mascot = "antenna", Color = Rgba.Hex("#94A3B8"), Error = "正在尋找電腦上的 AI…", Mood = SentriPet.Mood.Unknown, Remaining = 50 }
+                    new ProviderView { Id = "_", Name = L.T("偵測中"), Mascot = "antenna", Color = Rgba.Hex("#94A3B8"), Error = L.T("正在尋找電腦上的 AI…"), Mood = SentriPet.Mood.Unknown, Remaining = 50 }
                 };
             }
         }
@@ -487,7 +487,7 @@ namespace SentriPet
             }
             else
             {
-                c.ErrorText = G.T(v.Error ?? "沒有資料", 9.5, Palette.Hex("#6B7280"), FontWeights.Normal, G.Ui);
+                c.ErrorText = G.T(v.Error ?? L.T("沒有資料"), 9.5, Palette.Hex("#6B7280"), FontWeights.Normal, G.Ui);
                 c.ErrorText.TextWrapping = TextWrapping.Wrap;
                 c.ErrorText.Margin = new Thickness(0, 2, 0, 0);
                 sp.Children.Add(c.ErrorText);
@@ -522,7 +522,7 @@ namespace SentriPet
                 {
                     c.PctText.Text = "?";
                     c.PctText.Foreground = G.B(Palette.Hex("#9CA3AF"));
-                    if (c.ErrorText != null) c.ErrorText.Text = v.Error ?? "沒有資料";
+                    if (c.ErrorText != null) c.ErrorText.Text = v.Error ?? L.T("沒有資料");
                     continue;
                 }
                 var head = v.Headline;
@@ -543,9 +543,9 @@ namespace SentriPet
                     var p = v.ResetMeter;
                     string lbl = v.LabelOf(p);          // "5h " / "週 " says which window; a lone window gets "↻ "
                     if (lbl.Length == 0) lbl = "↻ ";
-                    if (v.Unlimited) c.ResetText.Text = v.Snap != null && v.Snap.Note != null ? v.Snap.Note : "沒有額度限制";
-                    else if (p != null && p.ResetsAt.HasValue) c.ResetText.Text = v.Stale ? "舊資料 · " + lbl + G.ResetText(p) : lbl + G.ResetText(p) + "後重置";
-                    else c.ResetText.Text = p != null && p.Used <= 0 ? "閒置中，用了才開始計時" : "重置時間未知";
+                    if (v.Unlimited) c.ResetText.Text = v.Snap != null && v.Snap.Note != null ? v.Snap.Note : L.T("沒有額度限制");
+                    else if (p != null && p.ResetsAt.HasValue) c.ResetText.Text = v.Stale ? L.T("舊資料") + " · " + lbl + G.ResetText(p) : lbl + L.F("{0}後重置", G.ResetText(p));
+                    else c.ResetText.Text = p != null && p.Used <= 0 ? L.T("閒置中，用了才開始計時") : L.T("重置時間未知");
                 }
             }
         }

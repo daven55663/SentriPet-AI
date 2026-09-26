@@ -37,7 +37,7 @@ namespace SentriPet
         public SettingsWindow(Controller ctl)
         {
             this.ctl = ctl;
-            Title = App.DisplayName + " · 設定";
+            Title = App.DisplayName + " · " + L.T("設定");
             Width = 700;
             Height = 780;
             MinWidth = 560;
@@ -194,14 +194,14 @@ namespace SentriPet
             Grid.SetColumn(t, 1);
             t.Children.Add(Txt(App.DisplayName, 22, TextC, FontWeights.Bold));
             var detected = ctl.Views.Count;
-            t.Children.Add(Txt("v" + App.Version + " · 目前顯示 " + detected + " 個 AI · 拖曳桌寵可移到任何一個螢幕", 12, SubC, FontWeights.Normal));
+            t.Children.Add(Txt("v" + App.Version + " · " + L.F("目前顯示 {0} 個 AI · 拖曳桌寵可移到任何一個螢幕", detected), 12, SubC, FontWeights.Normal));
             g.Children.Add(t);
             root.Children.Add(g);
         }
 
         void BuildThemes(StackPanel root)
         {
-            var body = Section(root, "造型", "", "依照今天的心情挑一個吧，在桌寵上按右鍵也能隨時換");
+            var body = Section(root, L.T("造型"), "", L.T("依照今天的心情挑一個吧，在桌寵上按右鍵也能隨時換"));
             gallery.Margin = new Thickness(-6, 10, -6, 8);
             foreach (var t in ThemeCatalog.All)
             {
@@ -210,7 +210,7 @@ namespace SentriPet
                 RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
                 var wall = new LinearGradientBrush(Palette.Hex("#3A6073"), Palette.Hex("#6D4C7D"), 35);
                 var preview = new Border { Height = 118, CornerRadius = new CornerRadius(10), Background = wall, Child = img, Padding = new Thickness(6), ClipToBounds = true };
-                preview.Child = new TextBlock { Text = "繪製預覽中…", Foreground = G.B(Colors.White, 0.6), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontSize = 11 };
+                preview.Child = new TextBlock { Text = L.T("繪製預覽中…"), Foreground = G.B(Colors.White, 0.6), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontSize = 11 };
                 var sp = new StackPanel();
                 sp.Children.Add(preview);
                 var name = Txt(info.Name, 13.5, TextC, FontWeights.Bold);
@@ -231,7 +231,7 @@ namespace SentriPet
                 S.RandomThemeDate = null;
                 SaveSoon();
             });
-            Row(body, "每天隨機換一個造型", "每天第一次見面時自動換成別的造型，給自己一點驚喜", randomToggle);
+            Row(body, L.T("每天隨機換一個造型"), L.T("每天第一次見面時自動換成別的造型，給自己一點驚喜"), randomToggle);
             OnThemeChanged();
         }
 
@@ -266,39 +266,39 @@ namespace SentriPet
 
         void BuildLook(StackPanel root)
         {
-            var body = Section(root, "外觀", "", null);
-            Row(body, "大小", null, SliderBox(50, 200, Math.Round(S.Scale * 100), 5, v => Math.Round(v) + "%", v => { S.Scale = v / 100; ctl.Widget.ApplySettings(); SaveSoon(); }));
-            Row(body, "不透明度", "調低一點可以若隱若現", SliderBox(30, 100, Math.Round(S.Opacity * 100), 5, v => Math.Round(v) + "%", v => { S.Opacity = v / 100; ctl.Widget.ApplySettings(); SaveSoon(); }));
-            Row(body, "永遠在最上層", "不會被其他視窗蓋住", Toggle(S.AlwaysOnTop, v => { S.AlwaysOnTop = v; ctl.Widget.ApplySettings(); SaveSoon(); }));
-            Row(body, "全螢幕時自動躲起來", "看影片、玩遊戲、簡報時不會擋畫面", Toggle(S.HideOnFullscreen, v => { S.HideOnFullscreen = v; SaveSoon(); }));
-            Row(body, "滑鼠穿透", "桌寵不會擋住點擊（要關閉請從系統匣圖示按右鍵）", Toggle(S.ClickThrough, v => { S.ClickThrough = v; ctl.Widget.ApplySettings(); SaveSoon(); }));
-            Row(body, "會說話", "偶爾冒出一句話、點牠會回應", Toggle(S.Chatty, v => { S.Chatty = v; SaveSoon(); }));
-            Row(body, "省電模式", "降低動畫幀率，筆電用電池時可以開", Toggle(S.LowPower, v => { S.LowPower = v; ctl.Widget.ApplySettings(); SaveSoon(); }));
+            var body = Section(root, L.T("外觀"), "", null);
+            Row(body, L.T("大小"), null, SliderBox(50, 200, Math.Round(S.Scale * 100), 5, v => Math.Round(v) + "%", v => { S.Scale = v / 100; ctl.Widget.ApplySettings(); SaveSoon(); }));
+            Row(body, L.T("不透明度"), L.T("調低一點可以若隱若現"), SliderBox(30, 100, Math.Round(S.Opacity * 100), 5, v => Math.Round(v) + "%", v => { S.Opacity = v / 100; ctl.Widget.ApplySettings(); SaveSoon(); }));
+            Row(body, L.T("永遠在最上層"), L.T("不會被其他視窗蓋住"), Toggle(S.AlwaysOnTop, v => { S.AlwaysOnTop = v; ctl.Widget.ApplySettings(); SaveSoon(); }));
+            Row(body, L.T("全螢幕時自動躲起來"), L.T("看影片、玩遊戲、簡報時不會擋畫面"), Toggle(S.HideOnFullscreen, v => { S.HideOnFullscreen = v; SaveSoon(); }));
+            Row(body, L.T("滑鼠穿透"), L.T("桌寵不會擋住點擊（要關閉請從系統匣圖示按右鍵）"), Toggle(S.ClickThrough, v => { S.ClickThrough = v; ctl.Widget.ApplySettings(); SaveSoon(); }));
+            Row(body, L.T("會說話"), L.T("偶爾冒出一句話、點牠會回應"), Toggle(S.Chatty, v => { S.Chatty = v; SaveSoon(); }));
+            Row(body, L.T("省電模式"), L.T("降低動畫幀率，筆電用電池時可以開"), Toggle(S.LowPower, v => { S.LowPower = v; ctl.Widget.ApplySettings(); SaveSoon(); }));
         }
 
         void BuildProviders(StackPanel root)
         {
-            var body = Section(root, "AI 服務", "", "自動偵測電腦上的 AI 工具。資料只在本機讀取，不會上傳到任何地方。");
+            var body = Section(root, L.T("AI 服務"), "", L.T("自動偵測電腦上的 AI 工具。資料只在本機讀取，不會上傳到任何地方。"));
             body.Children.Add(providerList);
             body.Children.Add(otherList);
             var buttons = new WrapPanel { Margin = new Thickness(0, 12, 0, 12) };
-            buttons.Children.Add(Btn("重新偵測", "", () => { ctl.Service.Redetect(); ctl.Service.RefreshNow(null); providerSig = null; }));
-            buttons.Children.Add(Btn("重新載入外掛", "", () => { ctl.Service.ReloadProviders(); providerSig = null; }));
-            buttons.Children.Add(Btn("開啟外掛資料夾", "", OpenPluginFolder));
+            buttons.Children.Add(Btn(L.T("重新偵測"), "", () => { ctl.Service.Redetect(); ctl.Service.RefreshNow(null); providerSig = null; }));
+            buttons.Children.Add(Btn(L.T("重新載入外掛"), "", () => { ctl.Service.ReloadProviders(); providerSig = null; }));
+            buttons.Children.Add(Btn(L.T("開啟外掛資料夾"), "", OpenPluginFolder));
             body.Children.Add(new Border { Height = 1, Background = G.B(LineC) });
             body.Children.Add(buttons);
 
-            Row(body, "Codex 即時查詢", "透過官方 codex app-server 讀取最新用量；設 0 只讀本機對話紀錄",
-                SliderBox(0, 30, S.CodexLiveMinutes, 1, v => v < 1 ? "關閉" : "每 " + Math.Round(v) + " 分鐘", v => { S.CodexLiveMinutes = (int)Math.Round(v); SaveSoon(); }));
+            Row(body, L.T("Codex 即時查詢"), L.T("透過官方 codex app-server 讀取最新用量；設 0 只讀本機對話紀錄"),
+                SliderBox(0, 30, S.CodexLiveMinutes, 1, v => v < 1 ? L.T("關閉") : L.F("每 {0} 分鐘", Math.Round(v)), v => { S.CodexLiveMinutes = (int)Math.Round(v); SaveSoon(); }));
 
             var box = new TextBox { Style = (Style)FindResource("Input"), Width = 150, Text = S.ClaudeWeeklyReset ?? "" };
             var hint = Txt("", 11, SubC, FontWeights.Normal);
             Action check = () =>
             {
                 DateTime? next;
-                if (string.IsNullOrWhiteSpace(box.Text)) hint.Text = "留空 = 自動推算";
-                else if (ClaudeProvider.TryParseWeekly(box.Text, out next)) hint.Text = "下次重置：" + Fmt.When(next) + "（" + Fmt.Countdown(next) + "後）";
-                else hint.Text = "看不懂這個時間，例如：週四 23:00";
+                if (string.IsNullOrWhiteSpace(box.Text)) hint.Text = L.T("留空 = 自動推算");
+                else if (ClaudeProvider.TryParseWeekly(box.Text, out next)) hint.Text = L.F("下次重置：{0}（{1}後）", Fmt.When(next), Fmt.Countdown(next));
+                else hint.Text = L.T("看不懂這個時間，例如：週四 23:00");
             };
             box.TextChanged += (s, e) =>
             {
@@ -317,8 +317,8 @@ namespace SentriPet
             hint.Margin = new Thickness(0, 4, 0, 0);
             hint.MaxWidth = 180;
             right.Children.Add(hint);
-            Row(body, "Claude 每週重置時間（選填）", "Claude 的快取沒有重置時間，預設用歷史紀錄推算。想要精準，照 Claude 設定 → 用量 頁面上寫的時間填一次，例如「週四 23:00」", right);
-            Row(body, "Claude 即時推算", "Claude 桌面版約每 15 分鐘才記錄一次用量。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算這段空檔的用量，數字前面會標「≈」",
+            Row(body, L.T("Claude 每週重置時間（選填）"), L.T("Claude 的快取沒有重置時間，預設用歷史紀錄推算。想要精準，照 Claude 設定 → 用量 頁面上寫的時間填一次，例如「週四 23:00」"), right);
+            Row(body, L.T("Claude 即時推算"), L.T("Claude 桌面版約每 15 分鐘才記錄一次用量。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算這段空檔的用量，數字前面會標「≈」"),
                 Toggle(S.ClaudeEstimate, v => { S.ClaudeEstimate = v; SaveSoon(); ctl.Service.RefreshNow("claude"); }));
             RefreshProviders();
         }
@@ -369,10 +369,10 @@ namespace SentriPet
                 var nameRow = new StackPanel { Orientation = Orientation.Horizontal };
                 nameRow.Children.Add(Txt(p.Name, 14, TextC, FontWeights.Bold));
                 if (!p.BuiltIn)
-                    nameRow.Children.Add(G.Pill(Txt("外掛", 10, Accent, FontWeights.SemiBold), G.B(Accent, 0.15), 6, new Thickness(6, 0, 6, 1)));
+                    nameRow.Children.Add(G.Pill(Txt(L.T("外掛"), 10, Accent, FontWeights.SemiBold), G.B(Accent, 0.15), 6, new Thickness(6, 0, 6, 1)));
                 if (nameRow.Children.Count > 1) ((FrameworkElement)nameRow.Children[1]).Margin = new Thickness(8, 2, 0, 0);
                 info.Children.Add(nameRow);
-                info.Children.Add(Txt(installed ? "偵測到：" + d.EvidenceText : (d != null && d.Hint != null ? d.Hint : "這台電腦上沒有偵測到"), 11.5, SubC, FontWeights.Normal));
+                info.Children.Add(Txt(installed ? L.F("偵測到：{0}", d.EvidenceText) : (d != null && d.Hint != null ? d.Hint : L.T("這台電腦上沒有偵測到")), 11.5, SubC, FontWeights.Normal));
                 if (installed)
                 {
                     var st = Txt(StatusText(d, r.Item3), 11.5, r.Item3 != null && r.Item3.Error != null && !r.Item3.Offline ? Palette.Hex("#FCA5A5") : Palette.Hex("#86EFAC"), FontWeights.Normal);
@@ -383,7 +383,7 @@ namespace SentriPet
                 var id = p.Id;
                 FrameworkElement right;
                 if (installed) right = Toggle(S.IsEnabled(id), v => { S.Enabled[id] = v; SaveSoon(); providerSig = null; });
-                else right = Txt("未安裝", 12, SubC, FontWeights.Normal);
+                else right = Txt(L.T("未安裝"), 12, SubC, FontWeights.Normal);
                 right.VerticalAlignment = VerticalAlignment.Center;
                 Grid.SetColumn(right, 2);
                 g.Children.Add(right);
@@ -394,7 +394,7 @@ namespace SentriPet
             if (hits.Count > 0)
             {
                 otherList.Children.Add(new Border { Height = 1, Background = G.B(LineC) });
-                var t = Txt("其他偵測到的 AI（還沒有用量來源，可以寫外掛接上）", 12, SubC, FontWeights.SemiBold);
+                var t = Txt(L.T("其他偵測到的 AI（還沒有用量來源，可以寫外掛接上）"), 12, SubC, FontWeights.SemiBold);
                 t.Margin = new Thickness(0, 10, 0, 4);
                 otherList.Children.Add(t);
                 foreach (var h in hits)
@@ -409,40 +409,53 @@ namespace SentriPet
 
         static string StatusText(Detection d, Snapshot s)
         {
-            if (d == null) return "偵測中…";
+            if (d == null) return L.T("偵測中…");
             if (!d.Installed) return "";
-            if (s == null) return "讀取中…";
-            if (s.Offline) return s.Error ?? "離線";
+            if (s == null) return L.T("讀取中…");
+            if (s.Offline) return s.Error ?? L.T("離線");
             if (s.Error != null) return "✗ " + s.Error;
-            var meters = string.Join("、", s.Meters.Take(3).Select(m => m.Label + " 剩 " + (m.Unlimited ? "∞" : Fmt.Pct(m.Remaining))));
+            var meters = string.Join(L.T("、"), s.Meters.Take(3).Select(m => L.F("{0} 剩 {1}", m.Label, m.Unlimited ? "∞" : Fmt.Pct(m.Remaining))));
             string when = s.ObservedAt.HasValue ? s.ObservedAt.Value.ToLocalTime().ToString("HH:mm") : "";
-            return "✓ " + meters + " · " + (s.Source ?? "") + (when.Length > 0 ? " · " + when : "") + (s.Stale ? " · 資料較舊" : "");
+            return "✓ " + meters + " · " + (s.Source ?? "") + (when.Length > 0 ? " · " + when : "") + (s.Stale ? " · " + L.T("資料較舊") : "");
         }
 
         void BuildAlerts(StackPanel root)
         {
-            var body = Section(root, "提醒", "", null);
-            Row(body, "額度提醒通知", "用量越過門檻、或額度重置時跳出 Windows 通知", Toggle(S.Notifications, v => { S.Notifications = v; SaveSoon(); }));
-            Row(body, "催我用完週額度", "每週／每月額度快重置、卻還剩不少時，桌寵會拿鬧鐘催你把它用掉：剩 2 天（還有 30% 以上）開始提醒，最後一天、最後 6 小時會越催越勤，並各跳一次通知",
+            var body = Section(root, L.T("提醒"), "", null);
+            Row(body, L.T("額度提醒通知"), L.T("用量越過門檻、或額度重置時跳出 Windows 通知"), Toggle(S.Notifications, v => { S.Notifications = v; SaveSoon(); }));
+            Row(body, L.T("催我用完週額度"), L.T("每週／每月額度快重置、卻還剩不少時，桌寵會拿鬧鐘催你把它用掉：剩 2 天（還有 30% 以上）開始提醒，最後一天、最後 6 小時會越催越勤，並各跳一次通知"),
                 Toggle(S.UseItReminder, v => { S.UseItReminder = v; SaveSoon(); ctl.RefreshViews(); }));
-            Row(body, "提醒門檻", "用量超過這個比例時提醒一次", SliderBox(50, 95, S.WarnAt, 5, v => "用掉 " + Math.Round(v) + "%", v => { S.WarnAt = (int)Math.Round(v); SaveSoon(); }));
-            Row(body, "緊急門檻", "快用完時再提醒一次", SliderBox(60, 100, S.CriticalAt, 1, v => "用掉 " + Math.Round(v) + "%", v => { S.CriticalAt = (int)Math.Round(v); SaveSoon(); }));
+            Row(body, L.T("提醒門檻"), L.T("用量超過這個比例時提醒一次"), SliderBox(50, 95, S.WarnAt, 5, v => L.F("用掉 {0}%", Math.Round(v)), v => { S.WarnAt = (int)Math.Round(v); SaveSoon(); }));
+            Row(body, L.T("緊急門檻"), L.T("快用完時再提醒一次"), SliderBox(60, 100, S.CriticalAt, 1, v => L.F("用掉 {0}%", Math.Round(v)), v => { S.CriticalAt = (int)Math.Round(v); SaveSoon(); }));
+        }
+
+        Button LanguageChip(string code, string label)
+        {
+            bool on = (S.Language ?? "auto") == code;
+            var b = Btn(label, on ? "\uE73E" : null, () => { if ((S.Language ?? "auto") != code) ctl.ChangeLanguage(code); });
+            b.Margin = new Thickness(0, 0, 8, 8);
+            if (on) { b.Foreground = G.B(Accent); b.FontWeight = FontWeights.SemiBold; }
+            return b;
         }
 
         void BuildGeneral(StackPanel root)
         {
-            var body = Section(root, "一般", "", null);
-            Row(body, "開機自動啟動", "登入 Windows 後自動出現在桌面上", Toggle(S.AutoStart, v => { S.AutoStart = v; Autostart.Set(v); SaveSoon(); }));
+            var body = Section(root, L.T("一般"), "", null);
+            Row(body, L.LanguageLabel, L.T("選單、設定頁和桌寵說的話都會換成這個語言"), null);
+            var langs = new WrapPanel { Margin = new Thickness(0, -2, 0, 12) };
+            langs.Children.Add(LanguageChip("auto", L.T("自動（跟隨系統）")));
+            foreach (var li in L.Languages) langs.Children.Add(LanguageChip(li.Code, li.Native));
+            body.Children.Add(langs);
+            Row(body, L.T("開機自動啟動"), L.T("登入 Windows 後自動出現在桌面上"), Toggle(S.AutoStart, v => { S.AutoStart = v; Autostart.Set(v); SaveSoon(); }));
             var buttons = new WrapPanel { Margin = new Thickness(0, 12, 0, 12) };
-            buttons.Children.Add(Btn("設定資料夾", "", () => Controller.OpenPath(AppPaths.DataDir)));
-            buttons.Children.Add(Btn("記錄檔", "", () => Controller.OpenPath(Path.Combine(AppPaths.LogDir, "app.log"))));
-            buttons.Children.Add(Btn("程式資料夾", "", () => Controller.OpenPath(AppPaths.ExeDir)));
+            buttons.Children.Add(Btn(L.T("設定資料夾"), "", () => Controller.OpenPath(AppPaths.DataDir)));
+            buttons.Children.Add(Btn(L.T("記錄檔"), "", () => Controller.OpenPath(Path.Combine(AppPaths.LogDir, "app.log"))));
+            buttons.Children.Add(Btn(L.T("程式資料夾"), "", () => Controller.OpenPath(AppPaths.ExeDir)));
             body.Children.Add(new Border { Height = 1, Background = G.B(LineC) });
             body.Children.Add(buttons);
             var about = Txt(
-                "資料來源：Claude 讀取桌面版自己寫的用量快取（每 15 分鐘更新，重置時間為推算）；" +
-                "Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。" +
-                "本程式不讀取、也不傳送任何登入憑證。", 11.5, SubC, FontWeights.Normal);
+                L.T("資料來源：Claude 讀取桌面版自己寫的用量快取（每 15 分鐘更新，重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證。"),
+                11.5, SubC, FontWeights.Normal);
             about.Margin = new Thickness(0, 0, 0, 12);
             body.Children.Add(about);
         }

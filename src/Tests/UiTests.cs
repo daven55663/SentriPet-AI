@@ -20,6 +20,74 @@ namespace SentriPet
             Card(t);
             Speech(t);
             Speaking(t);
+            Languages(t);
+        }
+
+        // ------------------------------------------------------------------ languages
+
+        static void CollectText(DependencyObject d, List<string> into)
+        {
+            var tb = d as TextBlock;
+            if (tb != null && !string.IsNullOrEmpty(tb.Text) && tb.Visibility == Visibility.Visible) into.Add(tb.Text);
+            int n = VisualTreeHelper.GetChildrenCount(d);
+            for (int i = 0; i < n; i++) CollectText(VisualTreeHelper.GetChild(d, i), into);
+        }
+
+        static void Languages(TestKit t)
+        {
+            t.Section("介面語言（英文時畫面上不能有中文）");
+            try
+            {
+                App.UseLanguage("en");
+                t.Check("英文用 Segoe UI 字型", G.Ui.Source.StartsWith("Segoe UI"), G.Ui.Source);
+                t.Equal("英文：造型名稱", "Jelly Pet", ThemeCatalog.Get("pet").Name);
+                foreach (var info in ThemeCatalog.All)
+                {
+                    var ti = info;
+                    t.Run("en " + ti.Id, () =>
+                    {
+                        var texts = new List<string>();
+                        foreach (var set in new[] { MockData.A(), MockData.B(), MockData.C(), new List<ProviderView>() })
+                        {
+                            var theme = ti.Create();
+                            theme.Attach(new Snapshots.PreviewHost());
+                            theme.Update(set);
+                            for (int i = 0; i < 60; i++) theme.Tick(1 / 10.0);   // the pixel hero's message types itself out
+                            var host = new Grid();
+                            host.Children.Add(theme.Root);
+                            Snapshots.RenderToBitmap(host, 1.0);
+                            CollectText(host, texts);
+                            host.Children.Clear();
+                            theme.Detach();
+                        }
+                        var han = texts.Where(x => x.Any(c => c >= '一' && c <= '鿿')).Distinct().ToList();
+                        t.Check(ti.Name + "：英文畫面沒有中文", han.Count == 0 && texts.Count > 3, texts.Count + " 段文字" + (han.Count > 0 ? "，有中文：" + string.Join(" | ", han.Take(5)) : ""));
+                    });
+                }
+                t.Run("en card", () =>
+                {
+                    var texts = new List<string>();
+                    foreach (var v in MockData.C().Concat(MockData.B()))
+                    {
+                        var card = DetailCardView.Build(v);
+                        Snapshots.RenderToBitmap(card.Root, 1.0);
+                        CollectText(card.Root, texts);
+                    }
+                    var han = texts.Where(x => x.Any(c => c >= '一' && c <= '鿿')).Distinct().ToList();
+                    t.Check("詳情卡：英文畫面沒有中文", han.Count == 0 && texts.Count > 10, string.Join(" | ", han.Take(5)));
+                });
+                App.UseLanguage("ja");
+                t.Check("日文用 Yu Gothic UI 字型", G.Ui.Source.StartsWith("Yu Gothic UI"), G.Ui.Source);
+                App.UseLanguage("ko");
+                t.Check("韓文用 Malgun Gothic 字型", G.Ui.Source.StartsWith("Malgun Gothic"), G.Ui.Source);
+                App.UseLanguage("zh-CN");
+                t.Check("簡體用 Microsoft YaHei UI 字型", G.Ui.Source.StartsWith("Microsoft YaHei UI"), G.Ui.Source);
+            }
+            finally
+            {
+                App.UseLanguage(L.Source);
+            }
+            t.Check("切回繁中：字型與造型名稱恢復", G.Ui.Source.StartsWith("Microsoft JhengHei UI") && ThemeCatalog.Get("pet").Name == "果凍桌寵", G.Ui.Source);
         }
 
         // ------------------------------------------------------------------ hover card placement

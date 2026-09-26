@@ -249,12 +249,17 @@ namespace SentriPet
   </Style>
 </ResourceDictionary>";
 
+        static ResourceDictionary loaded;
+
+        /// <summary>Adds the styles (again after a language change: the fonts follow the language).</summary>
         public static void Load(Application app)
         {
             try
             {
-                var dict = (ResourceDictionary)XamlReader.Parse(Xaml);
+                var dict = (ResourceDictionary)XamlReader.Parse(Xaml.Replace("'Microsoft JhengHei UI'", "'" + G.UiName + ", Segoe UI'"));
+                if (loaded != null) app.Resources.MergedDictionaries.Remove(loaded);
                 app.Resources.MergedDictionaries.Add(dict);
+                loaded = dict;
             }
             catch (Exception ex)
             {

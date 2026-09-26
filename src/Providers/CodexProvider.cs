@@ -81,12 +81,12 @@ namespace SentriPet
         public override Detection Detect()
         {
             var d = new Detection();
-            if (DesktopApp() != null) d.Evidence.Add("Codex 桌面版");
-            if (Directory.Exists(CodexHome())) d.Evidence.Add("Codex 資料夾");
-            if (AppPaths.EditorExtensions("openai.chatgpt-").Count > 0) d.Evidence.Add("VS Code 擴充");
-            if (AppPaths.Which("codex") != null) d.Evidence.Add("codex 指令");
+            if (DesktopApp() != null) d.Evidence.Add(L.T("Codex 桌面版"));
+            if (Directory.Exists(CodexHome())) d.Evidence.Add(L.T("Codex 資料夾"));
+            if (AppPaths.EditorExtensions("openai.chatgpt-").Count > 0) d.Evidence.Add(L.T("VS Code 擴充"));
+            if (AppPaths.Which("codex") != null) d.Evidence.Add(L.T("codex 指令"));
             d.Installed = d.Evidence.Count > 0;
-            if (FindCodexExe() == null) d.Hint = "找不到 codex 執行檔，只能讀本機紀錄";
+            if (FindCodexExe() == null) d.Hint = L.T("找不到 codex 執行檔，只能讀本機紀錄");
             return d;
         }
 
@@ -124,13 +124,13 @@ namespace SentriPet
 
             RateSnap best = liveSnap;
             if (logSnap != null && (best == null || logSnap.ObservedAt > best.ObservedAt)) best = logSnap;
-            if (best == null) return Snapshot.Fail(liveError ?? "還沒有用量紀錄：用 Codex 問一句話就會出現");
+            if (best == null) return Snapshot.Fail(liveError ?? L.T("還沒有用量紀錄：用 Codex 問一句話就會出現"));
 
             var snap = ToSnapshot(best);
             snap.Active = activity.ActiveWithin(60);
             if (liveError != null && best == logSnap)
             {
-                snap.Note = "即時查詢失敗（" + liveError + "），顯示本機紀錄";
+                snap.Note = L.F("即時查詢失敗（{0}），顯示本機紀錄", liveError);
                 if ((now - best.ObservedAt).TotalHours > 6) snap.Stale = true;
             }
             return snap;
@@ -172,8 +172,8 @@ namespace SentriPet
             }
             var notes = new List<string>();
             if (best.Credits != null) notes.Add(best.Credits);
-            if (best.Reached != null) notes.Add("已達上限：" + best.Reached);
-            if (notes.Count > 0) s.Note = string.Join("；", notes);
+            if (best.Reached != null) notes.Add(L.F("已達上限：{0}", best.Reached));
+            if (notes.Count > 0) s.Note = string.Join(L.T("；"), notes);
             return s;
         }
 
@@ -224,8 +224,8 @@ namespace SentriPet
                 bool has = Json.Bool(Json.Get(credits, "has_credits") ?? Json.Get(credits, "hasCredits")) ?? false;
                 bool unl = Json.Bool(Json.Get(credits, "unlimited")) ?? false;
                 string bal = Json.Str(Json.Get(credits, "balance"));
-                if (unl) rs.Credits = "額外點數：無限";
-                else if (has && !string.IsNullOrEmpty(bal) && bal != "0") rs.Credits = "額外點數：" + bal;
+                if (unl) rs.Credits = L.T("額外點數：無限");
+                else if (has && !string.IsNullOrEmpty(bal) && bal != "0") rs.Credits = L.F("額外點數：{0}", bal);
             }
             var reached = Json.Str(Json.Get(o, "rate_limit_reached_type") ?? Json.Get(o, "rateLimitReachedType"));
             if (!string.IsNullOrEmpty(reached) && rs.Reached == null) rs.Reached = reached.Replace('_', ' ');
@@ -323,7 +323,7 @@ namespace SentriPet
                 var b = ParseBucket(rl, ts);
                 if (b == null || seen.Contains(b.Id)) continue;
                 seen.Add(b.Id);
-                if (rs == null) rs = new RateSnap { ObservedAt = ts, Source = "Codex 本機紀錄" };
+                if (rs == null) rs = new RateSnap { ObservedAt = ts, Source = L.T("Codex 本機紀錄") };
                 rs.Buckets.Add(b);
                 FillExtras(rs, rl);
                 if (seen.Count >= 4) break;
@@ -372,7 +372,7 @@ namespace SentriPet
         {
             error = null;
             string exe = FindCodexExe();
-            if (exe == null) { error = "找不到 codex 執行檔"; return null; }
+            if (exe == null) { error = L.T("找不到 codex 執行檔"); return null; }
             Process p = null;
             try
             {
@@ -421,17 +421,17 @@ namespace SentriPet
                 input.WriteLine();
                 input.WriteLine("{\"id\":1,\"method\":\"initialize\",\"params\":{\"clientInfo\":{\"name\":\"sentripet\",\"title\":\"SentriPet\",\"version\":\"" + AppInfo.Version + "\"}}}");
                 var init = WaitFor(lines, 1, 20000);
-                if (init == null) { error = "codex app-server 沒有回應"; return null; }
+                if (init == null) { error = L.T("codex app-server 沒有回應"); return null; }
                 if (Json.Get(init, "error") != null) { error = ErrorText(init); return null; }
 
                 input.WriteLine("{\"method\":\"initialized\"}");
                 input.WriteLine("{\"id\":2,\"method\":\"account/rateLimits/read\",\"params\":{\"excludeResetCreditDetails\":true}}");
                 var resp = WaitFor(lines, 2, 25000);
-                if (resp == null) { error = "查詢逾時"; return null; }
+                if (resp == null) { error = L.T("查詢逾時"); return null; }
                 if (Json.Get(resp, "error") != null) { error = ErrorText(resp); return null; }
 
                 var result = Json.Get(resp, "result");
-                var rs = new RateSnap { ObservedAt = DateTime.UtcNow, Source = "Codex 官方 app-server" };
+                var rs = new RateSnap { ObservedAt = DateTime.UtcNow, Source = L.T("Codex 官方 app-server") };
                 var byId = Json.Obj(Json.Get(result, "rateLimitsByLimitId"));
                 if (byId != null && byId.Count > 0)
                 {
@@ -449,7 +449,7 @@ namespace SentriPet
                     if (b != null) rs.Buckets.Add(b);
                     FillExtras(rs, single);
                 }
-                if (rs.Buckets.Count == 0) { error = "帳號沒有回傳用量（可能未用 ChatGPT 登入 Codex）"; return null; }
+                if (rs.Buckets.Count == 0) { error = L.T("帳號沒有回傳用量（可能未用 ChatGPT 登入 Codex）"); return null; }
                 return rs;
             }
             catch (Exception ex)
@@ -494,7 +494,7 @@ namespace SentriPet
         static string ErrorText(object resp)
         {
             var e = Json.Get(resp, "error");
-            return Json.Str(Json.Get(e, "message")) ?? "未知錯誤";
+            return Json.Str(Json.Get(e, "message")) ?? L.T("未知錯誤");
         }
 
         /// <summary>An extension ships binaries for several platforms; only the one for this system can run.</summary>

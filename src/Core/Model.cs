@@ -63,7 +63,7 @@ namespace SentriPet
 
         public string EvidenceText
         {
-            get { return Evidence.Count == 0 ? "未偵測到" : string.Join(" · ", Evidence.Distinct()); }
+            get { return Evidence.Count == 0 ? L.T("未偵測到") : string.Join(" · ", Evidence.Distinct()); }
         }
     }
 
@@ -157,7 +157,13 @@ namespace SentriPet
 
     static class Fmt
     {
-        static readonly string[] WeekDays = { "日", "一", "二", "三", "四", "五", "六" };
+        static readonly string[] WeekDays = { L.N("週日"), L.N("週一"), L.N("週二"), L.N("週三"), L.N("週四"), L.N("週五"), L.N("週六") };
+
+        /// <summary>"週四" / "Thu".</summary>
+        public static string WeekDay(DayOfWeek d)
+        {
+            return L.T(WeekDays[(int)d]);
+        }
 
         public static string Pct(double v)
         {
@@ -169,11 +175,11 @@ namespace SentriPet
         {
             if (!resetUtc.HasValue) return "—";
             var d = resetUtc.Value - DateTime.UtcNow;
-            if (d.TotalSeconds <= 0) return "即將重置";
-            if (d.TotalDays >= 1) return (int)d.TotalDays + "天" + d.Hours + "時";
-            if (d.TotalHours >= 1) return (int)d.TotalHours + "時" + d.Minutes.ToString("00") + "分";
-            if (d.TotalMinutes >= 1) return d.Minutes + "分" + d.Seconds.ToString("00") + "秒";
-            return d.Seconds + "秒";
+            if (d.TotalSeconds <= 0) return L.T("即將重置");
+            if (d.TotalDays >= 1) return L.F("{0}天{1}時", (int)d.TotalDays, d.Hours);
+            if (d.TotalHours >= 1) return L.F("{0}時{1}分", (int)d.TotalHours, d.Minutes.ToString("00"));
+            if (d.TotalMinutes >= 1) return L.F("{0}分{1}秒", d.Minutes, d.Seconds.ToString("00"));
+            return L.F("{0}秒", d.Seconds);
         }
 
         /// <summary>Clock style countdown: 02:13:45 or 3d 04:12.</summary>
@@ -189,44 +195,44 @@ namespace SentriPet
         /// <summary>今天 15:00 / 明天 04:00 / 週四 23:00 / 10/1 00:00.</summary>
         public static string When(DateTime? utc)
         {
-            if (!utc.HasValue) return "未知";
+            if (!utc.HasValue) return L.T("未知");
             var t = utc.Value.ToLocalTime();
             var today = DateTime.Now.Date;
             string hm = t.ToString("HH:mm");
-            if (t.Date == today) return "今天 " + hm;
-            if (t.Date == today.AddDays(1)) return "明天 " + hm;
-            if (t.Date > today && t.Date < today.AddDays(7)) return "週" + WeekDays[(int)t.DayOfWeek] + " " + hm;
+            if (t.Date == today) return L.F("今天 {0}", hm);
+            if (t.Date == today.AddDays(1)) return L.F("明天 {0}", hm);
+            if (t.Date > today && t.Date < today.AddDays(7)) return L.T(WeekDays[(int)t.DayOfWeek]) + " " + hm;
             return t.Month + "/" + t.Day + " " + hm;
         }
 
         public static string Ago(DateTime? utc)
         {
-            if (!utc.HasValue) return "未知";
+            if (!utc.HasValue) return L.T("未知");
             var d = DateTime.UtcNow - utc.Value;
-            if (d.TotalSeconds < 60) return "剛剛";
-            if (d.TotalMinutes < 60) return (int)d.TotalMinutes + " 分鐘前";
-            if (d.TotalHours < 24) return (int)d.TotalHours + " 小時前";
-            return (int)d.TotalDays + " 天前";
+            if (d.TotalSeconds < 60) return L.T("剛剛");
+            if (d.TotalMinutes < 60) return L.F("{0} 分鐘前", (int)d.TotalMinutes);
+            if (d.TotalHours < 24) return L.F("{0} 小時前", (int)d.TotalHours);
+            return L.F("{0} 天前", (int)d.TotalDays);
         }
 
         public static string WindowLabel(int minutes)
         {
-            if (minutes <= 0) return "額度";
-            if (minutes == 10080) return "每週";
-            if (minutes == 1440) return "每日";
-            if (minutes >= 40000 && minutes <= 46000) return "每月";
-            if (minutes % 1440 == 0) return (minutes / 1440) + " 天";
-            if (minutes % 60 == 0) return (minutes / 60) + " 小時";
-            if (minutes > 60 && minutes % 60 >= 55) return (minutes / 60 + 1) + " 小時";
-            return minutes + " 分鐘";
+            if (minutes <= 0) return L.T("額度");
+            if (minutes == 10080) return L.T("每週");
+            if (minutes == 1440) return L.T("每日");
+            if (minutes >= 40000 && minutes <= 46000) return L.T("每月");
+            if (minutes % 1440 == 0) return L.F("{0} 天", minutes / 1440);
+            if (minutes % 60 == 0) return L.F("{0} 小時", minutes / 60);
+            if (minutes > 60 && minutes % 60 >= 55) return L.F("{0} 小時", minutes / 60 + 1);
+            return L.F("{0} 分鐘", minutes);
         }
 
         public static string WindowShort(int minutes)
         {
             if (minutes <= 0) return "Q";
-            if (minutes == 10080) return "週";
-            if (minutes == 1440) return "日";
-            if (minutes >= 40000 && minutes <= 46000) return "月";
+            if (minutes == 10080) return L.T("週");
+            if (minutes == 1440) return L.T("日");
+            if (minutes >= 40000 && minutes <= 46000) return L.T("月");
             if (minutes % 1440 == 0) return (minutes / 1440) + "d";
             if (minutes % 60 == 0) return (minutes / 60) + "h";
             if (minutes > 60 && minutes % 60 >= 55) return (minutes / 60 + 1) + "h";

@@ -14,10 +14,16 @@ All of these run with a separate dev profile automatically:
 
 - `bin\SentriPet.exe --snapshot <dir> --mock [--theme id] [--frames N]` renders every theme to PNG (mock set `c` = quota about to expire unused at levels 1–3; `--frames` adds N frames 0.25 s apart to check animations).
 - `--snapshot-ui <dir>` renders the menu, settings page and hover card.
-- `--selftest <file>` runs every automated check (~300, a few seconds; exit code = failures): core logic, each provider against sample files and local fake servers (`src/Tests`), the service, all themes and the hover card. Run it before every push; CI (`.github/workflows/ci.yml`) runs it plus `--probe`, `--snapshot --mock` and `--snapshot-ui` on every push and uploads the report, screenshots and exe.
+- `--selftest <file>` runs every automated check (~400, a few seconds; exit code = failures): core logic, each provider against sample files and local fake servers (`src/Tests`), the service, all themes and the hover card. Run it before every push; CI (`.github/workflows/ci.yml`) runs it plus `--probe`, `--snapshot --mock` and `--snapshot-ui` on every push and uploads the report, screenshots and exe.
 - `--probe <file>` prints detection + live usage (incl. the Claude estimate calibration) for every provider.
 - `--dev --show-detail <id>` runs a separate profile and forces one hover card open for 45 s.
 - The desktop app's `get_usage` tool (ccd_session_mgmt) returns the official live Claude numbers — use it to check the Claude estimate.
+
+## Languages (i18n)
+
+- The Traditional Chinese text in the code is the translation key: wrap user-facing text in `L.T("…")`, sentences with values in `L.F("…{0}…", x)` (never build sentences by concatenation), and texts stored in tables in `L.N("…")` (translated later with `L.T`). `Lines` uses named placeholders (`{name}`, `{pct}`…).
+- Translations live in `src/Lang/{zh-CN,en,ja,ko}.json`, embedded by `build.cmd` and `SentriPet.Core.csproj` as `SentriPet.Lang.<code>.json`. The self-test fails when any CJK string literal in `src`/`xplat` (tests excluded) has no entry in every file, or placeholders differ. Lines that must not be translated (regex, font names, language names) carry `// i18n-ignore`.
+- `--lang <code>` forces a language (diagnostic modes default to zh-TW); `--snapshot-ui <dir> --switch-lang en` exercises the runtime switch. Check layout in each language with `--snapshot <dir> --mock --lang <code>` — Japanese/Korean phrases often need to be shorter than the Chinese ones to fit the pet plates.
 
 ## Claude desktop (MSIX) virtualization
 

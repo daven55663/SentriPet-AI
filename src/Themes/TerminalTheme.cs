@@ -36,9 +36,9 @@ namespace SentriPet
         string lastSig;
 
         public override string Id { get { return "terminal"; } }
-        public override string Name { get { return "駭客終端"; } }
-        public override string Mood { get { return "進入心流"; } }
-        public override string Blurb { get { return "綠色磷光 CRT，點標題列換顏色"; } }
+        public override string Name { get { return L.T("駭客終端"); } }
+        public override string Mood { get { return L.T("進入心流"); } }
+        public override string Blurb { get { return L.T("綠色磷光 CRT，點標題列換顏色"); } }
 
         protected override FrameworkElement CreateRoot()
         {

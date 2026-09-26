@@ -105,19 +105,19 @@ namespace SentriPet
         public Detection Detect()
         {
             var d = new Detection { UsageSupported = false };
-            foreach (var p in Paths) if (AppPaths.Glob(p).Count > 0) { d.Evidence.Add("資料夾 " + AppPaths.ShortPath(AppPaths.Expand(p))); break; }
-            foreach (var c in Commands) if (AppPaths.Which(c) != null) { d.Evidence.Add(c + " 指令"); break; }
-            foreach (var e in EditorExtensions) if (AppPaths.EditorExtensions(e).Count > 0) { d.Evidence.Add("編輯器擴充"); break; }
-            foreach (var m in MsixPackages) if (AppPaths.MsixInstalled(m)) { d.Evidence.Add("已安裝 App"); break; }
+            foreach (var p in Paths) if (AppPaths.Glob(p).Count > 0) { d.Evidence.Add(L.F("資料夾 {0}", AppPaths.ShortPath(AppPaths.Expand(p)))); break; }
+            foreach (var c in Commands) if (AppPaths.Which(c) != null) { d.Evidence.Add(L.F("{0} 指令", c)); break; }
+            foreach (var e in EditorExtensions) if (AppPaths.EditorExtensions(e).Count > 0) { d.Evidence.Add(L.T("編輯器擴充")); break; }
+            foreach (var m in MsixPackages) if (AppPaths.MsixInstalled(m)) { d.Evidence.Add(L.T("已安裝 App")); break; }
             d.Installed = d.Evidence.Count > 0;
-            d.Hint = "目前沒有公開的用量來源，可在外掛資料夾放一個 JSON 設定檔接上";
+            d.Hint = L.T("目前沒有公開的用量來源，可在外掛資料夾放一個 JSON 設定檔接上");
             return d;
         }
 
         public static readonly List<CatalogEntry> All = new List<CatalogEntry>
         {
             new CatalogEntry { Id = "gemini", Name = "Gemini CLI", Paths = new[] { "~/.gemini" }, Commands = new[] { "gemini" } },
-            new CatalogEntry { Id = "chatgpt", Name = "ChatGPT 桌面版", MsixPackages = new[] { "OpenAI.ChatGPT-Desktop", "OpenAI.ChatGPT" } },
+            new CatalogEntry { Id = "chatgpt", Name = L.T("ChatGPT 桌面版"), MsixPackages = new[] { "OpenAI.ChatGPT-Desktop", "OpenAI.ChatGPT" } },
             new CatalogEntry { Id = "cursor", Name = "Cursor", Paths = new[] { "%APPDATA%/Cursor", "%LOCALAPPDATA%/Programs/cursor" } },
             new CatalogEntry { Id = "windsurf", Name = "Windsurf", Paths = new[] { "%APPDATA%/Windsurf", "~/.codeium/windsurf" } },
             new CatalogEntry { Id = "kiro", Name = "Kiro", Paths = new[] { "~/.kiro", "%APPDATA%/Kiro" } },

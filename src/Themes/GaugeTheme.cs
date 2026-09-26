@@ -96,9 +96,9 @@ namespace SentriPet
         readonly List<Gauge> gauges = new List<Gauge>();
 
         public override string Id { get { return "gauge"; } }
-        public override string Name { get { return "賽車儀表"; } }
-        public override string Mood { get { return "全速前進"; } }
-        public override string Blurb { get { return "油表指針＋警示燈，AI 工作時遠光燈會亮"; } }
+        public override string Name { get { return L.T("賽車儀表"); } }
+        public override string Mood { get { return L.T("全速前進"); } }
+        public override string Blurb { get { return L.T("油表指針＋警示燈，AI 工作時遠光燈會亮"); } }
 
         protected override FrameworkElement CreateRoot()
         {
@@ -123,7 +123,7 @@ namespace SentriPet
             gauges.Clear();
             if (Views.Count == 0)
             {
-                row.Children.Add(G.T("引擎發動中… 正在偵測 AI", 12, Palette.Hex("#9AA3AF")));
+                row.Children.Add(G.T(L.T("引擎發動中… 正在偵測 AI"), 12, Palette.Hex("#9AA3AF")));
                 return;
             }
             foreach (var v in Views) row.Children.Add(MakeGauge(v));
@@ -280,7 +280,7 @@ namespace SentriPet
                 g.UrgentArc = urgent > 0 && v.UseIt == v.Headline ? urgent : 0;
                 if (!v.HasData)
                 {
-                    g.Label.Text = v.Error ?? "沒有資料";
+                    g.Label.Text = v.Error ?? L.T("沒有資料");
                     g.Label.MaxWidth = 140;
                     g.Label.TextTrimming = TextTrimming.CharacterEllipsis;
                     g.Lcd.SetText("--:--:--");
@@ -288,13 +288,13 @@ namespace SentriPet
                 }
                 else if (v.Unlimited || p == null || !p.ResetsAt.HasValue)
                 {
-                    g.Label.Text = v.Unlimited ? "無限制" : (p != null ? p.Label + " · 閒置中" : "");
+                    g.Label.Text = v.Unlimited ? L.T("無限制") : (p != null ? p.Label + " · " + L.T("閒置中") : "");
                     g.Lcd.SetText("--:--:--");
                     g.Approx.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
-                    g.Label.Text = p.Label + " · 重置倒數";
+                    g.Label.Text = p.Label + " · " + L.T("重置倒數");
                     g.Lcd.SetText(LcdText(p.ResetsAt.Value));
                     g.Approx.Visibility = p.ResetApprox ? Visibility.Visible : Visibility.Collapsed;
                 }

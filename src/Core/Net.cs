@@ -110,7 +110,7 @@ namespace SentriPet
                 if (!p.WaitForExit(timeoutMs))
                 {
                     try { p.Kill(); } catch { }
-                    throw new TimeoutException("指令執行逾時");
+                    throw new TimeoutException(L.T("指令執行逾時"));
                 }
                 outDone.WaitOne(2000);
                 errDone.WaitOne(2000);

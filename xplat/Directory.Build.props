@@ -9,7 +9,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <!-- SYSLIB0014: WebRequest (kept so the same code builds on .NET Framework 4.8) -->
     <NoWarn>$(NoWarn);SYSLIB0014;CS0618</NoWarn>
-    <Version>1.2.2</Version>
+    <Version>1.3.0</Version>
     <Authors>歐育典</Authors>
     <Copyright>Copyright © 2026 歐育典 · MIT License</Copyright>
     <InvariantGlobalization>false</InvariantGlobalization>

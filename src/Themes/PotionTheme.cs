@@ -69,9 +69,9 @@ namespace SentriPet
         readonly List<Flask> flasks = new List<Flask>();
 
         public override string Id { get { return "potion"; } }
-        public override string Name { get { return "魔法藥水"; } }
-        public override string Mood { get { return "有點夢幻"; } }
-        public override string Blurb { get { return "每個額度一瓶藥水，會冒泡泡"; } }
+        public override string Name { get { return L.T("魔法藥水"); } }
+        public override string Mood { get { return L.T("有點夢幻"); } }
+        public override string Blurb { get { return L.T("每個額度一瓶藥水，會冒泡泡"); } }
 
         protected override FrameworkElement CreateRoot()
         {
@@ -90,7 +90,7 @@ namespace SentriPet
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            var list = Views.Count > 0 ? Views : new List<ProviderView> { new ProviderView { Id = "_", Name = "偵測中…", Color = Rgba.Hex("#94A3B8"), Error = "正在尋找 AI" } };
+            var list = Views.Count > 0 ? Views : new List<ProviderView> { new ProviderView { Id = "_", Name = L.T("偵測中…"), Color = Rgba.Hex("#94A3B8"), Error = L.T("正在尋找 AI") } };
             for (int i = 0; i < list.Count; i++)
             {
                 var v = list[i];
@@ -243,11 +243,11 @@ namespace SentriPet
                 var v = View(grp.Id);
                 if (v == null) continue;
                 grp.Name.Text = v.Name;
-                if (!v.HasData) { grp.Reset.Text = v.Error ?? "沒有資料"; }
+                if (!v.HasData) { grp.Reset.Text = v.Error ?? L.T("沒有資料"); }
                 else
                 {
-                    var parts = v.Meters.Take(3).Select(m => m.ShortLabel + " " + (m.Unlimited ? "∞" : m.ResetsAt.HasValue ? "↻" + G.ResetText(m) : "閒置"));
-                    grp.Reset.Text = string.Join("\n", parts) + (v.Stale ? "\n（資料較舊）" : "");
+                    var parts = v.Meters.Take(3).Select(m => m.ShortLabel + " " + (m.Unlimited ? "∞" : m.ResetsAt.HasValue ? "↻" + G.ResetText(m) : L.T("閒置")));
+                    grp.Reset.Text = string.Join("\n", parts) + (v.Stale ? "\n" + L.T("（資料較舊）") : "");
                 }
                 foreach (var f in grp.Flasks)
                 {

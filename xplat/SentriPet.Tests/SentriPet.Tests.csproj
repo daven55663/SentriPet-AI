@@ -11,6 +11,6 @@
 
   <ItemGroup>
     <!-- shared with the Windows self-test; UiTests.cs and SelfTest.cs need WPF and stay there -->
-    <Compile Include="..\..\src\Tests\TestKit.cs;..\..\src\Tests\CoreSuite.cs;..\..\src\Tests\CoreTests.cs;..\..\src\Tests\ClaudeCodexTests.cs;..\..\src\Tests\ProviderTests.cs" LinkBase="Shared" />
+    <Compile Include="..\..\src\Tests\TestKit.cs;..\..\src\Tests\CoreSuite.cs;..\..\src\Tests\CoreTests.cs;..\..\src\Tests\ClaudeCodexTests.cs;..\..\src\Tests\ProviderTests.cs;..\..\src\Tests\I18nTests.cs" LinkBase="Shared" />
   </ItemGroup>
 </Project>

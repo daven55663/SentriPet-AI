@@ -33,6 +33,7 @@ namespace SentriPet
         public List<string> Order = new List<string>();
         public bool FirstRunDone;
         public string TerminalColor = "green";
+        public string Language = "auto";         // "auto" (the system's language) or zh-TW, zh-CN, en, ja, ko
 
         public bool IsEnabled(string id)
         {
@@ -75,6 +76,7 @@ namespace SentriPet
                 s.ClaudeWeeklyReset = Json.Str(Json.Get(o, "claudeWeeklyReset")) ?? "";
                 s.FirstRunDone = Json.Bool(Json.Get(o, "firstRunDone")) ?? false;
                 s.TerminalColor = Json.Str(Json.Get(o, "terminalColor")) ?? "green";
+                s.Language = Json.Str(Json.Get(o, "language")) ?? "auto";
                 var en = Json.Obj(Json.Get(o, "enabled"));
                 if (en != null) foreach (var kv in en) s.Enabled[kv.Key] = Json.Bool(kv.Value) ?? true;
                 var ord = Json.Arr(Json.Get(o, "order"));
@@ -117,6 +119,7 @@ namespace SentriPet
                 o["claudeWeeklyReset"] = ClaudeWeeklyReset;
                 o["firstRunDone"] = FirstRunDone;
                 o["terminalColor"] = TerminalColor;
+                o["language"] = Language;
                 o["enabled"] = Enabled.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
                 o["order"] = Order.ToList();
                 string tmp = AppPaths.SettingsFile + ".tmp";

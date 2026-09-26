@@ -168,7 +168,7 @@ namespace SentriPet
                 Log.Error("fetch " + p.Id, ex);
                 s = Snapshot.Fail(ex.Message);
             }
-            if (s == null) s = Snapshot.Fail("沒有資料");
+            if (s == null) s = Snapshot.Fail(L.T("沒有資料"));
             lock (gate)
             {
                 running.Remove(p.Id);
@@ -240,11 +240,11 @@ namespace SentriPet
                     if (level > v.UseItLevel) { v.UseItLevel = level; v.UseIt = m; }
                 }
             v.Mood = !v.HasData ? Mood.Unknown : ProviderView.MoodFor(v.Remaining);
-            if (!v.HasData) v.StatusText = snap.Error ?? "沒有資料";
+            if (!v.HasData) v.StatusText = snap.Error ?? L.T("沒有資料");
             else
             {
-                string t = snap.ObservedAt.HasValue ? snap.ObservedAt.Value.ToLocalTime().ToString("HH:mm") + " 更新" : "已更新";
-                if (snap.ObservedAt.HasValue && (DateTime.UtcNow - snap.ObservedAt.Value).TotalHours >= 20) t = Fmt.Ago(snap.ObservedAt) + "更新";
+                string t = snap.ObservedAt.HasValue ? L.F("{0} 更新", snap.ObservedAt.Value.ToLocalTime().ToString("HH:mm")) : L.T("已更新");
+                if (snap.ObservedAt.HasValue && (DateTime.UtcNow - snap.ObservedAt.Value).TotalHours >= 20) t = L.F("{0}更新", Fmt.Ago(snap.ObservedAt));
                 v.StatusText = t + (snap.Source != null ? " · " + snap.Source : "");
             }
             return v;

@@ -71,18 +71,18 @@ namespace SentriPet
             if (det == null)
             {
                 d.Installed = true;
-                d.Evidence.Add("外掛 " + Path.GetFileName(Origin));
+                d.Evidence.Add(L.F("外掛 {0}", Path.GetFileName(Origin)));
                 return d;
             }
             foreach (var p in Strings(Json.Get(det, "paths")))
-                if (AppPaths.Glob(p).Count > 0) { d.Evidence.Add("找到 " + AppPaths.ShortPath(AppPaths.Expand(p))); break; }
+                if (AppPaths.Glob(p).Count > 0) { d.Evidence.Add(L.F("找到 {0}", AppPaths.ShortPath(AppPaths.Expand(p)))); break; }
             foreach (var c in Strings(Json.Get(det, "commands")))
-                if (AppPaths.Which(c) != null) { d.Evidence.Add(c + " 指令"); break; }
+                if (AppPaths.Which(c) != null) { d.Evidence.Add(L.F("{0} 指令", c)); break; }
             foreach (var e in Strings(Json.Get(det, "env")))
-                if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(e))) { d.Evidence.Add("環境變數 " + e); break; }
+                if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(e))) { d.Evidence.Add(L.F("環境變數 {0}", e)); break; }
             foreach (var x in Strings(Json.Get(det, "editorExtensions")))
-                if (AppPaths.EditorExtensions(x).Count > 0) { d.Evidence.Add("編輯器擴充"); break; }
-            if (Json.Bool(Json.Get(det, "always")) == true) d.Evidence.Add("外掛 " + Path.GetFileName(Origin));
+                if (AppPaths.EditorExtensions(x).Count > 0) { d.Evidence.Add(L.T("編輯器擴充")); break; }
+            if (Json.Bool(Json.Get(det, "always")) == true) d.Evidence.Add(L.F("外掛 {0}", Path.GetFileName(Origin)));
             d.Installed = d.Evidence.Count > 0;
             return d;
         }
@@ -109,10 +109,10 @@ namespace SentriPet
                 {
                     string path = AppPaths.Glob(Json.Str(Json.Get(src, "path")) ?? "")
                         .Where(File.Exists).OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
-                    if (path == null) return Snapshot.Fail("找不到檔案 " + Json.Str(Json.Get(src, "path")));
+                    if (path == null) return Snapshot.Fail(L.F("找不到檔案 {0}", Json.Str(Json.Get(src, "path"))));
                     root = Json.Parse(AppPaths.ReadShared(path));
                     observed = File.GetLastWriteTimeUtc(path);
-                    sourceText = "檔案 " + Path.GetFileName(path);
+                    sourceText = L.F("檔案 {0}", Path.GetFileName(path));
                 }
                 else if (type == "command")
                 {
@@ -124,9 +124,9 @@ namespace SentriPet
                     string err;
                     string output = Net.RunCommand(cmd, args, shell, timeout, out code, out err);
                     if (code != 0 && string.IsNullOrWhiteSpace(output))
-                        return Snapshot.Fail("指令失敗 (" + code + ")：" + FirstLine(err));
+                        return Snapshot.Fail(L.F("指令失敗 ({0})：{1}", code, FirstLine(err)));
                     root = Json.Parse(ExtractJson(output));
-                    sourceText = "指令 " + Path.GetFileName(cmd);
+                    sourceText = L.F("指令 {0}", Path.GetFileName(cmd));
                 }
                 else if (type == "http")
                 {
@@ -142,7 +142,7 @@ namespace SentriPet
                     root = Json.Parse(text);
                     sourceText = new Uri(url).Host;
                 }
-                else return Snapshot.Fail("不支援的 source.type：" + type);
+                else return Snapshot.Fail(L.F("不支援的 source.type：{0}", type));
             }
             catch (Exception ex)
             {
@@ -182,7 +182,7 @@ namespace SentriPet
                         if (m != null) snap.Meters.Add(m);
                     }
             }
-            if (snap.Meters.Count == 0) return Snapshot.Fail("外掛沒有產生任何用量資料");
+            if (snap.Meters.Count == 0) return Snapshot.Fail(L.T("外掛沒有產生任何用量資料"));
             return snap;
         }
 

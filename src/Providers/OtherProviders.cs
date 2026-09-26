@@ -36,10 +36,10 @@ namespace SentriPet
         {
             var d = new Detection();
             if (CacheDirs().Any(Directory.Exists)) d.Evidence.Add("Copilot CLI");
-            if (AppPaths.EditorExtensions("github.copilot").Count > 0) d.Evidence.Add("VS Code 擴充");
-            if (AppPaths.Which("copilot") != null) d.Evidence.Add("copilot 指令");
+            if (AppPaths.EditorExtensions("github.copilot").Count > 0) d.Evidence.Add(L.T("VS Code 擴充"));
+            if (AppPaths.Which("copilot") != null) d.Evidence.Add(L.T("copilot 指令"));
             d.Installed = d.Evidence.Count > 0;
-            if (FindCache() == null) d.Hint = "執行一次 Copilot CLI 就會產生額度快取";
+            if (FindCache() == null) d.Hint = L.T("執行一次 Copilot CLI 就會產生額度快取");
             return d;
         }
 
@@ -57,9 +57,9 @@ namespace SentriPet
         {
             switch (key)
             {
-                case "premium_interactions": return "進階請求";
-                case "chat": return "聊天";
-                case "completions": return "程式補全";
+                case "premium_interactions": return L.T("進階請求");
+                case "chat": return L.T("聊天");
+                case "completions": return L.T("程式補全");
                 default: return key.Replace('_', ' ');
             }
         }
@@ -69,8 +69,8 @@ namespace SentriPet
             switch (key)
             {
                 case "premium_interactions": return "PR";
-                case "chat": return "聊";
-                case "completions": return "補";
+                case "chat": return L.T("聊");
+                case "completions": return L.T("補");
                 default: return key.Length > 2 ? key.Substring(0, 2) : key;
             }
         }
@@ -88,12 +88,12 @@ namespace SentriPet
         public override Snapshot Fetch(bool force, AppSettings settings)
         {
             string f = FindCache();
-            if (f == null) return Snapshot.Fail("找不到 Copilot 額度快取：執行一次 Copilot CLI 即可");
+            if (f == null) return Snapshot.Fail(L.T("找不到 Copilot 額度快取：執行一次 Copilot CLI 即可"));
             string perr;
             var root = Json.TryParse(AppPaths.ReadShared(f), out perr);
-            if (root == null) return Snapshot.Fail("Copilot 快取格式無法解析：" + perr);
+            if (root == null) return Snapshot.Fail(L.F("Copilot 快取格式無法解析：{0}", perr));
 
-            var snap = new Snapshot { Source = "Copilot CLI 快取", ObservedAt = File.GetLastWriteTimeUtc(f) };
+            var snap = new Snapshot { Source = L.T("Copilot CLI 快取"), ObservedAt = File.GetLastWriteTimeUtc(f) };
             var reset = Json.Date(Json.FindKey(root, "quota_reset_date_utc")) ?? Json.Date(Json.FindKey(root, "quota_reset_date"))
                         ?? Json.Date(Json.FindKey(root, "limited_user_reset_date"));
             snap.Plan = PlanName(Json.Str(Json.FindKey(root, "access_type_sku")), Json.Str(Json.FindKey(root, "copilot_plan")));
@@ -154,9 +154,9 @@ namespace SentriPet
             if (snap.Meters.Count == 0)
             {
                 if (anyUnlimited)
-                    snap.Meters.Add(new Meter { Key = "unlimited", Label = "無限制", ShortLabel = "∞", Unlimited = true, ValueText = "∞" });
+                    snap.Meters.Add(new Meter { Key = "unlimited", Label = L.T("無限制"), ShortLabel = "∞", Unlimited = true, ValueText = "∞" });
                 else
-                    return Snapshot.Fail("Copilot 快取裡沒有額度資訊");
+                    return Snapshot.Fail(L.T("Copilot 快取裡沒有額度資訊"));
             }
 
             // Past the monthly reset → the quota is fresh again.
@@ -174,7 +174,7 @@ namespace SentriPet
             if (snap.ObservedAt.HasValue && (now - snap.ObservedAt.Value).TotalDays > 2)
             {
                 snap.Stale = true;
-                snap.Note = "快取來自 " + Fmt.Ago(snap.ObservedAt) + "（Copilot CLI 使用時才會更新）";
+                snap.Note = L.F("快取來自 {0}（Copilot CLI 使用時才會更新）", Fmt.Ago(snap.ObservedAt));
             }
             return snap;
         }
@@ -206,11 +206,11 @@ namespace SentriPet
         public override Detection Detect()
         {
             var d = new Detection();
-            if (FindExe() != null) d.Evidence.Add("Ollama 程式");
+            if (FindExe() != null) d.Evidence.Add(L.T("Ollama 程式"));
             bool models = Directory.Exists(Path.Combine(AppPaths.Home, ".ollama", "models")) || (Os.Linux && Directory.Exists("/usr/share/ollama/.ollama/models"));
             d.Installed = d.Evidence.Count > 0;
-            if (models) d.Evidence.Add("模型資料夾");
-            if (!d.Installed) d.Hint = models ? "只找到模型資料夾，Ollama 程式可能已移除" : null;
+            if (models) d.Evidence.Add(L.T("模型資料夾"));
+            if (!d.Installed) d.Hint = models ? L.T("只找到模型資料夾，Ollama 程式可能已移除") : null;
             return d;
         }
 
@@ -219,7 +219,7 @@ namespace SentriPet
             int status;
             string ps;
             try { ps = Net.Request("GET", "http://127.0.0.1:11434/api/ps", null, null, 1500, out status); }
-            catch { return new Snapshot { Offline = true, Error = "Ollama 沒有在執行" }; }
+            catch { return new Snapshot { Offline = true, Error = L.T("Ollama 沒有在執行") }; }
             var loaded = Json.Arr(Json.Get(Json.TryParse(ps), "models"));
             int installed = 0;
             try
@@ -229,10 +229,10 @@ namespace SentriPet
                 if (arr != null) installed = arr.Count;
             }
             catch { }
-            var snap = new Snapshot { Source = "本機 Ollama 服務", ObservedAt = DateTime.UtcNow, Plan = "本機" };
-            snap.Meters.Add(new Meter { Key = "local", Label = "本機模型", ShortLabel = "∞", Unlimited = true, ValueText = "∞" });
+            var snap = new Snapshot { Source = L.T("本機 Ollama 服務"), ObservedAt = DateTime.UtcNow, Plan = L.T("本機") };
+            snap.Meters.Add(new Meter { Key = "local", Label = L.T("本機模型"), ShortLabel = "∞", Unlimited = true, ValueText = "∞" });
             var names = loaded == null ? new List<string>() : loaded.Cast<object>().Select(m => Json.Str(Json.Get(m, "name"))).Where(n => n != null).ToList();
-            snap.Note = installed + " 個模型" + (names.Count > 0 ? "，載入中：" + string.Join("、", names) : "，目前閒置");
+            snap.Note = names.Count > 0 ? L.F("{0} 個模型，載入中：{1}", installed, string.Join(L.T("、"), names)) : L.F("{0} 個模型，目前閒置", installed);
             snap.Active = names.Count > 0;
             return snap;
         }

@@ -39,6 +39,8 @@ namespace SentriPet
         public void Start()
         {
             Settings = AppSettings.Load();
+            Program.UseLanguage(Program.LanguageOverride ?? Settings.Language);
+            Log.Info("language " + L.Current);
             Service = new UsageService(Settings);
             Service.Changed += () => Dispatcher.UIThread.Post(RefreshViews);
 
@@ -88,7 +90,7 @@ namespace SentriPet
             }
             if (!Settings.Chatty) return;
             int h = DateTime.Now.Hour;
-            window.Say(views[0].Id, h < 5 ? "這麼晚還在寫 code？別熬夜喔" : h < 11 ? "早安！今天也一起努力吧" : h < 14 ? "午安～吃飽了嗎？" : h < 18 ? "下午好，來杯咖啡？" : h < 22 ? "晚上好！" : "夜深了，早點休息喔");
+            window.Say(views[0].Id, h < 5 ? L.T("這麼晚還在寫 code？別熬夜喔") : h < 11 ? L.T("早安！今天也一起努力吧") : h < 14 ? L.T("午安～吃飽了嗎？") : h < 18 ? L.T("下午好，來杯咖啡？") : h < 22 ? L.T("晚上好！") : L.T("夜深了，早點休息喔"));
         }
 
         void Alert(ProviderView v, Meter m, int level)
@@ -148,10 +150,10 @@ namespace SentriPet
         NativeMenu BuildTrayMenu()
         {
             var m = new NativeMenu();
-            m.Add(Native("顯示／隱藏桌寵", ToggleWidget));
-            m.Add(Native("立即更新", () => Service.RefreshNow(null)));
+            m.Add(Native(L.T("顯示／隱藏桌寵"), ToggleWidget));
+            m.Add(Native(L.T("立即更新"), () => Service.RefreshNow(null)));
             m.Add(new NativeMenuItemSeparator());
-            m.Add(Native("結束", Quit));
+            m.Add(Native(L.T("結束"), Quit));
             return m;
         }
 
@@ -166,12 +168,12 @@ namespace SentriPet
         {
             var menu = new ContextMenu();
             var items = new List<object>();
-            string sum = views.Count == 0 ? "正在偵測 AI…" : string.Join("  ·  ", views.Select(v => v.Summary));
+            string sum = views.Count == 0 ? L.T("正在偵測 AI…") : string.Join("  ·  ", views.Select(v => v.Summary));
             items.Add(new MenuItem { Header = sum, IsEnabled = false });
             items.Add(new Separator());
-            items.Add(Item("立即更新", () => { Service.RefreshNow(null); if (views.Count > 0) window.Say(views[0].Id, "更新中…"); }));
+            items.Add(Item(L.T("立即更新"), () => { Service.RefreshNow(null); if (views.Count > 0) window.Say(views[0].Id, L.T("更新中…")); }));
 
-            var size = new MenuItem { Header = "大小" };
+            var size = new MenuItem { Header = L.T("大小") };
             var sizes = new List<object>();
             foreach (var z in new[] { 0.7, 0.85, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0 })
             {
@@ -184,22 +186,29 @@ namespace SentriPet
             var screens = window.Screens.All.OrderBy(s => s.Bounds.X).ThenBy(s => s.Bounds.Y).ToList();
             if (screens.Count > 1)
             {
-                var move = new MenuItem { Header = "移到螢幕" };
+                var move = new MenuItem { Header = L.T("移到螢幕") };
                 var list = new List<object>();
                 for (int i = 0; i < screens.Count; i++)
                 {
                     var sc = screens[i];
-                    list.Add(Item("螢幕 " + (i + 1) + (sc.IsPrimary ? " · 主螢幕" : ""), () => window.MoveToScreen(sc)));
+                    list.Add(Item(L.F("螢幕 {0}", i + 1) + (sc.IsPrimary ? " · " + L.T("主螢幕") : ""), () => window.MoveToScreen(sc)));
                 }
                 move.ItemsSource = list;
                 items.Add(move);
             }
-            items.Add(Toggle("永遠在最上層", Settings.AlwaysOnTop, () => { Settings.AlwaysOnTop = !Settings.AlwaysOnTop; window.ApplySettings(); Settings.Save(); }));
-            items.Add(Toggle("會說話", Settings.Chatty, () => { Settings.Chatty = !Settings.Chatty; Settings.Save(); }));
-            items.Add(Toggle("催我用完週額度（重置前提醒）", Settings.UseItReminder, () => { Settings.UseItReminder = !Settings.UseItReminder; Settings.Save(); RefreshViews(); }));
+            var lang = new MenuItem { Header = L.LanguageLabel };
+            var langs = new List<object>();
+            langs.Add(LanguageItem("auto", L.T("自動（跟隨系統）")));
+            langs.Add(new Separator());
+            foreach (var li in L.Languages) langs.Add(LanguageItem(li.Code, li.Native));
+            lang.ItemsSource = langs;
+            items.Add(lang);
+            items.Add(Toggle(L.T("永遠在最上層"), Settings.AlwaysOnTop, () => { Settings.AlwaysOnTop = !Settings.AlwaysOnTop; window.ApplySettings(); Settings.Save(); }));
+            items.Add(Toggle(L.T("會說話"), Settings.Chatty, () => { Settings.Chatty = !Settings.Chatty; Settings.Save(); }));
+            items.Add(Toggle(L.T("催我用完週額度（重置前提醒）"), Settings.UseItReminder, () => { Settings.UseItReminder = !Settings.UseItReminder; Settings.Save(); RefreshViews(); }));
             items.Add(new Separator());
-            items.Add(Item("先藏起來（點系統匣叫回）", ToggleWidget));
-            items.Add(Item("結束", Quit));
+            items.Add(Item(L.T("先藏起來（點系統匣叫回）"), ToggleWidget));
+            items.Add(Item(L.T("結束"), Quit));
             menu.ItemsSource = items;
             menu.Opened += (s, e) => menuOpen = true;
             menu.Closed += (s, e) => menuOpen = false;
@@ -223,6 +232,27 @@ namespace SentriPet
             mi.ToggleType = MenuItemToggleType.CheckBox;
             mi.IsChecked = on;
             return mi;
+        }
+
+        MenuItem LanguageItem(string code, string label)
+        {
+            var mi = Toggle(label, (Settings.Language ?? "auto") == code, () => ChangeLanguage(code));
+            mi.ToggleType = MenuItemToggleType.Radio;
+            return mi;
+        }
+
+        /// <summary>Switches the language on the fly: texts, fonts, the widget and the tray menu are rebuilt.</summary>
+        public void ChangeLanguage(string code)
+        {
+            Log.Info("language -> " + code);
+            Settings.Language = code;
+            Settings.Save();
+            Program.UseLanguage(code);
+            window.SetTheme(ThemeCatalog.Get(Settings.Theme).Create());
+            Service.RefreshNow(null);   // provider texts (labels, notes, errors) are made in the new language
+            RefreshViews();
+            if (tray != null) tray.Menu = BuildTrayMenu();
+            window.Say(null, L.T("好的！之後就用這個語言跟你聊天 ✦"));
         }
 
         public void ToggleWidget()

@@ -117,7 +117,7 @@ namespace SentriPet
             var name = new StackPanel { Orientation = Orientation.Horizontal };
             name.Children.Add(new Ellipse { Width = 9, Height = 9, Fill = G.B(accent), Margin = new Thickness(0, 1, 7, 0), VerticalAlignment = VerticalAlignment.Center });
             name.Children.Add(G.T(v.Name, 14.5, Text, FontWeight.Bold, G.Ui));
-            d.busy = G.Pill(G.T("工作中", 9.5, Palette.Hex("#93C5FD"), FontWeight.SemiBold, G.Ui), G.B(Palette.Hex("#3B82F6"), 0.2), 6, new Thickness(6, 1, 6, 1));
+            d.busy = G.Pill(G.T(L.T("工作中"), 9.5, Palette.Hex("#93C5FD"), FontWeight.SemiBold, G.Ui), G.B(Palette.Hex("#3B82F6"), 0.2), 6, new Thickness(6, 1, 6, 1));
             d.busy.Margin = new Thickness(8, 1, 0, 0);
             d.busy.VerticalAlignment = VerticalAlignment.Center;
             name.Children.Add(d.busy);
@@ -192,7 +192,7 @@ namespace SentriPet
             sp.Children.Add(d.status);
             sp.Children.Add(d.note);
             var hint = Wrap(Palette.Hex("#6B7280"));
-            hint.Text = "點一下互動 · 拖曳移動 · 右鍵選單 · 雙擊開設定";
+            hint.Text = L.T("點一下互動 · 拖曳移動 · 右鍵選單 · 雙擊開設定");
             hint.Margin = new Thickness(0, 6, 0, 0);
             sp.Children.Add(hint);
 
@@ -248,7 +248,7 @@ namespace SentriPet
         public void Update(ProviderView v)
         {
             busy.IsVisible = v.Active;
-            if (error != null) error.Text = v.Error ?? "沒有資料";
+            if (error != null) error.Text = v.Error ?? L.T("沒有資料");
             int level = v.HasData && v.UseIt != null ? v.UseItLevel : 0;
             useIt.IsVisible = level > 0;
             if (level > 0)
@@ -268,17 +268,17 @@ namespace SentriPet
             {
                 var m = v.Meters.FirstOrDefault(x => x.Key == ui.Key);
                 if (m == null) continue;
-                ui.Pct.Text = m.Unlimited ? "無限制" : "剩 " + (m.UsedApprox ? "≈" : "") + Fmt.Pct(m.Remaining);
+                ui.Pct.Text = m.Unlimited ? L.T("無限制") : L.F("剩 {0}", (m.UsedApprox ? "≈" : "") + Fmt.Pct(m.Remaining));
                 ui.Pct.Foreground = G.B(m.Unlimited ? Palette.Hex("#C4B5FD") : Palette.Level(m.Remaining));
                 if (ui.Fill != null)
                     ui.Fill.Width = m.Remaining > 0.5 ? Math.Max(6, ContentWidth * m.Remaining / 100) : 0;
                 string info;
                 if (m.Unlimited) info = m.ValueText ?? "";
                 else if (m.ResetsAt.HasValue)
-                    info = "↻ " + Fmt.When(m.ResetsAt) + " 重置（" + Fmt.Countdown(m.ResetsAt) + "後）" + (m.ResetApprox ? " · 推算值" : "");
-                else info = m.Used <= 0 ? "閒置中：下次使用時才開始計時" : "重置時間未知";
+                    info = "↻ " + L.F("{0} 重置（{1}後）", Fmt.When(m.ResetsAt), Fmt.Countdown(m.ResetsAt)) + (m.ResetApprox ? " · " + L.T("推算值") : "");
+                else info = m.Used <= 0 ? L.T("閒置中：下次使用時才開始計時") : L.T("重置時間未知");
                 if (m.ValueText != null && !m.Unlimited) info = m.ValueText + " · " + info;
-                if (m.WasReset) info += " · 已自動重置";
+                if (m.WasReset) info += " · " + L.T("已自動重置");
                 ui.Info.Text = info;
             }
             status.Text = v.HasData ? (v.StatusText ?? "") : "";

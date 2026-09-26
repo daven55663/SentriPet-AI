@@ -27,7 +27,7 @@ namespace SentriPet
         public static object TryParse(string text, out string error)
         {
             error = null;
-            if (string.IsNullOrEmpty(text)) { error = "空白內容"; return null; }
+            if (string.IsNullOrEmpty(text)) { error = L.T("空白內容"); return null; }
             try { return Parse(text); }
             catch (FormatException ex) { error = ex.Message; return null; }
         }
@@ -42,7 +42,7 @@ namespace SentriPet
             public object ParseDocument()
             {
                 Skip();
-                if (i >= s.Length) throw Fail("沒有內容");
+                if (i >= s.Length) throw Fail(L.T("沒有內容"));
                 var first = Value();
                 Skip();
                 if (i >= s.Length) return first;
@@ -57,10 +57,10 @@ namespace SentriPet
 
             FormatException Fail(string what)
             {
-                string code = i < s.Length ? " (字元碼 " + (int)s[i] + ")" : "";
+                string code = i < s.Length ? L.F(" (字元碼 {0})", (int)s[i]) : "";
                 int line = 1;
                 for (int k = 0; k < i && k < s.Length; k++) if (s[k] == '\n') line++;
-                return new FormatException("JSON 第 " + line + " 行、位置 " + i + "：" + what + code);
+                return new FormatException(L.F("JSON 第 {0} 行、位置 {1}：{2}", line, i, what) + code);
             }
 
             void Skip()
@@ -87,7 +87,7 @@ namespace SentriPet
             object Value()
             {
                 Skip();
-                if (i >= s.Length) throw Fail("內容提早結束");
+                if (i >= s.Length) throw Fail(L.T("內容提早結束"));
                 char c = s[i];
                 switch (c)
                 {
@@ -101,12 +101,12 @@ namespace SentriPet
                     case 'I': Word("Infinity"); return double.PositiveInfinity;
                 }
                 if (c == '-' || c == '+' || c == '.' || (c >= '0' && c <= '9')) return Number();
-                throw Fail("無法辨識的字元");
+                throw Fail(L.T("無法辨識的字元"));
             }
 
             void Word(string w)
             {
-                if (string.CompareOrdinal(s, i, w, 0, w.Length) != 0) throw Fail("預期 " + w);
+                if (string.CompareOrdinal(s, i, w, 0, w.Length) != 0) throw Fail(L.F("預期 {0}", w));
                 i += w.Length;
             }
 
@@ -117,17 +117,17 @@ namespace SentriPet
                 while (true)
                 {
                     Skip();
-                    if (i >= s.Length) throw Fail("物件沒有結尾");
+                    if (i >= s.Length) throw Fail(L.T("物件沒有結尾"));
                     if (s[i] == '}') { i++; return d; }
                     string key = (s[i] == '"' || s[i] == '\'') ? Str() : Ident();
                     Skip();
-                    if (i >= s.Length || s[i] != ':') throw Fail("預期 ':'");
+                    if (i >= s.Length || s[i] != ':') throw Fail(L.T("預期 ':'"));
                     i++;
                     d[key] = Value();
                     Skip();
                     if (i < s.Length && s[i] == ',') { i++; continue; }
                     if (i < s.Length && s[i] == '}') { i++; return d; }
-                    throw Fail("預期 ',' 或 '}'");
+                    throw Fail(L.T("預期 ',' 或 '}'"));
                 }
             }
 
@@ -138,13 +138,13 @@ namespace SentriPet
                 while (true)
                 {
                     Skip();
-                    if (i >= s.Length) throw Fail("陣列沒有結尾");
+                    if (i >= s.Length) throw Fail(L.T("陣列沒有結尾"));
                     if (s[i] == ']') { i++; return l.ToArray(); }
                     l.Add(Value());
                     Skip();
                     if (i < s.Length && s[i] == ',') { i++; continue; }
                     if (i < s.Length && s[i] == ']') { i++; return l.ToArray(); }
-                    throw Fail("預期 ',' 或 ']'");
+                    throw Fail(L.T("預期 ',' 或 ']'"));
                 }
             }
 
@@ -152,7 +152,7 @@ namespace SentriPet
             {
                 int start = i;
                 while (i < s.Length && (char.IsLetterOrDigit(s[i]) || s[i] == '_' || s[i] == '$' || s[i] == '-')) i++;
-                if (i == start) throw Fail("預期屬性名稱");
+                if (i == start) throw Fail(L.T("預期屬性名稱"));
                 return s.Substring(start, i - start);
             }
 
@@ -162,11 +162,11 @@ namespace SentriPet
                 var sb = new StringBuilder();
                 while (true)
                 {
-                    if (i >= s.Length) throw Fail("字串沒有結尾");
+                    if (i >= s.Length) throw Fail(L.T("字串沒有結尾"));
                     char c = s[i++];
                     if (c == q) return sb.ToString();
                     if (c != '\\') { sb.Append(c); continue; }
-                    if (i >= s.Length) throw Fail("字串沒有結尾");
+                    if (i >= s.Length) throw Fail(L.T("字串沒有結尾"));
                     char e = s[i++];
                     switch (e)
                     {
@@ -176,7 +176,7 @@ namespace SentriPet
                         case 'b': sb.Append('\b'); break;
                         case 'f': sb.Append('\f'); break;
                         case 'u':
-                            if (i + 4 > s.Length) throw Fail("\\u 跳脫不完整");
+                            if (i + 4 > s.Length) throw Fail(L.T("\\u 跳脫不完整"));
                             sb.Append((char)Convert.ToInt32(s.Substring(i, 4), 16));
                             i += 4;
                             break;
@@ -207,7 +207,7 @@ namespace SentriPet
                 }
                 double dv;
                 if (double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out dv)) return dv;
-                throw Fail("數字格式錯誤");
+                throw Fail(L.T("數字格式錯誤"));
             }
         }
 

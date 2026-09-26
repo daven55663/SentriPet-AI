@@ -39,9 +39,9 @@ namespace SentriPet
         readonly List<Item> items = new List<Item>();
 
         public override string Id { get { return "note"; } }
-        public override string Name { get { return "手寫便利貼"; } }
-        public override string Mood { get { return "慢慢來"; } }
-        public override string Blurb { get { return "貼在螢幕角落的手寫小紙條"; } }
+        public override string Name { get { return L.T("手寫便利貼"); } }
+        public override string Mood { get { return L.T("慢慢來"); } }
+        public override string Blurb { get { return L.T("貼在螢幕角落的手寫小紙條"); } }
 
         protected override FrameworkElement CreateRoot()
         {
@@ -58,7 +58,7 @@ namespace SentriPet
             var title = new Grid();
             title.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             title.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            title.Children.Add(G.T("今日 AI 額度", 17, InkBlue, FontWeights.Bold, G.Kai));
+            title.Children.Add(G.T(L.T("今日 AI 額度"), 17, InkBlue, FontWeights.Bold, G.Kai));
             date = G.T("", 14, InkSoft, FontWeights.Normal, G.Hand);
             date.VerticalAlignment = VerticalAlignment.Bottom;
             Grid.SetColumn(date, 1);
@@ -108,7 +108,7 @@ namespace SentriPet
             items.Clear();
             if (Views.Count == 0)
             {
-                list.Children.Add(G.T("正在找電腦裡的 AI…", 13, InkBlue, FontWeights.Normal, G.Kai));
+                list.Children.Add(G.T(L.T("正在找電腦裡的 AI…"), 13, InkBlue, FontWeights.Normal, G.Kai));
                 return;
             }
             foreach (var v in Views) list.Children.Add(MakeItem(v));
@@ -226,7 +226,7 @@ namespace SentriPet
         protected override void Refresh()
         {
             var now = DateTime.Now;
-            date.Text = now.Month + "/" + now.Day + " (" + "日一二三四五六"[(int)now.DayOfWeek] + ")";
+            date.Text = now.Month + "/" + now.Day + " (" + Fmt.WeekDay(now.DayOfWeek) + ")";
             foreach (var it in items)
             {
                 var v = View(it.Id);
@@ -239,14 +239,14 @@ namespace SentriPet
                     it.Doodle.Text = kind;
                     it.Doodle.Foreground = G.B(kind == "★" ? Palette.Hex("#E0A100") : kind == "☺" ? Palette.Hex("#2E8B57") : kind == "zzz" || kind == "…" || kind == "?" ? InkSoft : Palette.Hex("#C0392B"));
                 }
-                if (it.Error != null) it.Error.Text = v.Error ?? "沒有資料";
+                if (it.Error != null) it.Error.Text = v.Error ?? L.T("沒有資料");
                 foreach (var ln in it.Lines)
                 {
                     var m = v.Meters.FirstOrDefault(x => x.Key == ln.Key);
                     if (m == null) continue;
                     double rem = m.Unlimited ? 100 : Math.Round(m.Remaining);
                     if (Math.Abs(rem - ln.Drawn) >= 0.5) { ln.Drawn = rem; DrawBar(ln, rem); }
-                    ln.Pct.Text = m.Unlimited ? "無限" : "剩 " + Fmt.Pct(m.Remaining);
+                    ln.Pct.Text = m.Unlimited ? L.T("無限") : L.F("剩 {0}", Fmt.Pct(m.Remaining));
                     ln.Pct.Foreground = G.B(m.Unlimited ? InkBlue : Pencil(m.Remaining));
                     ln.Urgent = m == v.UseIt ? v.UseItLevel : 0;
                     if (ln.Urgent == 0) ln.Bar.Opacity = 1;
@@ -254,8 +254,8 @@ namespace SentriPet
                 if (it.Reset != null)
                 {
                     var p = v.ResetMeter;
-                    string txt = v.Unlimited ? "沒有額度限制" : p != null && p.ResetsAt.HasValue ? v.LabelOf(p) + "↻ " + G.ResetText(p) + "後重置" : "閒置中";
-                    if (v.Stale) txt += "（資料舊了）";
+                    string txt = v.Unlimited ? L.T("沒有額度限制") : p != null && p.ResetsAt.HasValue ? v.LabelOf(p) + "↻ " + L.F("{0}後重置", G.ResetText(p)) : L.T("閒置中");
+                    if (v.Stale) txt += L.T("（資料舊了）");
                     it.Reset.Text = txt;
                 }
             }

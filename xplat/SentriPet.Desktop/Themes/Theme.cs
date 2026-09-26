@@ -104,15 +104,19 @@ namespace SentriPet
 
     class ThemeInfo
     {
-        public string Id, Name, Mood, Blurb;
+        public string Id;
         public Func<Theme> Create;
+        string name, mood, blurb;
+        public string Name { get { return L.T(name); } set { name = value; } }
+        public string Mood { get { return L.T(mood); } set { mood = value; } }
+        public string Blurb { get { return L.T(blurb); } set { blurb = value; } }
     }
 
     static class ThemeCatalog
     {
         public static readonly List<ThemeInfo> All = new List<ThemeInfo>
         {
-            new ThemeInfo { Id = "pet", Name = "果凍桌寵", Mood = "元氣滿滿", Blurb = "果凍小怪獸，額度越多肚子越滿", Create = () => new PetTheme() },
+            new ThemeInfo { Id = "pet", Name = L.N("果凍桌寵"), Mood = L.N("元氣滿滿"), Blurb = L.N("果凍小怪獸，額度越多肚子越滿"), Create = () => new PetTheme() },
         };
 
         public static ThemeInfo Get(string id)
@@ -146,9 +150,33 @@ namespace SentriPet
     static class G
     {
         // font lists: the first one installed wins (Windows, macOS, Linux)
-        public static readonly FontFamily Ui = new FontFamily("Microsoft JhengHei UI, PingFang TC, Noto Sans CJK TC, Noto Sans TC, Source Han Sans TC, Segoe UI, Helvetica Neue, Noto Sans, Ubuntu, DejaVu Sans, Liberation Sans");
-        public static readonly FontFamily Num = new FontFamily("Segoe UI Variable Display, Segoe UI, SF Pro Display, Helvetica Neue, Noto Sans, Ubuntu, DejaVu Sans, Liberation Sans, Noto Sans CJK TC, Microsoft JhengHei UI, PingFang TC");
-        public static readonly FontFamily Mono = new FontFamily("Cascadia Mono, Consolas, SF Mono, Menlo, DejaVu Sans Mono, Noto Sans Mono");
+        public static FontFamily Ui, Num, Mono;
+
+        static G() { UseFonts(); }
+
+        const string Latin = "Segoe UI, Helvetica Neue, Noto Sans, Ubuntu, DejaVu Sans, Liberation Sans";
+
+        /// <summary>The CJK fonts for a writing system (<see cref="L.Script"/>) on Windows, macOS and Linux.</summary>
+        public static string CjkFonts(string script)
+        {
+            switch (script)
+            {
+                case "sc": return "Microsoft YaHei UI, PingFang SC, Noto Sans CJK SC, Noto Sans SC, Source Han Sans SC";
+                case "ja": return "Yu Gothic UI, Meiryo UI, Hiragino Sans, Hiragino Kaku Gothic ProN, Noto Sans CJK JP, Noto Sans JP, Source Han Sans JP";
+                case "ko": return "Malgun Gothic, Apple SD Gothic Neo, Noto Sans CJK KR, Noto Sans KR, Source Han Sans KR";
+                default: return "Microsoft JhengHei UI, PingFang TC, Noto Sans CJK TC, Noto Sans TC, Source Han Sans TC";
+            }
+        }
+
+        /// <summary>Picks the fonts for the language in use; themes built afterwards use them.</summary>
+        public static void UseFonts()
+        {
+            string script = L.Script;
+            string cjk = CjkFonts(script == "latin" ? "tc" : script);
+            Ui = new FontFamily(script == "latin" ? Latin + ", " + cjk : cjk + ", " + Latin);
+            Num = new FontFamily("Segoe UI Variable Display, Segoe UI, SF Pro Display, Helvetica Neue, Noto Sans, Ubuntu, DejaVu Sans, Liberation Sans, " + cjk);
+            Mono = new FontFamily("Cascadia Mono, Consolas, SF Mono, Menlo, DejaVu Sans Mono, Noto Sans Mono, " + cjk);
+        }
 
         public static IBrush B(Color c) { return Palette.Brush(c); }
         public static IBrush B(string hex) { return Palette.Brush(hex); }
@@ -311,8 +339,8 @@ namespace SentriPet
         public static string ResetText(Meter m)
         {
             if (m == null) return "";
-            if (m.Unlimited) return "無限制";
-            if (!m.ResetsAt.HasValue) return m.Used <= 0 ? "閒置中" : "重置時間未知";
+            if (m.Unlimited) return L.T("無限制");
+            if (!m.ResetsAt.HasValue) return m.Used <= 0 ? L.T("閒置中") : L.T("重置時間未知");
             return (m.ResetApprox ? "≈" : "") + Fmt.Countdown(m.ResetsAt);
         }
 

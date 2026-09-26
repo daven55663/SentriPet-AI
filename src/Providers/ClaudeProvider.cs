@@ -73,13 +73,13 @@ namespace SentriPet
         {
             var d = new Detection();
             if (Directory.Exists(Path.Combine(AppPaths.AppData, "Claude")) || AppPaths.MsixInstalled("Claude"))
-                d.Evidence.Add("Claude 桌面版");
+                d.Evidence.Add(L.T("Claude 桌面版"));
             if (Directory.Exists(Path.Combine(AppPaths.Home, ".claude"))) d.Evidence.Add("Claude Code");
-            if (AppPaths.EditorExtensions("anthropic.claude-code").Count > 0) d.Evidence.Add("VS Code 擴充");
-            if (AppPaths.Which("claude") != null) d.Evidence.Add("claude 指令");
+            if (AppPaths.EditorExtensions("anthropic.claude-code").Count > 0) d.Evidence.Add(L.T("VS Code 擴充"));
+            if (AppPaths.Which("claude") != null) d.Evidence.Add(L.T("claude 指令"));
             d.Installed = d.Evidence.Count > 0;
             if (FindHistory() == null)
-                d.Hint = Os.Linux ? "Claude 桌面版沒有 Linux 版，目前讀不到方案用量（之後會改讀 Claude Code 狀態列）" : "開啟 Claude 桌面版後就會開始記錄用量";
+                d.Hint = Os.Linux ? L.T("Claude 桌面版沒有 Linux 版，目前讀不到方案用量（之後會改讀 Claude Code 狀態列）") : L.T("開啟 Claude 桌面版後就會開始記錄用量");
             return d;
         }
 
@@ -89,7 +89,7 @@ namespace SentriPet
             activity.Ensure();
 
             string f = FindHistory();
-            if (f == null) return Snapshot.Fail("找不到用量紀錄：請開啟 Claude 桌面版");
+            if (f == null) return Snapshot.Fail(L.T("找不到用量紀錄：請開啟 Claude 桌面版"));
             var fi = new FileInfo(f);
             if (cachedSamples == null || f != cachedFile || fi.LastWriteTimeUtc != cachedMtime || fi.Length != cachedLen)
             {
@@ -99,7 +99,7 @@ namespace SentriPet
                 cachedLen = fi.Length;
             }
             var samples = cachedSamples;
-            if (samples.Count == 0) return Snapshot.Fail("用量紀錄是空的：請開啟 Claude 桌面版");
+            if (samples.Count == 0) return Snapshot.Fail(L.T("用量紀錄是空的：請開啟 Claude 桌面版"));
 
             var last = samples[samples.Count - 1];
             var now = DateTime.UtcNow;
@@ -113,7 +113,7 @@ namespace SentriPet
             var events = estimate ? usage : null;
             var snap = new Snapshot();
             snap.ObservedAt = lastUtc;
-            snap.Source = "Claude 桌面版快取";
+            snap.Source = L.T("Claude 桌面版快取");
             bool estimated = false;
 
             foreach (var key in OrderedKeys(last.U.Keys))
@@ -188,17 +188,17 @@ namespace SentriPet
             if (estimated)
             {
                 snap.ObservedAt = now;
-                snap.Source = "即時推算";
-                snap.Note = "以桌面版 " + baseTime + " 的數字為基準，加上之後 Claude Code 用掉的 token 推算（≈）；桌面版約每 15 分鐘校正一次";
+                snap.Source = L.T("即時推算");
+                snap.Note = L.F("以桌面版 {0} 的數字為基準，加上之後 Claude Code 用掉的 token 推算（≈）；桌面版約每 15 分鐘校正一次", baseTime);
             }
             if ((now - lastUtc).TotalMinutes > 35)
             {
                 snap.Stale = true;
-                snap.Note = "Claude 桌面版沒在執行，基準停在 " + lastUtc.ToLocalTime().ToString("M/d HH:mm") + (estimated ? "，之後的用量為推算" : "");
+                snap.Note = L.F(estimated ? "Claude 桌面版沒在執行，基準停在 {0}，之後的用量為推算" : "Claude 桌面版沒在執行，基準停在 {0}", lastUtc.ToLocalTime().ToString("M/d HH:mm"));
             }
             else if (!estimated)
             {
-                snap.Note = "桌面版約每 15 分鐘更新一次（這次是 " + baseTime + "）；重置時間為推算值";
+                snap.Note = L.F("桌面版約每 15 分鐘更新一次（這次是 {0}）；重置時間為推算值", baseTime);
             }
             snap.Active = activity.ActiveWithin(90);
             return snap;
@@ -288,10 +288,10 @@ namespace SentriPet
         {
             switch (key)
             {
-                case "fh": return "5 小時";
-                case "sd": return "每週";
-                case "so": return "每週 Opus";
-                case "ss": return "每週 Sonnet";
+                case "fh": return L.T("5 小時");
+                case "sd": return L.T("每週");
+                case "so": return L.T("每週 Opus");
+                case "ss": return L.T("每週 Sonnet");
                 default: return Fmt.WindowLabel(win) + " (" + key + ")";
             }
         }
@@ -301,7 +301,7 @@ namespace SentriPet
             switch (key)
             {
                 case "fh": return "5h";
-                case "sd": return "週";
+                case "sd": return L.T("週");
                 case "so": return "Op";
                 case "ss": return "So";
                 default: return Fmt.WindowShort(win);
@@ -386,9 +386,10 @@ namespace SentriPet
             return Json.FromUnix(est);
         }
 
-        static readonly Regex WeeklyRx = new Regex(@"^\s*(?:週|周|星期|禮拜)?\s*(?<d>[日天一二三四五六]|sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?\s+(?<h>\d{1,2})(?::(?<m>\d{2}))?\s*(?<ap>am|pm)?\s*$", RegexOptions.IgnoreCase);
+        // i18n-ignore (weekday names in every language we speak)
+        static readonly Regex WeeklyRx = new Regex(@"^\s*(?:週|周|星期|禮拜|礼拜)?\s*(?<d>[日天一二三四五六月火水木金土일월화수목금토]|sun|mon|tue|wed|thu|fri|sat)(?:曜日|曜|요일)?[a-z]*\.?\s+(?<h>\d{1,2})(?::(?<m>\d{2}))?\s*(?<ap>am|pm)?\s*$", RegexOptions.IgnoreCase); // i18n-ignore
 
-        /// <summary>Parses "Thu 23:00", "週四 23:00", "fri 4pm" into the next such moment (UTC).</summary>
+        /// <summary>Parses "Thu 23:00", "週四 23:00", "木曜日 23:00", "목요일 23:00", "fri 4pm" into the next such moment (UTC).</summary>
         public static bool TryParseWeekly(string text, out DateTime? next)
         {
             next = null;
@@ -399,12 +400,12 @@ namespace SentriPet
             int dow;
             switch (d)
             {
-                case "日": case "天": case "sun": dow = 0; break;
-                case "一": case "mon": dow = 1; break;
-                case "二": case "tue": dow = 2; break;
-                case "三": case "wed": dow = 3; break;
-                case "四": case "thu": dow = 4; break;
-                case "五": case "fri": dow = 5; break;
+                case "日": case "天": case "일": case "sun": dow = 0; break; // i18n-ignore
+                case "一": case "月": case "월": case "mon": dow = 1; break; // i18n-ignore
+                case "二": case "火": case "화": case "tue": dow = 2; break; // i18n-ignore
+                case "三": case "水": case "수": case "wed": dow = 3; break; // i18n-ignore
+                case "四": case "木": case "목": case "thu": dow = 4; break; // i18n-ignore
+                case "五": case "金": case "금": case "fri": dow = 5; break; // i18n-ignore
                 default: dow = 6; break;
             }
             int h = int.Parse(m.Groups["h"].Value);

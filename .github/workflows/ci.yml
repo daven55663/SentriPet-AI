@@ -54,9 +54,14 @@ jobs:
         shell: bash
         run: |
           dotnet run --no-build -c Release --project xplat/SentriPet.Desktop -- --snapshot pet-shots
-          ls pet-shots
-          if ls pet-shots/*_error.txt >/dev/null 2>&1; then cat pet-shots/*_error.txt; exit 1; fi
-          echo "Rendered $(ls pet-shots/*.png | wc -l) screenshots on ${{ runner.os }}" >> "$GITHUB_STEP_SUMMARY"
+          # the other languages (checks the CJK fonts of each system)
+          for l in en ja ko zh-CN; do
+            dotnet run --no-build -c Release --project xplat/SentriPet.Desktop -- --snapshot pet-shots/lang-$l --lang $l
+          done
+          ls -R pet-shots
+          errors=$(find pet-shots -name '*_error.txt')
+          if [ -n "$errors" ]; then cat $errors; exit 1; fi
+          echo "Rendered $(find pet-shots -name '*.png' | wc -l) screenshots on ${{ runner.os }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the report and screenshots
         if: always()
@@ -109,12 +114,24 @@ jobs:
           "Rendered $count theme screenshots (artifact: test-results)" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           if ($p.ExitCode -ne 0 -or $errors.Count -gt 0 -or $count -lt 50) { Write-Error "theme rendering failed"; exit 1 }
 
-      - name: Render the menu and the settings page
+      - name: Render every theme in the other languages
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath bin\SentriPet.exe -ArgumentList '--snapshot-ui', 'ui-shots' -Wait -PassThru
+          foreach ($l in 'en', 'ja', 'ko', 'zh-CN') {
+            $p = Start-Process -FilePath bin\SentriPet.exe -ArgumentList '--snapshot', "shots-lang\$l", '--mock', '--lang', $l -Wait -PassThru
+            $errors = @(Get-ChildItem "shots-lang\$l" -Filter *_error.txt)
+            foreach ($e in $errors) { Get-Content $e.FullName }
+            $count = @(Get-ChildItem "shots-lang\$l" -Filter *.png).Count
+            "${l}: rendered $count images"
+            if ($p.ExitCode -ne 0 -or $errors.Count -gt 0 -or $count -lt 50) { Write-Error "theme rendering failed ($l)"; exit 1 }
+          }
+
+      - name: Render the menu and the settings page (and switch the language while running)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath bin\SentriPet.exe -ArgumentList '--snapshot-ui', 'ui-shots', '--switch-lang', 'en' -Wait -PassThru
           Get-ChildItem ui-shots | Format-Table Name, Length
-          if ($p.ExitCode -ne 0 -or -not (Test-Path ui-shots\settings.png) -or -not (Test-Path ui-shots\menu.png)) { Write-Error "UI rendering failed"; exit 1 }
+          if ($p.ExitCode -ne 0 -or -not (Test-Path ui-shots\settings.png) -or -not (Test-Path ui-shots\menu.png) -or -not (Test-Path ui-shots\switched_settings.png)) { Write-Error "UI rendering failed"; exit 1 }
 
       - name: Upload test report and screenshots
         if: always()
@@ -125,6 +142,7 @@ jobs:
             test-report.txt
             probe.txt
             shots/
+            shots-lang/
             ui-shots/
           if-no-files-found: warn
 

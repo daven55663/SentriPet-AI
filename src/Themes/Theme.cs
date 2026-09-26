@@ -114,22 +114,26 @@ namespace SentriPet
 
     class ThemeInfo
     {
-        public string Id, Name, Mood, Blurb, Glyph;
+        public string Id, Glyph;
         public Func<Theme> Create;
+        string name, mood, blurb;
+        public string Name { get { return L.T(name); } set { name = value; } }
+        public string Mood { get { return L.T(mood); } set { mood = value; } }
+        public string Blurb { get { return L.T(blurb); } set { blurb = value; } }
     }
 
     static class ThemeCatalog
     {
         public static readonly List<ThemeInfo> All = new List<ThemeInfo>
         {
-            new ThemeInfo { Id = "pet", Name = "果凍桌寵", Mood = "元氣滿滿", Glyph = "●", Blurb = "果凍小怪獸，額度越多肚子越滿", Create = () => new PetTheme() },
-            new ThemeInfo { Id = "glass", Name = "極簡玻璃", Mood = "平靜專注", Glyph = "◎", Blurb = "毛玻璃卡片＋圓環，乾淨俐落", Create = () => new GlassTheme() },
-            new ThemeInfo { Id = "pixel", Name = "像素勇者", Mood = "想打電動", Glyph = "▦", Blurb = "RPG 狀態列，HP/MP 就是你的額度", Create = () => new PixelTheme() },
-            new ThemeInfo { Id = "terminal", Name = "駭客終端", Mood = "進入心流", Glyph = "▮", Blurb = "綠色磷光 CRT，點標題列換顏色", Create = () => new TerminalTheme() },
-            new ThemeInfo { Id = "gauge", Name = "賽車儀表", Mood = "全速前進", Glyph = "◔", Blurb = "油表指針＋警示燈，AI 工作時遠光燈會亮", Create = () => new GaugeTheme() },
-            new ThemeInfo { Id = "potion", Name = "魔法藥水", Mood = "有點夢幻", Glyph = "⚗", Blurb = "每個額度一瓶藥水，會冒泡泡", Create = () => new PotionTheme() },
-            new ThemeInfo { Id = "neon", Name = "霓虹夜城", Mood = "深夜模式", Glyph = "◆", Blurb = "賽博龐克霓虹燈管，偶爾故障閃爍", Create = () => new NeonTheme() },
-            new ThemeInfo { Id = "note", Name = "手寫便利貼", Mood = "慢慢來", Glyph = "✎", Blurb = "貼在螢幕角落的手寫小紙條", Create = () => new NoteTheme() },
+            new ThemeInfo { Id = "pet", Name = L.N("果凍桌寵"), Mood = L.N("元氣滿滿"), Glyph = "●", Blurb = L.N("果凍小怪獸，額度越多肚子越滿"), Create = () => new PetTheme() },
+            new ThemeInfo { Id = "glass", Name = L.N("極簡玻璃"), Mood = L.N("平靜專注"), Glyph = "◎", Blurb = L.N("毛玻璃卡片＋圓環，乾淨俐落"), Create = () => new GlassTheme() },
+            new ThemeInfo { Id = "pixel", Name = L.N("像素勇者"), Mood = L.N("想打電動"), Glyph = "▦", Blurb = L.N("RPG 狀態列，HP/MP 就是你的額度"), Create = () => new PixelTheme() },
+            new ThemeInfo { Id = "terminal", Name = L.N("駭客終端"), Mood = L.N("進入心流"), Glyph = "▮", Blurb = L.N("綠色磷光 CRT，點標題列換顏色"), Create = () => new TerminalTheme() },
+            new ThemeInfo { Id = "gauge", Name = L.N("賽車儀表"), Mood = L.N("全速前進"), Glyph = "◔", Blurb = L.N("油表指針＋警示燈，AI 工作時遠光燈會亮"), Create = () => new GaugeTheme() },
+            new ThemeInfo { Id = "potion", Name = L.N("魔法藥水"), Mood = L.N("有點夢幻"), Glyph = "⚗", Blurb = L.N("每個額度一瓶藥水，會冒泡泡"), Create = () => new PotionTheme() },
+            new ThemeInfo { Id = "neon", Name = L.N("霓虹夜城"), Mood = L.N("深夜模式"), Glyph = "◆", Blurb = L.N("賽博龐克霓虹燈管，偶爾故障閃爍"), Create = () => new NeonTheme() },
+            new ThemeInfo { Id = "note", Name = L.N("手寫便利貼"), Mood = L.N("慢慢來"), Glyph = "✎", Blurb = L.N("貼在螢幕角落的手寫小紙條"), Create = () => new NoteTheme() },
         };
 
         public static ThemeInfo Get(string id)
@@ -141,12 +145,33 @@ namespace SentriPet
     /// <summary>Drawing helpers shared by the themes.</summary>
     static class G
     {
-        public static readonly FontFamily Ui = new FontFamily("Microsoft JhengHei UI, Segoe UI");
-        public static readonly FontFamily Num = new FontFamily("Segoe UI Variable Display, Segoe UI, Microsoft JhengHei UI");
-        public static readonly FontFamily Mono = new FontFamily("Cascadia Mono, Consolas, Microsoft JhengHei UI");
-        public static readonly FontFamily Din = new FontFamily("Bahnschrift, Segoe UI, Microsoft JhengHei UI");
-        public static readonly FontFamily Hand = new FontFamily("Ink Free, Segoe Print, DFKai-SB");
-        public static readonly FontFamily Kai = new FontFamily("DFKai-SB, 標楷體, Microsoft JhengHei UI");
+        public static FontFamily Ui, Num, Mono, Din, Hand, Kai;
+        /// <summary>The Windows UI font for the current language (also used by the menu styles).</summary>
+        public static string UiName;
+
+        static G() { UseFonts(); }
+
+        /// <summary>Picks the fonts for the language in use (<see cref="L.Script"/>); themes built afterwards use them.</summary>
+        public static void UseFonts()
+        {
+            string ui, kai;
+            switch (L.Script)
+            {
+                case "sc": ui = "Microsoft YaHei UI"; kai = "KaiTi, 楷体, Microsoft YaHei UI"; break; // i18n-ignore
+                case "ja": ui = "Yu Gothic UI, Meiryo UI"; kai = "UD Digi Kyokasho N-R, Yu Mincho, Yu Gothic UI"; break;
+                case "ko": ui = "Malgun Gothic"; kai = "Gungsuh, Batang, Malgun Gothic"; break;
+                case "latin": ui = "Segoe UI, Microsoft JhengHei UI"; kai = "Segoe Print, Ink Free, Segoe UI"; break;
+                default: ui = "Microsoft JhengHei UI"; kai = "DFKai-SB, 標楷體, Microsoft JhengHei UI"; break; // i18n-ignore
+            }
+            string first = ui.Split(',')[0].Trim();
+            UiName = ui;
+            Ui = new FontFamily(ui + ", Segoe UI");
+            Num = new FontFamily("Segoe UI Variable Display, Segoe UI, " + ui);
+            Mono = new FontFamily("Cascadia Mono, Consolas, " + ui);
+            Din = new FontFamily("Bahnschrift, Segoe UI, " + ui);
+            Hand = new FontFamily("Ink Free, Segoe Print, " + kai.Split(',')[0].Trim() + ", " + first);
+            Kai = new FontFamily(kai);
+        }
 
         public static SolidColorBrush B(Color c) { return Palette.Brush(c); }
         public static SolidColorBrush B(string hex) { return Palette.Brush(hex); }
@@ -347,8 +372,8 @@ namespace SentriPet
         public static string ResetText(Meter m)
         {
             if (m == null) return "";
-            if (m.Unlimited) return "無限制";
-            if (!m.ResetsAt.HasValue) return m.Used <= 0 ? "閒置中" : "重置時間未知";
+            if (m.Unlimited) return L.T("無限制");
+            if (!m.ResetsAt.HasValue) return m.Used <= 0 ? L.T("閒置中") : L.T("重置時間未知");
             return (m.ResetApprox ? "≈" : "") + Fmt.Countdown(m.ResetsAt);
         }
 

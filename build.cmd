@@ -13,6 +13,8 @@ if exist assets\app.ico set ICON=/win32icon:assets\app.ico
  /r:"%WPF%\PresentationFramework.dll" /r:"%WPF%\PresentationCore.dll" /r:"%WPF%\WindowsBase.dll" ^
  /r:System.Xaml.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll ^
  /r:System.Core.dll /r:Microsoft.CSharp.dll /r:System.Xml.dll ^
+ /resource:src\Lang\zh-CN.json,SentriPet.Lang.zh-CN.json /resource:src\Lang\en.json,SentriPet.Lang.en.json ^
+ /resource:src\Lang\ja.json,SentriPet.Lang.ja.json /resource:src\Lang\ko.json,SentriPet.Lang.ko.json ^
  /recurse:src\*.cs
 if errorlevel 1 exit /b 1
 copy /y src\SentriPet.exe.config bin\ >nul

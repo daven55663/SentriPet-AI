@@ -78,9 +78,9 @@ namespace SentriPet
         double flickerUntil = -1;
 
         public override string Id { get { return "neon"; } }
-        public override string Name { get { return "霓虹夜城"; } }
-        public override string Mood { get { return "深夜模式"; } }
-        public override string Blurb { get { return "賽博龐克霓虹燈管，偶爾故障閃爍"; } }
+        public override string Name { get { return L.T("霓虹夜城"); } }
+        public override string Mood { get { return L.T("深夜模式"); } }
+        public override string Blurb { get { return L.T("賽博龐克霓虹燈管，偶爾故障閃爍"); } }
 
         protected override FrameworkElement CreateRoot()
         {

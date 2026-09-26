@@ -296,9 +296,9 @@ namespace SentriPet
         int messageIdx;
 
         public override string Id { get { return "pixel"; } }
-        public override string Name { get { return "像素勇者"; } }
-        public override string Mood { get { return "想打電動"; } }
-        public override string Blurb { get { return "RPG 狀態列，HP/MP 就是你的額度"; } }
+        public override string Name { get { return L.T("像素勇者"); } }
+        public override string Mood { get { return L.T("想打電動"); } }
+        public override string Blurb { get { return L.T("RPG 狀態列，HP/MP 就是你的額度"); } }
 
         protected override FrameworkElement CreateRoot()
         {
@@ -354,7 +354,7 @@ namespace SentriPet
             if (p.Contains("edu")) return "LV15";
             if (p.Contains("go")) return "LV5";
             if (p.Contains("free")) return "LV1";
-            if (p.Contains("本機") || p.Contains("local")) return "LV**";
+            if (p.Contains(L.T("本機")) || p.Contains("local")) return "LV**";
             return "LV??";
         }
 
@@ -451,13 +451,13 @@ namespace SentriPet
                 if (v == null) continue;
                 string status;
                 Color sc;
-                if (!v.HasData) { status = "迷路中"; sc = Palette.Hex("#A0A0B0"); }
-                else if (v.Active) { status = "戰鬥中"; sc = Palette.Hex("#FFA040"); }
-                else if (v.Mood == SentriPet.Mood.Empty) { status = "睡眠"; sc = Palette.Hex("#A8C8FF"); }
-                else if (v.Mood == SentriPet.Mood.Critical) { status = "瀕死"; sc = Palette.Hex("#FF5050"); }
-                else if (v.Mood == SentriPet.Mood.Worried) { status = "疲勞"; sc = Palette.Hex("#F8D030"); }
-                else { status = "正常"; sc = Colors.White; }
-                if (v.Stale) status += "·舊";
+                if (!v.HasData) { status = L.T("迷路中"); sc = Palette.Hex("#A0A0B0"); }
+                else if (v.Active) { status = L.T("戰鬥中"); sc = Palette.Hex("#FFA040"); }
+                else if (v.Mood == SentriPet.Mood.Empty) { status = L.T("睡眠"); sc = Palette.Hex("#A8C8FF"); }
+                else if (v.Mood == SentriPet.Mood.Critical) { status = L.T("瀕死"); sc = Palette.Hex("#FF5050"); }
+                else if (v.Mood == SentriPet.Mood.Worried) { status = L.T("疲勞"); sc = Palette.Hex("#F8D030"); }
+                else { status = L.T("正常"); sc = Colors.White; }
+                if (v.Stale) status += L.T("·舊");
                 m.Status.Text = status;
                 m.Status.Foreground = G.B(sc);
                 m.Face = !v.HasData ? "normal" : v.Mood == SentriPet.Mood.Empty ? "sleep" : v.Mood == SentriPet.Mood.Critical ? "hurt" : "normal";
@@ -481,24 +481,24 @@ namespace SentriPet
 
         string NextLine()
         {
-            if (Views.Count == 0) return "勇者正在尋找夥伴…";
+            if (Views.Count == 0) return L.T("勇者正在尋找夥伴…");
             var v = Views[messageIdx++ % Views.Count];
             string n = v.Name.ToUpperInvariant();
-            if (!v.HasData) return n + " 迷失在迷霧中…（" + (v.Error ?? "沒有資料") + "）";
-            if (v.Active) return n + " 正在戰鬥中！";
+            if (!v.HasData) return L.F("{0} 迷失在迷霧中…（{1}）", n, v.Error ?? L.T("沒有資料"));
+            if (v.Active) return L.F("{0} 正在戰鬥中！", n);
             if (v.UseItLevel >= 2 && v.UseIt != null)
-                return n + " 的魔力還剩 " + Fmt.Pct(v.UseIt.Remaining) + "，" + Fmt.Countdown(v.UseIt.ResetsAt) + "後就會消失！快施放大絕招！";
+                return L.F("{0} 的魔力還剩 {1}，{2}後就會消失！快施放大絕招！", n, Fmt.Pct(v.UseIt.Remaining), Fmt.Countdown(v.UseIt.ResetsAt));
             if (v.UseItLevel == 1 && v.UseIt != null && messageIdx % 2 == 0)
-                return n + " 的" + v.UseIt.Label + "魔力還有 " + Fmt.Pct(v.UseIt.Remaining) + "，" + Fmt.When(v.UseIt.ResetsAt) + " 前用掉吧！";
+                return L.F("{0} 的{1}魔力還有 {2}，{3} 前用掉吧！", n, v.UseIt.Label, Fmt.Pct(v.UseIt.Remaining), Fmt.When(v.UseIt.ResetsAt));
             switch (v.Mood)
             {
-                case SentriPet.Mood.Great: return n + " 的 HP 還有 " + Fmt.Pct(v.HeadlineRemaining) + "！精神百倍！";
-                case SentriPet.Mood.Good: return n + " 的 HP 還有 " + Fmt.Pct(v.HeadlineRemaining) + "。";
-                case SentriPet.Mood.Worried: return n + " 看起來有點累了…（HP " + Fmt.Pct(v.HeadlineRemaining) + "）";
-                case SentriPet.Mood.Critical: return n + " 瀕死！快找地方休息！";
-                case SentriPet.Mood.Empty: return n + " 睡著了… " + (v.Primary != null ? Fmt.Countdown(v.Primary.ResetsAt) + "後復活" : "");
+                case SentriPet.Mood.Great: return L.F("{0} 的 HP 還有 {1}！精神百倍！", n, Fmt.Pct(v.HeadlineRemaining));
+                case SentriPet.Mood.Good: return L.F("{0} 的 HP 還有 {1}。", n, Fmt.Pct(v.HeadlineRemaining));
+                case SentriPet.Mood.Worried: return L.F("{0} 看起來有點累了…（HP {1}）", n, Fmt.Pct(v.HeadlineRemaining));
+                case SentriPet.Mood.Critical: return L.F("{0} 瀕死！快找地方休息！", n);
+                case SentriPet.Mood.Empty: return L.F("{0} 睡著了…", n) + (v.Primary != null ? " " + L.F("{0}後復活", Fmt.Countdown(v.Primary.ResetsAt)) : "");
             }
-            return n + " 準備就緒。";
+            return L.F("{0} 準備就緒。", n);
         }
 
         public override bool Say(string providerId, string text)

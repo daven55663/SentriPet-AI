@@ -41,9 +41,9 @@ namespace SentriPet
         readonly List<Row> rows = new List<Row>();
 
         public override string Id { get { return "glass"; } }
-        public override string Name { get { return "極簡玻璃"; } }
-        public override string Mood { get { return "平靜專注"; } }
-        public override string Blurb { get { return "毛玻璃卡片＋圓環，乾淨俐落"; } }
+        public override string Name { get { return L.T("極簡玻璃"); } }
+        public override string Mood { get { return L.T("平靜專注"); } }
+        public override string Blurb { get { return L.T("毛玻璃卡片＋圓環，乾淨俐落"); } }
 
         protected override FrameworkElement CreateRoot()
         {
@@ -71,7 +71,7 @@ namespace SentriPet
             var header = new Grid { Margin = new Thickness(0, 0, 0, 8) };
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            header.Children.Add(G.T("AI 用量", 12.5, Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF), FontWeights.Bold, G.Ui));
+            header.Children.Add(G.T(L.T("AI 用量"), 12.5, Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF), FontWeights.Bold, G.Ui));
             var right = new StackPanel { Orientation = Orientation.Horizontal };
             liveDot = new Ellipse { Width = 7, Height = 7, Fill = G.B(Palette.Hex("#4ADE80")), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
             clock = G.T("", 11.5, Color.FromArgb(0x8C, 0xFF, 0xFF, 0xFF), FontWeights.SemiBold, G.Num);
@@ -93,7 +93,7 @@ namespace SentriPet
             rows.Clear();
             if (Views.Count == 0)
             {
-                list.Children.Add(G.T("正在偵測電腦上的 AI…", 11.5, Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF)));
+                list.Children.Add(G.T(L.T("正在偵測電腦上的 AI…"), 11.5, Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF)));
                 return;
             }
             for (int i = 0; i < Views.Count; i++)
@@ -177,7 +177,7 @@ namespace SentriPet
             }
             else
             {
-                r.Error = G.T(v.Error ?? "沒有資料", 10.5, Color.FromArgb(0xA8, 0xFF, 0xFF, 0xFF));
+                r.Error = G.T(v.Error ?? L.T("沒有資料"), 10.5, Color.FromArgb(0xA8, 0xFF, 0xFF, 0xFF));
                 r.Error.TextWrapping = TextWrapping.Wrap;
                 r.Error.MaxWidth = 150;
                 r.Error.VerticalAlignment = VerticalAlignment.Center;
@@ -195,8 +195,8 @@ namespace SentriPet
             {
                 var v = View(r.Id);
                 if (v == null) continue;
-                r.Status.Text = v.HasData ? (v.Stale ? "資料較舊 · " + Fmt.Ago(v.Snap.ObservedAt) : v.StatusText.Split('·')[0].Trim()) : "";
-                if (r.Error != null) r.Error.Text = v.Error ?? "沒有資料";
+                r.Status.Text = v.HasData ? (v.Stale ? L.T("資料較舊") + " · " + Fmt.Ago(v.Snap.ObservedAt) : v.StatusText.Split('·')[0].Trim()) : "";
+                if (r.Error != null) r.Error.Text = v.Error ?? L.T("沒有資料");
                 foreach (var ring in r.Rings)
                 {
                     var m = v.Meters.FirstOrDefault(x => x.Key == ring.Key);
@@ -205,7 +205,7 @@ namespace SentriPet
                     ring.Value.Text = m.Unlimited ? "∞" : Math.Round(m.Remaining).ToString("0");
                     ring.Unit.Visibility = m.Unlimited ? Visibility.Collapsed : Visibility.Visible;
                     ring.Value.Foreground = G.B(m.Unlimited || m.Remaining >= 20 ? Colors.White : Palette.Hex("#FF8A8A"));
-                    ring.Reset.Text = m.Unlimited ? "無限制" : m.ResetsAt.HasValue ? G.ResetText(m) : (m.Used <= 0 ? "閒置中" : "—");
+                    ring.Reset.Text = m.Unlimited ? L.T("無限制") : m.ResetsAt.HasValue ? G.ResetText(m) : (m.Used <= 0 ? L.T("閒置中") : "—");
                     // this window resets soon with quota left over: its ring blinks
                     int urgent = m == v.UseIt ? v.UseItLevel : 0;
                     if (urgent != ring.Urgent)

@@ -43,10 +43,11 @@ namespace SentriPet
             // and it avoids the large driver allocations of a D3D device.
             if (!Environment.GetCommandLineArgs().Contains("--gpu"))
                 RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
-            Styles.Load(app);
-            Log.Info("start " + App.Version + (AppPaths.Dev ? " (dev)" : "") + " exe=" + AppPaths.ExeDir);
-
             Settings = AppSettings.Load();
+            App.UseLanguage(App.LanguageOverride ?? Settings.Language);
+            Styles.Load(app);
+            Log.Info("start " + App.Version + (AppPaths.Dev ? " (dev)" : "") + " exe=" + AppPaths.ExeDir + " lang=" + L.Current);
+
             if (Settings.DailyRandomTheme) PickDailyTheme(false);
             Autostart.Set(Settings.AutoStart);
 
@@ -90,7 +91,7 @@ namespace SentriPet
                     app.Dispatcher.BeginInvoke(new Action(() =>
                     {
                         window.ShowWidget();
-                        window.Say(null, "我在這裡！");
+                        window.Say(null, L.T("我在這裡！"));
                     }));
                 }
             }) { IsBackground = true };
@@ -115,7 +116,7 @@ namespace SentriPet
                 if (unlocked)
                 {
                     Service.RefreshNow(null);
-                    if (Settings.Chatty && views.Count > 0) window.Say(views[0].Id, "歡迎回來！");
+                    if (Settings.Chatty && views.Count > 0) window.Say(views[0].Id, L.T("歡迎回來！"));
                 }
             }));
         }
@@ -129,7 +130,7 @@ namespace SentriPet
         {
             views = Service.BuildViews(Settings, false);
             if (window.Theme != null) window.Theme.Update(views);
-            tray.Update(views);
+            if (tray != null) tray.Update(views);
             alerts.Check(Settings, views, Alert, CelebrateReset);
             if (!greeted && views.Count > 0 && Service.Providers.All(p => Service.SnapshotFor(p.Id) != null || !IsInstalled(p.Id)))
             {
@@ -159,7 +160,7 @@ namespace SentriPet
             }
             if (!Settings.Chatty) return;
             int h = DateTime.Now.Hour;
-            string hello = h < 5 ? "這麼晚還在寫 code？別熬夜喔" : h < 11 ? "早安！今天也一起努力吧" : h < 14 ? "午安～吃飽了嗎？" : h < 18 ? "下午好，來杯咖啡？" : h < 22 ? "晚上好！" : "夜深了，早點休息喔";
+            string hello = h < 5 ? L.T("這麼晚還在寫 code？別熬夜喔") : h < 11 ? L.T("早安！今天也一起努力吧") : h < 14 ? L.T("午安～吃飽了嗎？") : h < 18 ? L.T("下午好，來杯咖啡？") : h < 22 ? L.T("晚上好！") : L.T("夜深了，早點休息喔");
             window.Say(views[0].Id, hello);
         }
 
@@ -169,7 +170,7 @@ namespace SentriPet
         {
             string text = level >= 2 ? Lines.Critical(v, m) : Lines.Warn(v, m);
             window.Say(v.Id, text);
-            if (Settings.Notifications) tray.Notify(App.DisplayName, text);
+            if (Settings.Notifications) Notify(App.DisplayName, text);
         }
 
         // ------------------------------------------------------------------ use it or lose it
@@ -193,7 +194,7 @@ namespace SentriPet
                 Log.Info("use-it " + e.View.Id + "|" + e.View.UseIt.Key + " level " + e.View.UseItLevel + ": " + e.Text);
                 Settings.Save();
                 if (window.CanTalk) window.Say(e.View.Id, e.Text);
-                if (Settings.Notifications) tray.Notify(App.DisplayName + " · 額度快過期了", e.Text);
+                if (Settings.Notifications) Notify(App.DisplayName + " · " + L.T("額度快過期了"), e.Text);
             }
         }
 
@@ -202,7 +203,7 @@ namespace SentriPet
             string text = Lines.Reset(v, m);
             if (window.Theme != null) window.Theme.Celebrate(v.Id);
             window.Say(v.Id, text);
-            if (Settings.Notifications && previousUsed >= 50) tray.Notify(App.DisplayName, text);
+            if (Settings.Notifications && previousUsed >= 50) Notify(App.DisplayName, text);
         }
 
         // ------------------------------------------------------------------ commands
@@ -229,8 +230,52 @@ namespace SentriPet
             if (apply && window != null)
             {
                 window.SetTheme(pick.Create());
-                window.Say(null, "新的一天，今天換成「" + pick.Name + "」！");
+                window.Say(null, L.F("新的一天，今天換成「{0}」！", pick.Name));
             }
+        }
+
+        MenuItem LanguageItem(string code, string label)
+        {
+            var mi = Item(label, null, () => ChangeLanguage(code));
+            mi.IsChecked = (Settings.Language ?? "auto") == code;
+            if (code == "auto") mi.InputGestureText = L.Languages.First(x => x.Code == L.Resolve("auto", System.Globalization.CultureInfo.CurrentUICulture.Name)).Native;
+            return mi;
+        }
+
+        void Notify(string title, string text)
+        {
+            if (tray != null) tray.Notify(title, text);
+        }
+
+        void ApplyLanguage(string code)
+        {
+            App.UseLanguage(code);
+            Styles.Load(app);
+            window.SetTheme(ThemeCatalog.Get(Settings.Theme).Create());
+            Service.RefreshNow(null);   // provider texts (labels, notes, errors) are made in the new language
+            RefreshViews();
+        }
+
+        /// <summary>Switches the language on the fly: texts, fonts, the widget and an open settings page are rebuilt.</summary>
+        public void ChangeLanguage(string code)
+        {
+            Log.Info("language -> " + code);
+            Settings.Language = code;
+            Settings.Save();
+            ApplyLanguage(code);
+            if (settingsWindow != null && settingsWindow.IsLoaded)
+            {
+                var old = settingsWindow;
+                double left = old.Left, top = old.Top, height = old.Height;
+                settingsWindow = null;
+                old.Close();
+                OpenSettings();
+                settingsWindow.WindowStartupLocation = WindowStartupLocation.Manual;
+                settingsWindow.Left = left;
+                settingsWindow.Top = top;
+                settingsWindow.Height = height;
+            }
+            window.Say(null, L.T("好的！之後就用這個語言跟你聊天 ✦"));
         }
 
         public void ToggleWidget()
@@ -363,6 +408,32 @@ namespace SentriPet
             var hostBorder = new Border { Background = win.Background, Width = 700, Child = page };
             TextOptions.SetTextFormattingMode(hostBorder, TextFormattingMode.Display);
             Snapshots.Render(hostBorder, Path.Combine(outDir, "settings.png"), 1.0, false);
+
+            // --switch-lang <code>: switch the way the language menu does (without saving), then render again
+            var cmd = Environment.GetCommandLineArgs();
+            int si = Array.IndexOf(cmd, "--switch-lang");
+            if (si >= 0 && si + 1 < cmd.Length)
+            {
+                var before = Service.Providers.ToDictionary(p => p.Id, p => Service.SnapshotFor(p.Id));
+                ApplyLanguage(cmd[si + 1]);
+                var wait = Stopwatch.StartNew();
+                while (wait.Elapsed.TotalSeconds < 25 && Service.Providers.Any(p => IsInstalled(p.Id) && Service.SnapshotFor(p.Id) == before[p.Id])) Thread.Sleep(200);
+                views = Service.BuildViews(Settings, false);
+                Snapshots.Render(BuildMenu(), Path.Combine(outDir, "switched_menu.png"), 1.5, false);
+                if (views.Count > 0)
+                {
+                    var card = DetailCardView.Build(views[0]);
+                    card.SetPointer(DetailPlacement.Side.Above, 90);
+                    Snapshots.Render(card.Root, Path.Combine(outDir, "switched_detail.png"), 1.5, false);
+                }
+                var win2 = new SettingsWindow(this);
+                var scroll2 = (ScrollViewer)win2.Content;
+                var page2 = (FrameworkElement)scroll2.Content;
+                scroll2.Content = null;
+                var host2 = new Border { Background = win2.Background, Width = 700, Child = page2 };
+                TextOptions.SetTextFormattingMode(host2, TextFormattingMode.Display);
+                Snapshots.Render(host2, Path.Combine(outDir, "switched_settings.png"), 1.0, false);
+            }
             Service.Dispose();
             return 0;
         }
@@ -373,12 +444,12 @@ namespace SentriPet
 
             var title = new StackPanel { Margin = new Thickness(0, 2, 0, 2) };
             title.Children.Add(G.T(App.DisplayName, 13.5, Colors.White, FontWeights.Bold, G.Ui));
-            string sum = views.Count == 0 ? "正在偵測 AI…" : string.Join("  ·  ", views.Select(v => v.Summary));
+            string sum = views.Count == 0 ? L.T("正在偵測 AI…") : string.Join("  ·  ", views.Select(v => v.Summary));
             title.Children.Add(G.T(sum, 11, Palette.Hex("#8F98A8")));
             menu.Items.Add(new MenuItem { Header = title, Icon = Glyph(""), IsHitTestVisible = false });
             menu.Items.Add(new Separator());
 
-            var themes = Item("換造型", "", null);
+            var themes = Item(L.T("換造型"), "", null);
             foreach (var t in ThemeCatalog.All)
             {
                 var info = t;
@@ -388,7 +459,7 @@ namespace SentriPet
                 themes.Items.Add(mi);
             }
             themes.Items.Add(new Separator());
-            themes.Items.Add(Toggle("每天隨機換一個", "", Settings.DailyRandomTheme, v =>
+            themes.Items.Add(Toggle(L.T("每天隨機換一個"), "", Settings.DailyRandomTheme, v =>
             {
                 Settings.DailyRandomTheme = v;
                 Settings.RandomThemeDate = null;
@@ -396,35 +467,41 @@ namespace SentriPet
             }));
             menu.Items.Add(themes);
 
-            var mood = Item("今天心情如何？", "", null);
+            var mood = Item(L.T("今天心情如何？"), "", null);
             foreach (var t in ThemeCatalog.All)
             {
                 var info = t;
                 var mi = Item(t.Mood, null, () =>
                 {
                     ChangeTheme(info.Id, true);
-                    window.Say(null, "收到！今天是「" + info.Mood + "」模式 ✦");
+                    window.Say(null, L.F("收到！今天是「{0}」模式 ✦", info.Mood));
                 });
                 mi.InputGestureText = t.Name;
                 mood.Items.Add(mi);
             }
             mood.Items.Add(new Separator());
-            mood.Items.Add(Item("交給命運吧（隨機）", "", () =>
+            mood.Items.Add(Item(L.T("交給命運吧（隨機）"), "", () =>
             {
                 var choices = ThemeCatalog.All.Where(x => x.Id != Settings.Theme).ToList();
                 var pick = choices[new Random().Next(choices.Count)];
                 ChangeTheme(pick.Id, true);
-                window.Say(null, "命運選擇了「" + pick.Name + "」！");
+                window.Say(null, L.F("命運選擇了「{0}」！", pick.Name));
             }));
             menu.Items.Add(mood);
-            menu.Items.Add(Item("立即更新", "", () =>
+
+            var lang = Item(L.LanguageLabel, "\uE774", null);
+            lang.Items.Add(LanguageItem("auto", L.T("自動（跟隨系統）")));
+            lang.Items.Add(new Separator());
+            foreach (var li in L.Languages) lang.Items.Add(LanguageItem(li.Code, li.Native));
+            menu.Items.Add(lang);
+            menu.Items.Add(Item(L.T("立即更新"), "", () =>
             {
                 Service.RefreshNow(null);
-                if (views.Count > 0) window.Say(views[0].Id, "更新中…");
+                if (views.Count > 0) window.Say(views[0].Id, L.T("更新中…"));
             }));
             menu.Items.Add(new Separator());
 
-            var size = Item("大小", "", null);
+            var size = Item(L.T("大小"), "", null);
             foreach (var z in new[] { 0.7, 0.85, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0 })
             {
                 double zz = z;
@@ -434,44 +511,44 @@ namespace SentriPet
             }
             menu.Items.Add(size);
 
-            var opacity = Item("透明度", "", null);
+            var opacity = Item(L.T("透明度"), "", null);
             foreach (var o in new[] { 1.0, 0.9, 0.75, 0.6, 0.45 })
             {
                 double oo = o;
-                var mi = Item(o >= 1 ? "不透明" : Math.Round(o * 100) + "%", null, () => { Settings.Opacity = oo; ApplyWidgetSettings(); });
+                var mi = Item(o >= 1 ? L.T("不透明") : Math.Round(o * 100) + "%", null, () => { Settings.Opacity = oo; ApplyWidgetSettings(); });
                 mi.IsChecked = Math.Abs(Settings.Opacity - o) < 0.01;
                 opacity.Items.Add(mi);
             }
             menu.Items.Add(opacity);
 
-            var monitors = Item("移到螢幕", "", null);
+            var monitors = Item(L.T("移到螢幕"), "", null);
             var screens = Forms.Screen.AllScreens.OrderBy(s => s.Bounds.Left).ThenBy(s => s.Bounds.Top).ToList();
             var current = window.CurrentScreen;
             for (int i = 0; i < screens.Count; i++)
             {
                 var sc = screens[i];
-                string pos = screens.Count == 1 ? "" : i == 0 ? "左" : i == screens.Count - 1 ? "右" : "中";
-                var mi = Item("螢幕 " + (i + 1) + (pos.Length > 0 ? "（" + pos + "）" : "") + (sc.Primary ? " · 主螢幕" : ""), null, () => window.MoveToScreen(sc));
+                string pos = screens.Count == 1 ? "" : i == 0 ? L.T("左") : i == screens.Count - 1 ? L.T("右") : L.T("中");
+                var mi = Item(L.F("螢幕 {0}", i + 1) + (pos.Length > 0 ? L.F("（{0}）", pos) : "") + (sc.Primary ? " · " + L.T("主螢幕") : ""), null, () => window.MoveToScreen(sc));
                 mi.InputGestureText = sc.Bounds.Width + "×" + sc.Bounds.Height;
                 mi.IsChecked = current != null && current.DeviceName == sc.DeviceName;
                 monitors.Items.Add(mi);
             }
             menu.Items.Add(monitors);
-            menu.Items.Add(Toggle("永遠在最上層", "", Settings.AlwaysOnTop, v => { Settings.AlwaysOnTop = v; window.ApplySettings(); }));
-            menu.Items.Add(Toggle("滑鼠穿透（不擋點擊）", "", Settings.ClickThrough, v =>
+            menu.Items.Add(Toggle(L.T("永遠在最上層"), "", Settings.AlwaysOnTop, v => { Settings.AlwaysOnTop = v; window.ApplySettings(); }));
+            menu.Items.Add(Toggle(L.T("滑鼠穿透（不擋點擊）"), "", Settings.ClickThrough, v =>
             {
                 Settings.ClickThrough = v;
                 window.ApplySettings();
-                if (v) tray.Notify(App.DisplayName, "已開啟滑鼠穿透：桌寵不會擋住點擊。要關閉請在右下角系統匣圖示按右鍵。");
+                if (v) Notify(App.DisplayName, L.T("已開啟滑鼠穿透：桌寵不會擋住點擊。要關閉請在右下角系統匣圖示按右鍵。"));
             }));
-            menu.Items.Add(Toggle("會說話", "", Settings.Chatty, v => Settings.Chatty = v));
-            menu.Items.Add(Toggle("額度提醒通知", "", Settings.Notifications, v => Settings.Notifications = v));
-            menu.Items.Add(Toggle("催我用完週額度（重置前提醒）", "", Settings.UseItReminder, v => { Settings.UseItReminder = v; RefreshViews(); }));
+            menu.Items.Add(Toggle(L.T("會說話"), "", Settings.Chatty, v => Settings.Chatty = v));
+            menu.Items.Add(Toggle(L.T("額度提醒通知"), "", Settings.Notifications, v => Settings.Notifications = v));
+            menu.Items.Add(Toggle(L.T("催我用完週額度（重置前提醒）"), "", Settings.UseItReminder, v => { Settings.UseItReminder = v; RefreshViews(); }));
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item("設定…", "", OpenSettings));
-            menu.Items.Add(Toggle("開機自動啟動", "", Settings.AutoStart, v => { Settings.AutoStart = v; Autostart.Set(v); }));
-            menu.Items.Add(Item(window.UserHidden ? "顯示桌寵" : "先藏起來（點系統匣叫回）", "", ToggleWidget));
-            menu.Items.Add(Item("結束", "", Quit));
+            menu.Items.Add(Item(L.T("設定…"), "", OpenSettings));
+            menu.Items.Add(Toggle(L.T("開機自動啟動"), "", Settings.AutoStart, v => { Settings.AutoStart = v; Autostart.Set(v); }));
+            menu.Items.Add(Item(window.UserHidden ? L.T("顯示桌寵") : L.T("先藏起來（點系統匣叫回）"), "", ToggleWidget));
+            menu.Items.Add(Item(L.T("結束"), "", Quit));
             return menu;
         }
     }

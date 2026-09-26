@@ -7,6 +7,8 @@
   <ItemGroup>
     <Compile Include="..\..\src\Core\**\*.cs" LinkBase="Core" />
     <Compile Include="..\..\src\Providers\**\*.cs" LinkBase="Providers" />
+    <!-- translations: src/Lang/xx.json is read as the resource SentriPet.Lang.xx.json -->
+    <EmbeddedResource Include="..\..\src\Lang\*.json" LinkBase="Lang" LogicalName="SentriPet.Lang.%(Filename).json" />
   </ItemGroup>
 
   <ItemGroup>
