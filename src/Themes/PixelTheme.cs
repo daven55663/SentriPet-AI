@@ -458,7 +458,7 @@ namespace SentriPet
                 else if (v.Mood == SentriPet.Mood.Worried) { status = L.T("疲勞"); sc = Palette.Hex("#F8D030"); }
                 else { status = L.T("正常"); sc = Colors.White; }
                 if (v.Stale) status += L.T("·舊");
-                m.Status.Text = status;
+                m.Status.Text = L.Finish(status);
                 m.Status.Foreground = G.B(sc);
                 m.Face = !v.HasData ? "normal" : v.Mood == SentriPet.Mood.Empty ? "sleep" : v.Mood == SentriPet.Mood.Critical ? "hurt" : "normal";
                 var p = v.ResetMeter;

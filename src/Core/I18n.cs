@@ -69,9 +69,44 @@ namespace SentriPet
         /// <summary>Translates a sentence with placeholders {0}, {1}… and fills them in.</summary>
         public static string F(string zh, params object[] args)
         {
-            string pattern = T(zh);
-            try { return string.Format(CultureInfo.InvariantCulture, pattern, args); }
-            catch (FormatException) { return string.Format(CultureInfo.InvariantCulture, zh, args); }
+            string pattern = T(zh), s;
+            try { s = string.Format(CultureInfo.InvariantCulture, pattern, args); }
+            catch (FormatException) { s = string.Format(CultureInfo.InvariantCulture, zh, args); }
+            return current == "ko" ? KeepWords(s) : s;
+        }
+
+        /// <summary>Invisible "no line break here" (U+2060 WORD JOINER).</summary>
+        public const char WordJoiner = '\u2060';
+
+        static bool IsHangul(char c)
+        {
+            return (c >= '\uAC00' && c <= '\uD7A3') || (c >= '\u1100' && c <= '\u11FF') || (c >= '\u3130' && c <= '\u318F');
+        }
+
+        /// <summary>
+        /// Korean breaks lines only at spaces, but WPF and Avalonia break it between any two syllables (the way Chinese is broken),
+        /// splitting words like 초기화 (or 1일5시간 after the digit) across lines. A word joiner between a syllable and any
+        /// neighbouring character that isn't a space keeps each word together. Used for Korean only; running it twice changes nothing.
+        /// </summary>
+        public static string KeepWords(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            StringBuilder sb = null;
+            for (int i = 1; i < s.Length; i++)
+            {
+                char a = s[i - 1], b = s[i];
+                bool join = (IsHangul(a) || IsHangul(b)) && !char.IsWhiteSpace(a) && !char.IsWhiteSpace(b) && a != WordJoiner && b != WordJoiner;
+                if (!join) { if (sb != null) sb.Append(b); continue; }
+                if (sb == null) sb = new StringBuilder(s.Length + 16).Append(s, 0, i);
+                sb.Append(WordJoiner).Append(s[i]);
+            }
+            return sb == null ? s : sb.ToString();
+        }
+
+        /// <summary>Text made outside T/F (templates filled in piece by piece) gets the Korean word joiners here.</summary>
+        public static string Finish(string s)
+        {
+            return current == "ko" ? KeepWords(s) : s;
         }
 
         /// <summary>"語言 · Language": the language menu also says "Language", so it can be found whatever language is showing.</summary>
@@ -103,7 +138,7 @@ namespace SentriPet
                         string json;
                         using (var r = new StreamReader(s, Encoding.UTF8)) json = r.ReadToEnd();
                         var o = Json.Obj(Json.Parse(json));
-                        if (o != null) foreach (var kv in o) { var v = Json.Str(kv.Value); if (v != null) d[kv.Key] = v; }
+                        if (o != null) foreach (var kv in o) { var v = Json.Str(kv.Value); if (v != null) d[kv.Key] = code == "ko" ? KeepWords(v) : v; }
                     }
                     else Log.Warn("no translation for " + code);
                 }

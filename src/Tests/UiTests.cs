@@ -33,6 +33,38 @@ namespace SentriPet
             for (int i = 0; i < n; i++) CollectText(VisualTreeHelper.GetChild(d, i), into);
         }
 
+        /// <summary>The texts a theme shows for every set of sample data (in the current language).</summary>
+        static List<string> ScreenTexts(ThemeInfo ti)
+        {
+            var texts = new List<string>();
+            foreach (var set in new[] { MockData.A(), MockData.B(), MockData.C(), new List<ProviderView>() })
+            {
+                var theme = ti.Create();
+                theme.Attach(new Snapshots.PreviewHost());
+                theme.Update(set);
+                for (int i = 0; i < 60; i++) theme.Tick(1 / 10.0);   // the pixel hero's message types itself out
+                var host = new Grid();
+                host.Children.Add(theme.Root);
+                Snapshots.RenderToBitmap(host, 1.0);
+                CollectText(host, texts);
+                host.Children.Clear();
+                theme.Detach();
+            }
+            return texts;
+        }
+
+        static List<string> CardTexts()
+        {
+            var texts = new List<string>();
+            foreach (var v in MockData.C().Concat(MockData.B()))
+            {
+                var card = DetailCardView.Build(v);
+                Snapshots.RenderToBitmap(card.Root, 1.0);
+                CollectText(card.Root, texts);
+            }
+            return texts;
+        }
+
         static void Languages(TestKit t)
         {
             t.Section("介面語言（英文時畫面上不能有中文）");
@@ -46,40 +78,30 @@ namespace SentriPet
                     var ti = info;
                     t.Run("en " + ti.Id, () =>
                     {
-                        var texts = new List<string>();
-                        foreach (var set in new[] { MockData.A(), MockData.B(), MockData.C(), new List<ProviderView>() })
-                        {
-                            var theme = ti.Create();
-                            theme.Attach(new Snapshots.PreviewHost());
-                            theme.Update(set);
-                            for (int i = 0; i < 60; i++) theme.Tick(1 / 10.0);   // the pixel hero's message types itself out
-                            var host = new Grid();
-                            host.Children.Add(theme.Root);
-                            Snapshots.RenderToBitmap(host, 1.0);
-                            CollectText(host, texts);
-                            host.Children.Clear();
-                            theme.Detach();
-                        }
-                        var han = texts.Where(x => x.Any(c => c >= '一' && c <= '鿿')).Distinct().ToList();
+                        var texts = ScreenTexts(ti);
+                        var han = texts.Where(x => x.Any(c => c >= '\u4e00' && c <= '\u9fff')).Distinct().ToList();
                         t.Check(ti.Name + "：英文畫面沒有中文", han.Count == 0 && texts.Count > 3, texts.Count + " 段文字" + (han.Count > 0 ? "，有中文：" + string.Join(" | ", han.Take(5)) : ""));
                     });
                 }
                 t.Run("en card", () =>
                 {
-                    var texts = new List<string>();
-                    foreach (var v in MockData.C().Concat(MockData.B()))
-                    {
-                        var card = DetailCardView.Build(v);
-                        Snapshots.RenderToBitmap(card.Root, 1.0);
-                        CollectText(card.Root, texts);
-                    }
-                    var han = texts.Where(x => x.Any(c => c >= '一' && c <= '鿿')).Distinct().ToList();
+                    var texts = CardTexts();
+                    var han = texts.Where(x => x.Any(c => c >= '\u4e00' && c <= '\u9fff')).Distinct().ToList();
                     t.Check("詳情卡：英文畫面沒有中文", han.Count == 0 && texts.Count > 10, string.Join(" | ", han.Take(5)));
                 });
                 App.UseLanguage("ja");
                 t.Check("日文用 Yu Gothic UI 字型", G.Ui.Source.StartsWith("Yu Gothic UI"), G.Ui.Source);
                 App.UseLanguage("ko");
                 t.Check("韓文用 Malgun Gothic 字型", G.Ui.Source.StartsWith("Malgun Gothic"), G.Ui.Source);
+                t.Run("ko words", () =>
+                {
+                    // every Korean text on screen keeps its words together (see L.KeepWords)
+                    var texts = CardTexts();
+                    foreach (var ti in ThemeCatalog.All) texts.AddRange(ScreenTexts(ti));
+                    texts.AddRange(ThemeCatalog.All.Select(x => x.Name + " " + x.Mood + " " + x.Blurb));
+                    var split = texts.Where(x => x != L.KeepWords(x)).Distinct().ToList();
+                    t.Check("韓文畫面：8 種造型與詳情卡的每個詞都不會被拆到兩行", split.Count == 0 && texts.Count > 100, texts.Count + " 段文字" + (split.Count > 0 ? "，會被拆開：" + string.Join(" | ", split.Take(5)) : ""));
+                });
                 App.UseLanguage("zh-CN");
                 t.Check("簡體用 Microsoft YaHei UI 字型", G.Ui.Source.StartsWith("Microsoft YaHei UI"), G.Ui.Source);
             }

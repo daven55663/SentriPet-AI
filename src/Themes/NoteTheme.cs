@@ -226,7 +226,7 @@ namespace SentriPet
         protected override void Refresh()
         {
             var now = DateTime.Now;
-            date.Text = now.Month + "/" + now.Day + " (" + Fmt.WeekDay(now.DayOfWeek) + ")";
+            date.Text = L.Finish(now.Month + "/" + now.Day + " (" + Fmt.WeekDay(now.DayOfWeek) + ")");
             foreach (var it in items)
             {
                 var v = View(it.Id);

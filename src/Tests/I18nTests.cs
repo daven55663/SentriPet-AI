@@ -81,7 +81,7 @@ namespace SentriPet
 
         static bool HasHan(string s)
         {
-            return s.Any(c => c >= '一' && c <= '鿿');
+            return s.Any(c => c >= '\u4e00' && c <= '\u9fff');
         }
 
         static void Switching(TestKit t)
@@ -126,10 +126,31 @@ namespace SentriPet
             t.Equal("日文：倒數", "2時間03分", Fmt.Countdown(soon));
             var jaFill = sets.SelectMany(views => views).Select(v => Lines.Idle(v, sets[0], rng)).Where(s => s.Contains("{")).ToList();
             t.Check("日文：每一句的 {…} 都有填上", jaFill.Count == 0, string.Join(" | ", jaFill.Take(3)));
+            t.Check("日文：不加韓文用的斷行控制字元", !Fmt.Countdown(soon).Contains(L.WordJoiner) && !Lines.Idle(sets[0][0], sets[0], rng).Contains(L.WordJoiner));
 
+            // Korean breaks lines only between words: neighbouring syllables get an invisible word joiner
+            string wj = L.WordJoiner.ToString();
+            t.Equal("韓文斷行：音節之間加上不斷行字元，空格照舊可以斷", "주" + wj + "간 한" + wj + "도 55% 남" + wj + "음", L.KeepWords("주간 한도 55% 남음"));
+            t.Equal("韓文斷行：數字和音節連在一起（1일5시간 不會在 1 後面斷開）", "1" + wj + "일" + wj + "5" + wj + "시" + wj + "간 후", L.KeepWords("1일5시간 후"));
+            t.Equal("韓文斷行：英文名字加助詞也連在一起", "Claude" + wj + "의 한" + wj + "도", L.KeepWords("Claude의 한도"));
+            t.Equal("韓文斷行：做兩次結果一樣", L.KeepWords("1일5시간 후, 주간 한도"), L.KeepWords(L.KeepWords("1일5시간 후, 주간 한도")));
+            t.Equal("韓文斷行：沒有韓文的字串原樣傳回", "5h 2h 03m", L.KeepWords("5h 2h 03m"));
             L.Use("ko");
-            t.Equal("韓文：倒數", "2시간03분", Fmt.Countdown(soon));
-            t.Equal("韓文：每月額度的名稱", "월간", Fmt.WindowLabel(43200));
+            t.Equal("韓文：倒數", "2시간03분", Fmt.Countdown(soon).Replace(wj, ""));
+            t.Equal("韓文：每月額度的名稱", "월간", Fmt.WindowLabel(43200).Replace(wj, ""));
+            var koSaid = new List<string>();
+            foreach (var views in sets)
+                foreach (var v in views)
+                    for (int i = 0; i < 30; i++)
+                    {
+                        koSaid.Add(Lines.Idle(v, views, rng));
+                        koSaid.Add(Lines.Poke(v, rng));
+                        if (v.UseIt != null) { koSaid.Add(Lines.UseIt(v, rng)); koSaid.Add(Lines.UseItAlert(v)); }
+                    }
+            koSaid.Add(Lines.Greeting(sets[0]));
+            koSaid.Add(L.T("資料來源：Claude 讀取桌面版自己寫的用量快取（每 15 分鐘更新，重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證。"));
+            var split = koSaid.Where(s => s != L.KeepWords(s)).Distinct().ToList();
+            t.Check("韓文：桌寵說的話、說明文字裡每個詞都不會被拆到兩行", split.Count == 0 && koSaid.Count > 50, string.Join(" | ", split.Take(3)));
 
             L.Use("zh-CN");
             t.Equal("簡體：每週額度的名稱", "每周", Fmt.WindowLabel(10080));
@@ -167,7 +188,7 @@ namespace SentriPet
 
         static bool IsCjk(char c)
         {
-            return (c >= '　' && c <= '鿿') || (c >= '＀' && c <= '￯') || (c >= '가' && c <= '힯');
+            return (c >= '\u3000' && c <= '\u9fff') || (c >= '\uff00' && c <= '\uffef') || (c >= '\uac00' && c <= '\ud7af');
         }
 
         /// <summary>

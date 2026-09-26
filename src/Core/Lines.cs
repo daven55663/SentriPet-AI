@@ -20,12 +20,12 @@ namespace SentriPet
         {
             string s = L.T(key);
             for (int i = 0; i + 1 < extra.Length; i += 2) s = s.Replace("{" + extra[i] + "}", extra[i + 1]);
-            if (v == null) return s;
+            if (v == null) return L.Finish(s);
             m = m ?? v.Headline ?? v.Primary;
-            return s.Replace("{name}", v.Name)
+            return L.Finish(s.Replace("{name}", v.Name)
                     .Replace("{pct}", m == null ? "?" : (m.Unlimited ? L.T("無限") : Fmt.Pct(m.Remaining)))
                     .Replace("{meter}", m == null ? L.T("額度") : m.Label)
-                    .Replace("{reset}", m == null || !m.ResetsAt.HasValue ? L.T("之後") : Fmt.Countdown(m.ResetsAt));
+                    .Replace("{reset}", m == null || !m.ResetsAt.HasValue ? L.T("之後") : Fmt.Countdown(m.ResetsAt)));
         }
 
         public static string Idle(ProviderView v, List<ProviderView> all, Random rng)
