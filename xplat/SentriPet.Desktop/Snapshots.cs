@@ -80,6 +80,22 @@ namespace SentriPet
                     }
                 }
             }
+            // the hover card for the first provider of each set
+            foreach (var set in sets)
+            {
+                if (set.Value.Count == 0 || only != null) continue;
+                try
+                {
+                    var card = DetailCardView.Build(set.Value[0]);
+                    card.SetPointer(DetailPlacement.Side.Above, 90);
+                    Render(card.Root, Path.Combine(outDir, "detail_" + set.Key + ".png"), scale, true);
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "detail_" + set.Key + "_error.txt"), ex.ToString());
+                }
+            }
             return failures;
         }
 

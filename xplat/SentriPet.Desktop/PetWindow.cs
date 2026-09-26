@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -28,6 +30,15 @@ namespace SentriPet
         Point? pointer;
         bool positioned, pressed, dragging;
         PixelPoint pressScreen, pressPos;
+
+        // hover card
+        DetailWindow card;
+        string hoverId, shownId, forcedId;
+        DateTime forcedUntil;
+        bool cardHovered;
+        DateTime hoverSince, lastInside, lastScan = DateTime.MinValue, quietUntil;
+        readonly List<KeyValuePair<string, Control>> tagged = new List<KeyValuePair<string, Control>>();
+        const double ShowDelayMs = 300, SwitchDelayMs = 150, HideGraceMs = 400;
 
         public Theme CurrentTheme { get { return theme; } }
         public AppSettings Settings { get { return settings; } }
@@ -59,7 +70,7 @@ namespace SentriPet
                 lastFrame = DateTime.UtcNow;
                 frame.Start();
             };
-            Closed += (s, e) => frame.Stop();
+            Closed += (s, e) => { frame.Stop(); if (card != null) card.Close(); };
             SizeChanged += (s, e) => { if (positioned && !dragging) PlaceAtAnchor(); };
             PointerPressed += OnPressed;
             PointerMoved += OnMoved;
@@ -92,11 +103,28 @@ namespace SentriPet
 
         public void SaveSettings() { settings.Save(); }
 
-        /// <summary>The mouse position is only known while it is over the widget (no global cursor API on every system).</summary>
+        /// <summary>
+        /// Where the mouse is, in screen pixels. Windows can tell anywhere on screen; elsewhere it is only known while
+        /// the pointer is over the widget.
+        /// </summary>
+        PixelPoint? CursorScreen()
+        {
+            if (Os.Windows)
+            {
+                NativeMethods.POINT p;
+                if (NativeMethods.GetCursorPos(out p)) return new PixelPoint(p.X, p.Y);
+                return null;
+            }
+            if (pointer != null) return this.PointToScreen(pointer.Value);
+            return null;
+        }
+
         public Point? CursorIn(Visual element)
         {
-            if (pointer == null) return null;
-            return this.TranslatePoint(pointer.Value, element);
+            var screen = CursorScreen();
+            if (screen == null) return null;
+            try { return element.PointToClient(screen.Value); }
+            catch { return null; }
         }
 
         public void Say(string providerId, string text)
@@ -114,6 +142,179 @@ namespace SentriPet
             if (theme == null) return;
             try { theme.Tick(dt); }
             catch (Exception ex) { Log.Error("theme tick", ex); }
+            try { PollHover(now); }
+            catch (Exception ex) { Log.Error("hover", ex); }
+        }
+
+        /// <summary>Called once a second: keep the card's numbers current and follow the widget.</summary>
+        public void Periodic()
+        {
+            if (shownId == null) return;
+            var v = ctl.Views.FirstOrDefault(x => x.Id == shownId);
+            if (v == null) { HideDetail(); return; }
+            card.SetView(v);
+            PlaceDetail();
+        }
+
+        // ------------------------------------------------------------------ hover card
+
+        /// <summary>
+        /// Hover is decided from the cursor position against each provider's bounding box (not from enter/leave events),
+        /// with a short delay before showing, a grace period before hiding and a "corridor" from the pet to the card.
+        /// </summary>
+        /// <summary>Keeps one card open for a while without hovering (--show-detail, for testing).</summary>
+        public void ForceDetail(string id, double seconds)
+        {
+            forcedId = id;
+            forcedUntil = DateTime.UtcNow.AddSeconds(seconds);
+        }
+
+        void PollHover(DateTime now)
+        {
+            bool forced = forcedId != null && now < forcedUntil;
+            if (!forced && (pressed || dragging || ctl.MenuOpen || !IsVisible || theme == null))
+            {
+                hoverId = null;
+                HideDetail();
+                return;
+            }
+            if ((now - lastScan).TotalMilliseconds > 250)
+            {
+                lastScan = now;
+                ScanTagged();
+            }
+            string id = null;
+            var cursor = CursorScreen();
+            if (forced) id = forcedId;
+            else if (cursor != null)
+            {
+                var pt = new Point(cursor.Value.X, cursor.Value.Y);
+                foreach (var kv in tagged)
+                {
+                    var b = ScreenRect(kv.Value);
+                    if (b != null && b.Value.Inflate(8).Contains(pt)) { id = kv.Key; break; }
+                }
+                if (id == null && shownId != null && InCorridor(pt)) id = shownId;
+            }
+            if (id == null && shownId != null && cardHovered) id = shownId;
+
+            if (id != null) lastInside = now;
+            if (id != hoverId)
+            {
+                hoverId = id;
+                hoverSince = now;
+            }
+            double held = (now - hoverSince).TotalMilliseconds;
+            if (shownId == null)
+            {
+                if (hoverId != null && (forced || (held >= ShowDelayMs && now >= quietUntil))) ShowDetail(hoverId);
+            }
+            else if (hoverId == null)
+            {
+                if ((now - lastInside).TotalMilliseconds >= HideGraceMs) HideDetail();
+            }
+            else if (hoverId != shownId && held >= SwitchDelayMs) ShowDetail(hoverId);
+        }
+
+        void ScanTagged()
+        {
+            tagged.Clear();
+            foreach (var v in host.GetVisualDescendants())
+            {
+                var c = v as Control;
+                var tag = c != null ? c.Tag as string : null;
+                if (tag != null && tag.StartsWith("pv:")) tagged.Add(new KeyValuePair<string, Control>(tag.Substring(3), c));
+            }
+        }
+
+        /// <summary>An element's bounds in screen pixels.</summary>
+        Rect? ScreenRect(Control el)
+        {
+            if (el == null || !el.IsEffectivelyVisible || el.Bounds.Width <= 0) return null;
+            var m = el.TransformToVisual(this);
+            if (m == null) return null;
+            return ToScreen(new Rect(el.Bounds.Size).TransformToAABB(m.Value));
+        }
+
+        Rect ToScreen(Rect r)
+        {
+            var a = this.PointToScreen(r.TopLeft);
+            var b = this.PointToScreen(r.BottomRight);
+            return new Rect(new Point(a.X, a.Y), new Point(b.X, b.Y));
+        }
+
+        Rect? ProviderScreenRect(string id)
+        {
+            Rect? u = null;
+            foreach (var kv in tagged)
+            {
+                if (kv.Key != id) continue;
+                var b = ScreenRect(kv.Value);
+                if (b != null) u = u == null ? b : u.Value.Union(b.Value);
+            }
+            return u;
+        }
+
+        Rect ContentScreenRect()
+        {
+            var c = theme != null ? theme.ContentBounds(this) : null;
+            if (c != null) return ToScreen(c.Value);
+            int w, h;
+            PixelSize(out w, out h);
+            return new Rect(Position.X, Position.Y, w, h);
+        }
+
+        /// <summary>While the card is up, the path from the pet to the card keeps it open.</summary>
+        bool InCorridor(Point screen)
+        {
+            if (card == null || !card.IsVisible) return false;
+            var u = ProviderScreenRect(shownId);
+            if (u == null) return false;
+            var cs = card.MeasurePx(DesktopScaling);
+            var cr = new Rect(card.Position.X, card.Position.Y, cs.Width, cs.Height);
+            return u.Value.Union(cr).Inflate(10).Contains(screen);
+        }
+
+        void ShowDetail(string id)
+        {
+            var v = ctl.Views.FirstOrDefault(x => x.Id == id);
+            if (v == null) { HideDetail(); return; }
+            if (card == null)
+            {
+                card = new DetailWindow();
+                card.PointerEntered += (s, e) => cardHovered = true;
+                card.PointerExited += (s, e) => cardHovered = false;
+            }
+            card.SetView(v);
+            shownId = id;
+            PlaceDetail();
+            if (!card.IsVisible) card.Show(this);
+            PlaceDetail();
+        }
+
+        /// <summary>Puts the card outside the widget content, arrow pointing at the hovered provider.</summary>
+        void PlaceDetail()
+        {
+            if (card == null || shownId == null) return;
+            if (ProviderScreenRect(shownId) == null) ScanTagged();
+            double scaling = DesktopScaling;
+            var size = card.MeasurePx(scaling);
+            var content = ContentScreenRect();
+            var provider = ProviderScreenRect(shownId) ?? content;
+            var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+            if (screen == null) return;
+            var wa = screen.WorkingArea;
+            double gap = 6 - DetailCardView.Margin * scaling;   // 6px visible gap; the window margin is transparent
+            var r = DetailPlacement.Compute(content, provider, new Rect(wa.X, wa.Y, wa.Width, wa.Height), size.Width, size.Height, gap);
+            card.SetPointer(r.Side, r.PointerX / scaling);
+            card.MoveTo(r.X, r.Y);
+        }
+
+        public void HideDetail()
+        {
+            shownId = null;
+            cardHovered = false;
+            if (card != null && card.IsVisible) card.Hide();
         }
 
         // ------------------------------------------------------------------ mouse: drag, click, menu
@@ -128,6 +329,8 @@ namespace SentriPet
                 return;
             }
             if (!point.Properties.IsLeftButtonPressed) return;
+            HideDetail();
+            hoverId = null;
             pressed = true;
             dragging = false;
             pressScreen = this.PointToScreen(point.Position);
@@ -158,6 +361,7 @@ namespace SentriPet
                 return;
             }
             if (theme == null) return;
+            quietUntil = DateTime.UtcNow.AddSeconds(3.5);   // let the reply bubble be seen before the card comes back
             var rootPoint = e.GetPosition(theme.Root);
             if (theme.Click(rootPoint)) return;
             string id = HitProvider(e.GetPosition(host));
@@ -246,5 +450,14 @@ namespace SentriPet
             PlaceAtAnchor();
             settings.Save();
         }
+    }
+
+    static class NativeMethods
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT { public int X, Y; }
+
+        [DllImport("user32.dll")]
+        public static extern bool GetCursorPos(out POINT p);
     }
 }

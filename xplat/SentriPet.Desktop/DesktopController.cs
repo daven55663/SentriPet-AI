@@ -27,6 +27,8 @@ namespace SentriPet
         public AppSettings Settings { get; private set; }
         public UsageService Service { get; private set; }
         public List<ProviderView> Views { get { return views; } }
+        /// <summary>True while a menu is open (the widget keeps its hover card out of the way).</summary>
+        public bool MenuOpen { get { return menuOpen; } }
 
         public DesktopController(Application app, IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -43,10 +45,14 @@ namespace SentriPet
             window = new PetWindow(this, Settings);
             window.SetTheme(ThemeCatalog.Get(Settings.Theme).Create());
             window.Show();
+            // --show-detail <id>: keep one hover card open for a while (testing placement and stacking order)
+            var args = Environment.GetCommandLineArgs();
+            int sd = Array.IndexOf(args, "--show-detail");
+            if (sd >= 0 && sd + 1 < args.Length) window.ForceDetail(args[sd + 1], 45);
             CreateTray();
             Service.Start();
 
-            second = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (s, e) => RefreshViews());
+            second = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (s, e) => { RefreshViews(); window.Periodic(); });
             second.Start();
         }
 

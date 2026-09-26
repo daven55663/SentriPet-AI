@@ -146,8 +146,8 @@ namespace SentriPet
     static class G
     {
         // font lists: the first one installed wins (Windows, macOS, Linux)
-        public static readonly FontFamily Ui = new FontFamily("Microsoft JhengHei UI, PingFang TC, Noto Sans CJK TC, Noto Sans TC, Source Han Sans TC, Segoe UI, Helvetica Neue, Noto Sans");
-        public static readonly FontFamily Num = new FontFamily("Segoe UI Variable Display, Segoe UI, SF Pro Display, Helvetica Neue, Noto Sans, Microsoft JhengHei UI, PingFang TC");
+        public static readonly FontFamily Ui = new FontFamily("Microsoft JhengHei UI, PingFang TC, Noto Sans CJK TC, Noto Sans TC, Source Han Sans TC, Segoe UI, Helvetica Neue, Noto Sans, Ubuntu, DejaVu Sans, Liberation Sans");
+        public static readonly FontFamily Num = new FontFamily("Segoe UI Variable Display, Segoe UI, SF Pro Display, Helvetica Neue, Noto Sans, Ubuntu, DejaVu Sans, Liberation Sans, Noto Sans CJK TC, Microsoft JhengHei UI, PingFang TC");
         public static readonly FontFamily Mono = new FontFamily("Cascadia Mono, Consolas, SF Mono, Menlo, DejaVu Sans Mono, Noto Sans Mono");
 
         public static IBrush B(Color c) { return Palette.Brush(c); }
@@ -291,6 +291,11 @@ namespace SentriPet
             double low = level >= 3 ? 0.15 : level == 2 ? 0.3 : 0.5;
             double s = 0.5 + 0.5 * Math.Cos(2 * Math.PI * t / period);
             return Math.Round(low + (1 - low) * s, 2);
+        }
+
+        public static Border Pill(Control child, IBrush bg, double radius, Thickness pad)
+        {
+            return new Border { Child = child, Background = bg, CornerRadius = new CornerRadius(radius), Padding = pad };
         }
 
         /// <summary>Simple horizontal progress bar (remaining) with rounded ends.</summary>

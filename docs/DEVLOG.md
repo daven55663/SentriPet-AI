@@ -108,5 +108,10 @@ xplat/                新的跨平台版（.NET 10）
     變形中心改用 `RenderTransformOrigin` 等）後一次編譯成功；無頭截圖和 WPF 版幾乎一模一樣（著急表情、鬧鐘、閃爍、睡覺、泡泡）。
   - 在 Windows 實際開啟：透明背景、位置、真實用量都正常。
   - `--snapshot 資料夾`：不需要螢幕的無頭截圖；CI 在 Windows／macOS／Linux 都畫一次（Linux 安裝 Noto CJK 字型）。
-  - 待辦：懸停詳情卡、沒有對話框的造型用的浮動泡泡、眼睛只在滑鼠經過桌寵時才會跟著看（各系統沒有共通的全域游標 API，
-    Windows 之後可用原生 API）、記憶體約 270 MB（WPF 版約 90 MB，之後試 ReadyToRun／裁剪／GC 設定）。
+  - CI 結果：Avalonia 桌寵在 macOS、Linux、Windows 都編譯成功，無頭截圖三個系統都正確（macOS 用蘋方體、Linux 用 Noto CJK）。
+- 2026-09-27：**懸停詳情卡移植完成**。卡片放在桌寵外側、箭頭指著被懸停的那隻、蓋在桌寵上面；
+  Windows 用系統的全域游標判斷懸停（和 WPF 版一樣，也讓眼睛能跟著整個螢幕上的滑鼠），
+  macOS／Linux 用桌寵與卡片視窗自己的滑鼠事件。`--show-detail <id>` 可強制打開卡片測試；CI 截圖也包含詳情卡。
+- 第 3 階段剩下的待辦：沒有對話框的造型用的浮動泡泡（等第 4 階段移植其他造型時一起做）、
+  macOS／Linux 的全域游標（眼睛目前只在滑鼠經過桌寵時跟著看）、記憶體約 270 MB（WPF 版約 90 MB，
+  之後試 ReadyToRun／裁剪／GC 設定）、實機試用（拖曳、系統匣在 macOS／Linux 上的表現）。
