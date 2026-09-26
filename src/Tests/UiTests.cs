@@ -29,7 +29,7 @@ namespace SentriPet
             t.Section("詳情卡擺放位置（三台 1920×1080 螢幕）");
             t.Run("Placement", () =>
             {
-                var card = DetailCardView.Build(Snapshots.MockA()[0]);
+                var card = DetailCardView.Build(MockData.A()[0]);
                 card.Root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 double w = Math.Ceiling(card.Root.DesiredSize.Width), h = Math.Ceiling(card.Root.DesiredSize.Height);
                 double margin = DetailCardView.Margin, gap = 6 - margin;
@@ -77,9 +77,9 @@ namespace SentriPet
             t.Section("8 種造型（模擬資料 a/b/c、空的）");
             var sets = new List<KeyValuePair<string, List<ProviderView>>>
             {
-                new KeyValuePair<string, List<ProviderView>>("a", Snapshots.MockA()),
-                new KeyValuePair<string, List<ProviderView>>("b", Snapshots.MockB()),
-                new KeyValuePair<string, List<ProviderView>>("c", Snapshots.MockC()),
+                new KeyValuePair<string, List<ProviderView>>("a", MockData.A()),
+                new KeyValuePair<string, List<ProviderView>>("b", MockData.B()),
+                new KeyValuePair<string, List<ProviderView>>("c", MockData.C()),
                 new KeyValuePair<string, List<ProviderView>>("空", new List<ProviderView>()),
             };
             string shots = t.TempDir("shots");
@@ -124,7 +124,7 @@ namespace SentriPet
             {
                 var theme = ThemeCatalog.Get("pet").Create();
                 theme.Attach(new Snapshots.PreviewHost());
-                theme.Update(Snapshots.MockA());
+                theme.Update(MockData.A());
                 theme.Tick(0.1);
                 string file = Path.Combine(shots, "pet.png");
                 Snapshots.Render(theme.Root, file, 1.0, true);
@@ -147,7 +147,7 @@ namespace SentriPet
                     for (int i = 0; i < 3; i++) pet.Tick(1 / 30.0);
                 };
 
-                show(Snapshots.MockC());
+                show(MockData.C());
                 t.Equal("剩 2 天、還有不少：有點著急", "hurry1", pet.ExpressionOf("claude"));
                 t.Equal("最後一天：更著急", "hurry2", pet.ExpressionOf("codex"));
                 t.Equal("最後 6 小時：慌張", "hurry3", pet.ExpressionOf("copilot"));
@@ -160,13 +160,13 @@ namespace SentriPet
                 pet.Tick(1 / 30.0);
                 t.Equal("戳一下：瞇眼", "squint", pet.ExpressionOf("claude"));
 
-                show(Snapshots.MockA());
+                show(MockData.A());
                 t.Check("正在工作：開心，不著急（鬧鐘還在）", !pet.ExpressionOf("codex").StartsWith("hurry") && pet.HasClock("codex"), pet.ExpressionOf("codex"));
-                show(Snapshots.MockB());
+                show(MockData.B());
                 t.Equal("5 小時快用完：維持快沒力的表情", "critical", pet.ExpressionOf("claude"));
                 t.Equal("5 小時用完：睡覺", "sleep", pet.ExpressionOf("codex"));
 
-                var quiet = Snapshots.MockC();
+                var quiet = MockData.C();
                 foreach (var v in quiet) { v.UseIt = null; v.UseItLevel = 0; }
                 show(quiet);
                 t.Check("關掉提醒：沒有鬧鐘、不閃、不著急",
@@ -182,17 +182,17 @@ namespace SentriPet
             t.Section("詳情卡");
             t.Run("Card", () =>
             {
-                var c = Snapshots.MockC()[0];
+                var c = MockData.C()[0];
                 var card = DetailCardView.Build(c);
                 t.Check("快過期：顯示完整提醒", card.BannerShown && card.BannerText.Contains("Claude") && card.BannerText.Contains(Fmt.Pct(c.UseIt.Remaining)), card.BannerText);
-                var a = Snapshots.MockA()[2];
+                var a = MockData.A()[2];
                 t.Check("不急的時候：沒有提醒", !DetailCardView.Build(a).BannerShown);
                 c.UseIt = null;
                 c.UseItLevel = 0;
                 card.Update(c);
                 t.Check("更新後提醒消失", !card.BannerShown);
                 t.Check("同樣的額度組成：就地更新", card.Matches(c) && !card.Matches(a));
-                var err = Snapshots.MockB()[3];
+                var err = MockData.B()[3];
                 var ec = DetailCardView.Build(err);
                 ec.Root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 t.Check("沒有資料的 AI 也畫得出卡片", ec.Root.DesiredSize.Height > 50);
@@ -219,7 +219,7 @@ namespace SentriPet
             t.Section("桌寵說的話");
             t.Run("Lines", () =>
             {
-                var all = Snapshots.MockA().Concat(Snapshots.MockB()).Concat(Snapshots.MockC()).ToList();
+                var all = MockData.A().Concat(MockData.B()).Concat(MockData.C()).ToList();
                 var problems = new List<string>();
                 for (int seed = 0; seed < 40; seed++)
                 {
@@ -236,12 +236,12 @@ namespace SentriPet
                     }
                 }
                 t.Check("閒聊、戳一下、催促：每句都完整（沒有 {placeholder}）", problems.Count == 0, problems.Count == 0 ? "40 輪 × " + all.Count + " 隻" : problems.First());
-                var c = Snapshots.MockC();
+                var c = MockData.C();
                 t.Check("三個等級的通知文字", c.All(v => Lines.UseItAlert(v).Length > 10), string.Join(" / ", c.Select(v => Lines.UseItAlert(v))));
-                t.Equal("不急的時候沒有通知文字", "", Lines.UseItAlert(Snapshots.MockA()[2]));
+                t.Equal("不急的時候沒有通知文字", "", Lines.UseItAlert(MockData.A()[2]));
                 var claude = all[0];
                 t.Check("提醒、緊急、重置都提到名字", Lines.Warn(claude, claude.Primary).Contains("Claude") && Lines.Critical(claude, claude.Primary).Contains("Claude") && Lines.Reset(claude, claude.Primary).Contains("Claude"));
-                t.Contains("第一次見面的招呼", Lines.Greeting(Snapshots.MockA()), "Claude、Codex、Copilot");
+                t.Contains("第一次見面的招呼", Lines.Greeting(MockData.A()), "Claude、Codex、Copilot");
             });
         }
     }

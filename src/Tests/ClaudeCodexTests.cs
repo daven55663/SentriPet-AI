@@ -380,13 +380,15 @@ namespace SentriPet
                 var now = DateTime.UtcNow;
                 string dir = t.TempDir("codex-live");
                 Environment.SetEnvironmentVariable("CODEX_HOME", Path.Combine(dir, "home"));
-                CodexProvider.ExeOverride = Process.GetCurrentProcess().MainModule.FileName;
+                string self, prefix;
+                TestKit.SelfLaunch(out self, out prefix);
+                CodexProvider.ExeOverride = self;
                 var live = new AppSettings { CodexLiveMinutes = 5 };
 
                 string single = Path.Combine(dir, "single.json");
                 TestKit.WriteFile(single, "{\n \"rateLimits\": {\n  \"primary\": {\"usedPercent\": 25, \"windowDurationMins\": 300, \"resetsAt\": " + TestKit.Unix(now.AddHours(2)) + "},\n" +
                     "  \"secondary\": {\"usedPercent\": 40, \"windowDurationMins\": 10080, \"resetsAt\": " + TestKit.Unix(now.AddDays(3)) + "},\n  \"planType\": \"pro\"\n }\n}");
-                CodexProvider.ArgsOverride = "--fake-codex-app-server \"" + single + "\"";
+                CodexProvider.ArgsOverride = prefix + "--fake-codex-app-server \"" + single + "\"";
                 var sw = Stopwatch.StartNew();
                 var s = new CodexProvider().Fetch(true, live);
                 t.Check("即時查詢成功", s.Error == null && s.Source == "Codex 官方 app-server", (s.Error ?? s.Source) + "（" + sw.ElapsedMilliseconds + " ms）");
@@ -397,20 +399,20 @@ namespace SentriPet
                 TestKit.WriteFile(byId, "{\"rateLimitsByLimitId\":{\"codex\":{\"limitId\":\"codex\",\"primary\":{\"usedPercent\":10,\"windowDurationMins\":300}," +
                     "\"secondary\":{\"usedPercent\":20,\"windowDurationMins\":10080}},\"codex_bengalfox\":{\"limitId\":\"codex_bengalfox\",\"limitName\":\"GPT-5.3-Codex-Spark\"," +
                     "\"primary\":{\"usedPercent\":70,\"windowDurationMins\":300}}}}");
-                CodexProvider.ArgsOverride = "--fake-codex-app-server \"" + byId + "\"";
+                CodexProvider.ArgsOverride = prefix + "--fake-codex-app-server \"" + byId + "\"";
                 var m = new CodexProvider().Fetch(true, live);
                 t.Check("多個模型額度（rateLimitsByLimitId）", m.Meters.Count == 3 && m.Meters.Any(x => x.Key == "codex_bengalfox:300" && x.Used == 70), m.Error);
 
                 string none = Path.Combine(dir, "none.json");
                 TestKit.WriteFile(none, "{\"rateLimits\":null}");
-                CodexProvider.ArgsOverride = "--fake-codex-app-server \"" + none + "\"";
+                CodexProvider.ArgsOverride = prefix + "--fake-codex-app-server \"" + none + "\"";
                 var n = new CodexProvider().Fetch(true, live);
                 t.Check("帳號沒有回傳用量：說明原因", n.Meters.Count == 0 && n.Error != null && n.Error.Contains("沒有回傳用量"), n.Error);
 
                 // both sources: the newer one wins; if the live query fails the log is shown with a note
                 string home = Path.Combine(dir, "home");
                 TestKit.WriteFile(Path.Combine(home, "sessions", "x", "rollout.jsonl"), RateLine(now.AddHours(-1), null, null, 3, now.AddHours(4), 4, now.AddDays(5), null) + "\n");
-                CodexProvider.ArgsOverride = "--fake-codex-app-server \"" + single + "\"";
+                CodexProvider.ArgsOverride = prefix + "--fake-codex-app-server \"" + single + "\"";
                 var both = new CodexProvider().Fetch(true, live);
                 t.Check("本機紀錄較舊：用即時的", both.Source == "Codex 官方 app-server" && both.Meters[0].Used == 25);
                 CodexProvider.ExeOverride = Path.Combine(dir, "no-such-codex.exe");

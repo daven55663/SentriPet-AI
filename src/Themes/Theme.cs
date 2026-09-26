@@ -406,6 +406,9 @@ namespace SentriPet
             return Palette.Hsl(h, 0.95, 0.62);
         }
 
+        public static Color Vivid(Rgba c) { return Vivid(c.ToWpf()); }
+        public static Color Desaturate(Rgba c, double t) { return Desaturate(c.ToWpf(), t); }
+
         public static Color Desaturate(Color c, double t)
         {
             byte gray = (byte)(c.R * 0.3 + c.G * 0.59 + c.B * 0.11);

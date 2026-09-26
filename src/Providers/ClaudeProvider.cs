@@ -38,14 +38,16 @@ namespace SentriPet
             Id = "claude";
             Name = "Claude";
             Mascot = "sparkle";
-            Color = Palette.Hex("#D97757");
+            Color = Rgba.Hex("#D97757");
         }
 
         public override int IntervalSeconds { get { return 10; } }
 
         static IEnumerable<string> HistoryCandidates()
         {
+            // %APPDATA%\Claude on Windows, ~/Library/Application Support/Claude on macOS, ~/.config/Claude on Linux
             yield return Path.Combine(AppPaths.AppData, "Claude", "plan-usage-history.json");
+            if (!Os.Windows) yield break;
             foreach (var p in AppPaths.Glob(@"%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\plan-usage-history.json"))
                 yield return p;
         }
@@ -76,7 +78,8 @@ namespace SentriPet
             if (AppPaths.EditorExtensions("anthropic.claude-code").Count > 0) d.Evidence.Add("VS Code 擴充");
             if (AppPaths.Which("claude") != null) d.Evidence.Add("claude 指令");
             d.Installed = d.Evidence.Count > 0;
-            if (FindHistory() == null) d.Hint = "開啟 Claude 桌面版後就會開始記錄用量";
+            if (FindHistory() == null)
+                d.Hint = Os.Linux ? "Claude 桌面版沒有 Linux 版，目前讀不到方案用量（之後會改讀 Claude Code 狀態列）" : "開啟 Claude 桌面版後就會開始記錄用量";
             return d;
         }
 

@@ -26,6 +26,13 @@ Processes started from the Claude desktop app's tools inherit its package file v
 - read the real settings/logs via `\\localhost\C$\Users\%USERNAME%\AppData\Roaming\SentriPet\...`;
 - don't create files under AppData from the tool shell.
 
+## Cross-platform version (in progress — see docs/DEVLOG.md, issue #12)
+
+- `src/Core` and `src/Providers` are shared by the WPF build and the .NET 10 projects in `xplat/` (linked source files). Keep them free of WPF/WinForms/Win32 (use `Rgba`, `Os`, `AppPaths`) and in C# 5 syntax; use `#if NET` for .NET-10-only APIs.
+- .NET 10 SDK: `"C:\Program Files\dotnet\dotnet.exe"` (not on the tool shell's PATH). Set `DOTNET_CLI_TELEMETRY_OPTOUT=1`.
+- `dotnet build SentriPet.slnx -c Release`, then `xplat/SentriPet.Tests/bin/Release/net10.0/SentriPet.Tests.exe <report>` runs the core checks (exit code = failures). CI runs them on Windows, macOS and Linux.
+- Record progress in `docs/DEVLOG.md` (newest first) and on issue #12.
+
 ## Layout
 
 - `src/Providers` — one class per AI (detection + `Fetch`), `CustomProvider` for JSON plugins; `ClaudeCodeUsage` reads Claude Code transcript token counts to extrapolate between the desktop app's ~15-minute usage samples.

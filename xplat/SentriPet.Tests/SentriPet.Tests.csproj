@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The core checks of the self-test, runnable on Windows, macOS and Linux (see Program.cs; exit code = failures). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>SentriPet.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SentriPet.Core\SentriPet.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- shared with the Windows self-test; UiTests.cs and SelfTest.cs need WPF and stay there -->
+    <Compile Include="..\..\src\Tests\TestKit.cs;..\..\src\Tests\CoreSuite.cs;..\..\src\Tests\CoreTests.cs;..\..\src\Tests\ClaudeCodexTests.cs;..\..\src\Tests\ProviderTests.cs" LinkBase="Shared" />
+  </ItemGroup>
+</Project>

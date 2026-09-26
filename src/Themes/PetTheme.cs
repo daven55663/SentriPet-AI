@@ -136,7 +136,7 @@ namespace SentriPet
                 if (Views.Count > 0) return Views;
                 return new List<ProviderView>
                 {
-                    new ProviderView { Id = "_", Name = "偵測中", Mascot = "antenna", Color = Palette.Hex("#94A3B8"), Error = "正在尋找電腦上的 AI…", Mood = SentriPet.Mood.Unknown, Remaining = 50 }
+                    new ProviderView { Id = "_", Name = "偵測中", Mascot = "antenna", Color = Rgba.Hex("#94A3B8"), Error = "正在尋找電腦上的 AI…", Mood = SentriPet.Mood.Unknown, Remaining = 50 }
                 };
             }
         }
@@ -161,7 +161,7 @@ namespace SentriPet
         Card MakeCard(ProviderView v)
         {
             var c = new Card { Id = v.Id, V = v, Phase = Rng.NextDouble() * 10, NextBlink = 1 + Rng.NextDouble() * 3, NextHop = 15 + Rng.NextDouble() * 20 };
-            c.Color = v.HasData ? v.Color : G.Desaturate(v.Color, 0.6);
+            c.Color = v.HasData ? v.Color.ToWpf() : G.Desaturate(v.Color, 0.6);
             var color = c.Color;
             var dark = Palette.Darken(color, 0.4);
 

@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/xplat/">
+    <Project Path="xplat/SentriPet.Core/SentriPet.Core.csproj" />
+    <Project Path="xplat/SentriPet.Tests/SentriPet.Tests.csproj" />
+  </Folder>
+</Solution>

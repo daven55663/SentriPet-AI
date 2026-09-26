@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Windows.Media;
 
 namespace SentriPet
 {
@@ -14,7 +13,7 @@ namespace SentriPet
         public string Id;
         public string Name;
         public string Mascot = "antenna";   // sparkle | prompt | goggles | llama | antenna | cat
-        public Color Color = Colors.SlateGray;
+        public Rgba Color = Rgba.SlateGray;
         public bool BuiltIn = true;
         public string Origin;               // plugin file for custom providers
 

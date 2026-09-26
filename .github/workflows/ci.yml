@@ -14,8 +14,48 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  core:
+    name: Core tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build the cross-platform projects (.NET 10)
+        run: dotnet build SentriPet.slnx -c Release
+
+      - name: Core tests (everything except the Windows widget)
+        shell: bash
+        run: |
+          set +e
+          dotnet run --no-build -c Release --project xplat/SentriPet.Tests -- core-report.txt
+          code=$?
+          summary=$(tail -n 1 core-report.txt)
+          echo "### Core tests on ${{ runner.os }}: $summary" >> "$GITHUB_STEP_SUMMARY"
+          grep '^FAIL ' core-report.txt | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
+          exit $code
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: core-report-${{ runner.os }}
+          path: core-report.txt
+          if-no-files-found: warn
+
   build-and-test:
-    name: Build + self-test (Windows)
+    name: Windows app (WPF) + self-test
     runs-on: windows-latest
     timeout-minutes: 15
     steps:

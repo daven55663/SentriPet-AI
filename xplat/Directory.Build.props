@@ -1,0 +1,17 @@
+<Project>
+  <!-- Shared by the cross-platform (.NET 10) projects. The core sources are also compiled by the Windows WPF build
+       with C# 5, so they keep that syntax; nullable and implicit usings stay off to match. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SentriPet</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- SYSLIB0014: WebRequest (kept so the same code builds on .NET Framework 4.8) -->
+    <NoWarn>$(NoWarn);SYSLIB0014;CS0618</NoWarn>
+    <Version>1.2.2</Version>
+    <Authors>歐育典</Authors>
+    <Copyright>Copyright © 2026 歐育典 · MIT License</Copyright>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+</Project>

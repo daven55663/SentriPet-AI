@@ -22,14 +22,7 @@ namespace SentriPet
             var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             try
             {
-                CoreTests.Run(t);
-                ModelTests.Run(t);
-                SettingsTests.Run(t);
-                TrackerTests.Run(t);
-                ClaudeTests.Run(t);
-                CodexTests.Run(t);
-                ProviderTests.Run(t);
-                ServiceTests.Run(t);
+                CoreSuite.Run(t);
                 UiTests.Run(t);
             }
             finally
@@ -37,10 +30,7 @@ namespace SentriPet
                 AppPaths.DataDirOverride = oldDataDir;
                 t.Cleanup();
             }
-            string summary = (t.Failed == 0 ? "ALL PASS" : t.Failed + " FAILED") + "  (" + t.Passed + " passed, " + t.Failed + " failed, " + t.Skipped + " skipped, " +
-                             sw.Elapsed.TotalSeconds.ToString("0.0") + " s)";
-            string text = App.DisplayName + " " + App.Version + " self-test @ " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + Environment.NewLine +
-                          t.Report + Environment.NewLine + summary + Environment.NewLine;
+            string text = CoreSuite.Report(t, sw.Elapsed, "self-test");
             if (outFile != null) File.WriteAllText(outFile, text, new UTF8Encoding(false));
             else Console.Write(text);
             return t.Failed;

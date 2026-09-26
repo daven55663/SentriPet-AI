@@ -245,7 +245,7 @@ namespace SentriPet
 
         void RenderPreviews()
         {
-            var data = ctl.Views.Count > 0 ? ctl.Views : Snapshots.MockA();
+            var data = ctl.Views.Count > 0 ? ctl.Views : MockData.A();
             foreach (var info in ThemeCatalog.All)
             {
                 try

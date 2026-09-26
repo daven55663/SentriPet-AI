@@ -90,7 +90,7 @@ namespace SentriPet
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            var list = Views.Count > 0 ? Views : new List<ProviderView> { new ProviderView { Id = "_", Name = "偵測中…", Color = Palette.Hex("#94A3B8"), Error = "正在尋找 AI" } };
+            var list = Views.Count > 0 ? Views : new List<ProviderView> { new ProviderView { Id = "_", Name = "偵測中…", Color = Rgba.Hex("#94A3B8"), Error = "正在尋找 AI" } };
             for (int i = 0; i < list.Count; i++)
             {
                 var v = list[i];
@@ -133,7 +133,7 @@ namespace SentriPet
         {
             var shape = m != null ? ShapeFor(m) : Vial;
             var f = new Flask { ProviderId = v.Id, Key = m != null ? m.Key : "", Shape = shape, Phase = Rng.NextDouble() * 6 };
-            var color = v.HasData ? v.Color : G.Desaturate(v.Color, 0.7);
+            var color = v.HasData ? v.Color.ToWpf() : G.Desaturate(v.Color, 0.7);
             var cell = new Canvas { Width = CellW, Height = FlaskH + 4 };
             var body = new Canvas { Width = FlaskW, Height = FlaskH };
             G.Place(body, (CellW - FlaskW) / 2, 4);

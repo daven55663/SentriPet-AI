@@ -10,8 +10,27 @@ namespace SentriPet
     static class AppPaths
     {
         public static readonly string Home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        public static readonly string AppData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        public static readonly string LocalAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+        /// <summary>
+        /// Where programs keep their settings: %APPDATA% on Windows, ~/Library/Application Support on macOS,
+        /// $XDG_CONFIG_HOME (~/.config) on Linux. Electron apps such as Claude, Cursor and Windsurf use the same folders.
+        /// </summary>
+        public static readonly string AppData = Os.Windows ? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) :
+                                                Os.Mac ? Path.Combine(Home, "Library", "Application Support") : Xdg("XDG_CONFIG_HOME", ".config");
+
+        /// <summary>%LOCALAPPDATA% on Windows; ~/Library/Application Support on macOS; $XDG_DATA_HOME (~/.local/share) on Linux.</summary>
+        public static readonly string LocalAppData = Os.Windows ? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) :
+                                                     Os.Mac ? Path.Combine(Home, "Library", "Application Support") : Xdg("XDG_DATA_HOME", Path.Combine(".local", "share"));
+
+        /// <summary>Caches: %LOCALAPPDATA% on Windows, ~/Library/Caches on macOS, $XDG_CACHE_HOME (~/.cache) on Linux.</summary>
+        public static readonly string Cache = Os.Windows ? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) :
+                                              Os.Mac ? Path.Combine(Home, "Library", "Caches") : Xdg("XDG_CACHE_HOME", ".cache");
+
+        static string Xdg(string variable, string fallback)
+        {
+            string v = Environment.GetEnvironmentVariable(variable);
+            return !string.IsNullOrEmpty(v) && Path.IsPathRooted(v) ? v : Path.Combine(Home, fallback);
+        }
 
         /// <summary>--dev runs with a separate profile so testing never touches the real settings or autostart.</summary>
         public static bool Dev { get; private set; }
@@ -79,7 +98,21 @@ namespace SentriPet
         {
             if (string.IsNullOrEmpty(s)) return s;
             s = EnvToken.Replace(s, m => Environment.GetEnvironmentVariable(m.Groups[1].Value) ?? "");
+            if (!Os.Windows)
+            {
+                // Windows folder variables mean the matching folders elsewhere, so plugin files work on every system
+                s = ReplaceVar(s, "%APPDATA%", AppData);
+                s = ReplaceVar(s, "%LOCALAPPDATA%", LocalAppData);
+                s = ReplaceVar(s, "%USERPROFILE%", Home);
+            }
             return Environment.ExpandEnvironmentVariables(s);
+        }
+
+        static string ReplaceVar(string s, string token, string value)
+        {
+            int i;
+            while ((i = s.IndexOf(token, StringComparison.OrdinalIgnoreCase)) >= 0) s = s.Substring(0, i) + value + s.Substring(i + token.Length);
+            return s;
         }
 
         /// <summary>A command-line argument: variables, plus a leading ~ for the home folder (slashes kept, so "/c" stays "/c").</summary>
@@ -90,14 +123,14 @@ namespace SentriPet
             return s;
         }
 
-        /// <summary>Expands ~, %VAR% and ${env:VAR} in a file path (and turns / into \).</summary>
+        /// <summary>Expands ~, %VAR% and ${env:VAR} in a file path and uses this system's folder separator.</summary>
         public static string Expand(string p)
         {
             if (string.IsNullOrEmpty(p)) return p;
             string s = ExpandVars(p);
             if (s == "~") return Home;
             if (s.StartsWith("~/") || s.StartsWith("~\\")) s = Path.Combine(Home, s.Substring(2));
-            return s.Replace('/', '\\');
+            return Os.Windows ? s.Replace('/', '\\') : s.Replace('\\', '/');
         }
 
         /// <summary>Expands a path whose segments may contain * or ? wildcards.</summary>
@@ -111,8 +144,10 @@ namespace SentriPet
                 if (File.Exists(p) || Directory.Exists(p)) result.Add(p);
                 return result;
             }
-            string[] parts = p.Split('\\');
-            var current = new List<string> { parts[0] + "\\" };
+            char sep = Path.DirectorySeparatorChar;
+            string[] parts = p.Split(sep);
+            // "C:\a\b" → root "C:\"; "/a/b" → root "/"
+            var current = new List<string> { Os.Windows ? parts[0] + sep : "/" };
             for (int i = 1; i < parts.Length; i++)
             {
                 string seg = parts[i];
@@ -169,15 +204,15 @@ namespace SentriPet
             string found = null;
             try
             {
-                var exts = (Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.CMD;.BAT").Split(';');
-                var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';');
+                var exts = Os.Windows ? (Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.CMD;.BAT").Split(';') : new string[0];
+                var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator);
                 foreach (var d in dirs)
                 {
                     if (string.IsNullOrWhiteSpace(d)) continue;
                     string dir = d.Trim().Trim('"');
                     foreach (var e in new[] { "" }.Concat(exts))
                     {
-                        if (e.Length == 0 && !Path.HasExtension(name)) continue;
+                        if (e.Length == 0 && Os.Windows && !Path.HasExtension(name)) continue;
                         string c = Path.Combine(dir, name + e);
                         if (File.Exists(c)) { found = c; break; }
                     }
@@ -209,6 +244,7 @@ namespace SentriPet
 
         public static bool MsixInstalled(string packagePrefix)
         {
+            if (!Os.Windows) return false;
             return Glob(Path.Combine(LocalAppData, "Packages", packagePrefix + "_*")).Count > 0;
         }
 

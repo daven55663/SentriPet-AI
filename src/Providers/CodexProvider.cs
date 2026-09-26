@@ -67,7 +67,7 @@ namespace SentriPet
             Id = "codex";
             Name = "Codex";
             Mascot = "prompt";
-            Color = Palette.Hex("#6C7BFF");
+            Color = Rgba.Hex("#6C7BFF");
         }
 
         public override int IntervalSeconds { get { return 15; } }
@@ -81,8 +81,7 @@ namespace SentriPet
         public override Detection Detect()
         {
             var d = new Detection();
-            if (Directory.Exists(Path.Combine(AppPaths.LocalAppData, "OpenAI", "Codex")) || AppPaths.MsixInstalled("OpenAI.Codex"))
-                d.Evidence.Add("Codex 桌面版");
+            if (DesktopApp() != null) d.Evidence.Add("Codex 桌面版");
             if (Directory.Exists(CodexHome())) d.Evidence.Add("Codex 資料夾");
             if (AppPaths.EditorExtensions("openai.chatgpt-").Count > 0) d.Evidence.Add("VS Code 擴充");
             if (AppPaths.Which("codex") != null) d.Evidence.Add("codex 指令");
@@ -334,18 +333,36 @@ namespace SentriPet
 
         // ------------------------------------------------------------ app-server
 
+        /// <summary>The Codex desktop app's folder, if installed (Windows: LocalAppData or MSIX; macOS: /Applications).</summary>
+        static string DesktopApp()
+        {
+            if (Os.Windows)
+            {
+                string d = Path.Combine(AppPaths.LocalAppData, "OpenAI", "Codex");
+                if (Directory.Exists(d)) return d;
+                return AppPaths.MsixInstalled("OpenAI.Codex") ? "msix" : null;
+            }
+            if (Os.Mac)
+                foreach (var d in new[] { "/Applications/Codex.app", Path.Combine(AppPaths.Home, "Applications", "Codex.app") })
+                    if (Directory.Exists(d)) return d;
+            return null;
+        }
+
         string FindCodexExe()
         {
             if (ExeOverride != null) return ExeOverride;
             if (codexExe != null && (DateTime.UtcNow - codexExeCheckedAt).TotalMinutes < 30 && File.Exists(codexExe)) return codexExe;
             codexExeCheckedAt = DateTime.UtcNow;
+            string exe = Os.Windows ? "codex.exe" : "codex";
             var cands = new List<FileInfo>();
-            foreach (var p in AppPaths.Glob(@"%LOCALAPPDATA%\OpenAI\Codex\bin\*\codex.exe")) cands.Add(new FileInfo(p));
-            foreach (var ext in AppPaths.EditorExtensions("openai.chatgpt-"))
-            {
-                var p = Path.Combine(ext, "bin", "windows-x86_64", "codex.exe");
-                if (File.Exists(p)) cands.Add(new FileInfo(p));
-            }
+            var patterns = new List<string>();
+            if (Os.Windows) patterns.Add(@"%LOCALAPPDATA%\OpenAI\Codex\bin\*\codex.exe");
+            if (Os.Mac) patterns.AddRange(new[] { "/Applications/Codex.app/Contents/Resources/codex", "/Applications/Codex.app/Contents/Resources/bin/codex" });
+            // the VS Code extension bundles one binary per platform: bin/<platform>/codex(.exe)
+            foreach (var ext in AppPaths.EditorExtensions("openai.chatgpt-")) patterns.Add(Path.Combine(ext, "bin", "*", exe));
+            foreach (var pattern in patterns)
+                foreach (var p in AppPaths.Glob(pattern))
+                    if (File.Exists(p) && PlatformBinary(p)) cands.Add(new FileInfo(p));
             var best = cands.Where(f => f.Exists).OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault();
             codexExe = best != null ? best.FullName : AppPaths.Which("codex");
             return codexExe;
@@ -402,7 +419,7 @@ namespace SentriPet
                 input.NewLine = "\n";
                 input.AutoFlush = true;
                 input.WriteLine();
-                input.WriteLine("{\"id\":1,\"method\":\"initialize\",\"params\":{\"clientInfo\":{\"name\":\"sentripet\",\"title\":\"SentriPet\",\"version\":\"" + App.Version + "\"}}}");
+                input.WriteLine("{\"id\":1,\"method\":\"initialize\",\"params\":{\"clientInfo\":{\"name\":\"sentripet\",\"title\":\"SentriPet\",\"version\":\"" + AppInfo.Version + "\"}}}");
                 var init = WaitFor(lines, 1, 20000);
                 if (init == null) { error = "codex app-server 沒有回應"; return null; }
                 if (Json.Get(init, "error") != null) { error = ErrorText(init); return null; }
@@ -480,12 +497,26 @@ namespace SentriPet
             return Json.Str(Json.Get(e, "message")) ?? "未知錯誤";
         }
 
+        /// <summary>An extension ships binaries for several platforms; only the one for this system can run.</summary>
+        static bool PlatformBinary(string path)
+        {
+            string dir = (Path.GetFileName(Path.GetDirectoryName(path)) ?? "").ToLowerInvariant();
+            if (!dir.Contains("-") || dir == "bin") return true;
+            if (Os.Windows) return dir.StartsWith("windows") || dir.StartsWith("win32");
+            if (Os.Mac) return dir.StartsWith("macos") || dir.StartsWith("darwin");
+            return dir.StartsWith("linux");
+        }
+
         static void KillTree(int pid)
         {
             try
             {
+#if NET
+                using (var p = Process.GetProcessById(pid)) p.Kill(true);
+#else
                 var psi = new ProcessStartInfo("taskkill", "/PID " + pid + " /T /F") { CreateNoWindow = true, UseShellExecute = false };
                 using (var k = Process.Start(psi)) k.WaitForExit(3000);
+#endif
             }
             catch { }
         }

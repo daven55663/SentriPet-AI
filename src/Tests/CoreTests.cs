@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Windows.Media;
 
 namespace SentriPet
 {
@@ -66,11 +65,22 @@ namespace SentriPet
                 t.Equal("12～30%：擔心", Mood.Worried, ProviderView.MoodFor(29));
                 t.Equal("12% 以下：快沒了", Mood.Critical, ProviderView.MoodFor(11));
                 t.Equal("用完：睡覺", Mood.Empty, ProviderView.MoodFor(0.5));
-                t.Equal("綠色（50% 以上）", Palette.Hex("#4ADE80"), Palette.Level(50));
-                t.Equal("黃色（20～50%）", Palette.Hex("#FBBF24"), Palette.Level(20));
-                t.Equal("紅色（20% 以下）", Palette.Hex("#F87171"), Palette.Level(19.9));
-                t.Equal("無效顏色 → 灰色", Colors.Gray, Palette.Hex("not-a-colour"));
-                t.Equal("同一個 id 顏色固定", Palette.FromId("kiro"), Palette.FromId("kiro"));
+                t.Equal("綠色（50% 以上）", Rgba.Hex("#4ADE80"), Rgba.Level(50));
+                t.Equal("黃色（20～50%）", Rgba.Hex("#FBBF24"), Rgba.Level(20));
+                t.Equal("紅色（20% 以下）", Rgba.Hex("#F87171"), Rgba.Level(19.9));
+                t.Equal("無效顏色 → 灰色", Rgba.Gray, Rgba.Hex("not-a-colour"));
+                t.Equal("同一個 id 顏色固定", Rgba.FromId("kiro"), Rgba.FromId("kiro"));
+                t.Check("不同 id 顏色不同", Rgba.FromId("kiro") != Rgba.FromId("gemini"));
+                t.Equal("顏色：#RRGGBB", Rgba.FromRgb(0xD9, 0x77, 0x57), Rgba.Hex("#D97757"));
+                t.Equal("顏色：#AARRGGBB", Rgba.FromArgb(0x80, 0x11, 0x22, 0x33), Rgba.Hex("#80112233"));
+                t.Equal("顏色：#RGB 簡寫", Rgba.FromRgb(0xFF, 0x88, 0x00), Rgba.Hex("#F80"));
+                t.Equal("顏色：名稱", Rgba.FromRgb(0xFF, 0xA5, 0x00), Rgba.Hex("Orange"));
+                t.Equal("顏色：轉回文字", "#D97757", Rgba.Hex("#D97757").ToHex());
+                t.Equal("顏色：半透明轉回文字", "#80112233", Rgba.Hex("#80112233").ToHex());
+                t.Equal("調亮：一半混白", Rgba.FromRgb(127, 127, 127), Rgba.Black.Lighten(0.5));
+                t.Equal("調暗：全黑", Rgba.Black, Rgba.White.Darken(1));
+                t.Equal("透明度", (byte)127, Rgba.White.WithAlpha(0.5).A);
+                t.Equal("HSL：紅", Rgba.FromRgb(255, 0, 0), Rgba.Hsl(0, 1, 0.5));
             });
 
             t.Section("JSON");

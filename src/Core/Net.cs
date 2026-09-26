@@ -17,7 +17,7 @@ namespace SentriPet
             req.Method = string.IsNullOrEmpty(method) ? "GET" : method.ToUpperInvariant();
             req.Timeout = timeoutMs;
             req.ReadWriteTimeout = timeoutMs;
-            req.UserAgent = "SentriPet/" + App.Version;
+            req.UserAgent = AppInfo.Name + "/" + AppInfo.Version;
             req.Accept = "application/json";
             req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             if (headers != null)
@@ -53,30 +53,42 @@ namespace SentriPet
             }
         }
 
-        /// <summary>Runs a command and returns stdout. Kills it after the timeout.</summary>
+        /// <summary>
+        /// Runs a command and returns stdout. Kills it after the timeout. Scripts go through the system shell:
+        /// cmd.exe for .cmd/.bat on Windows, /bin/sh for .sh (or "shell": true) on macOS and Linux, PowerShell for .ps1.
+        /// </summary>
         public static string RunCommand(string file, IList<string> args, bool viaShell, int timeoutMs, out int exitCode, out string stderr)
         {
             var psi = new ProcessStartInfo();
-            var argText = new StringBuilder();
-            foreach (var a in args ?? new string[0])
-            {
-                if (argText.Length > 0) argText.Append(' ');
-                argText.Append(Quote(a));
-            }
-            if (viaShell || file.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".bat", StringComparison.OrdinalIgnoreCase))
+            args = args ?? new string[0];
+            string ext = (Path.GetExtension(file) ?? "").ToLowerInvariant();
+            if (Os.Windows && (viaShell || ext == ".cmd" || ext == ".bat"))
             {
                 psi.FileName = Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe";
-                psi.Arguments = "/d /s /c \"" + Quote(file) + (argText.Length > 0 ? " " + argText : "") + "\"";
+                psi.Arguments = "/d /s /c \"" + Quote(file) + (args.Count > 0 ? " " + JoinQuoted(args) : "") + "\"";
             }
-            else if (file.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase))
+            else if (!Os.Windows && viaShell)
             {
-                psi.FileName = "powershell.exe";
-                psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File " + Quote(file) + (argText.Length > 0 ? " " + argText : "");
+                // one shell command line: the program and its arguments, quoted for sh
+                var line = new StringBuilder(ShQuote(file));
+                foreach (var a in args) line.Append(' ').Append(ShQuote(a));
+                SetArgs(psi, "/bin/sh", new[] { "-c", line.ToString() });
+            }
+            else if (!Os.Windows && ext == ".sh")
+            {
+                var all = new List<string> { file };
+                all.AddRange(args);
+                SetArgs(psi, "/bin/sh", all);
+            }
+            else if (ext == ".ps1")
+            {
+                var all = new List<string> { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", file };
+                all.AddRange(args);
+                SetArgs(psi, Os.Windows ? "powershell.exe" : "pwsh", all);
             }
             else
             {
-                psi.FileName = file;
-                psi.Arguments = argText.ToString();
+                SetArgs(psi, file, args);
             }
             psi.UseShellExecute = false;
             psi.CreateNoWindow = true;
@@ -108,11 +120,40 @@ namespace SentriPet
             return outSb.ToString();
         }
 
+        /// <summary>Program and arguments, passed exactly (ArgumentList on .NET 10, Windows quoting on .NET Framework).</summary>
+        static void SetArgs(ProcessStartInfo psi, string file, IList<string> args)
+        {
+            psi.FileName = file;
+#if NET
+            foreach (var a in args) psi.ArgumentList.Add(a);
+#else
+            psi.Arguments = JoinQuoted(args);
+#endif
+        }
+
+        static string JoinQuoted(IList<string> args)
+        {
+            var sb = new StringBuilder();
+            foreach (var a in args)
+            {
+                if (sb.Length > 0) sb.Append(' ');
+                sb.Append(Quote(a));
+            }
+            return sb.ToString();
+        }
+
         static string Quote(string a)
         {
             if (string.IsNullOrEmpty(a)) return "\"\"";
             if (a.IndexOfAny(new[] { ' ', '\t', '"' }) < 0) return a;
             return "\"" + a.Replace("\"", "\\\"") + "\"";
+        }
+
+        /// <summary>'single quotes' for /bin/sh (a quote inside becomes '\'').</summary>
+        static string ShQuote(string a)
+        {
+            if (!string.IsNullOrEmpty(a) && a.IndexOfAny(" \t\n'\"\\$`;&|<>()*?[]{}!#~".ToCharArray()) < 0) return a;
+            return "'" + (a ?? "").Replace("'", "'\\''") + "'";
         }
     }
 }

@@ -16,8 +16,8 @@ namespace SentriPet
 {
     static class App
     {
-        public const string Version = "1.2.2";
-        public const string DisplayName = "SentriPet";
+        public const string Version = AppInfo.Version;
+        public const string DisplayName = AppInfo.Name;
 
         [STAThread]
         static int Main(string[] args)

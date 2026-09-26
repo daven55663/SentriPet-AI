@@ -290,7 +290,7 @@ namespace SentriPet
             var v = providerId != null ? ctl.Views.FirstOrDefault(x => x.Id == providerId) : null;
             if (v == null) providerId = null;
             if (speech == null) speech = new SpeechWindow(this);
-            speech.SetText(providerId, text, v != null ? v.Color : Palette.Hex("#94A3B8"), 3.5 + Math.Min(6, text.Length * 0.12));
+            speech.SetText(providerId, text, v != null ? v.Color.ToWpf() : Palette.Hex("#94A3B8"), 3.5 + Math.Min(6, text.Length * 0.12));
             HideDetail();
             quietUntil = speech.Until.AddSeconds(-1);
             PlaceSpeech();

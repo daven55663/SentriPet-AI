@@ -124,7 +124,10 @@ namespace SentriPet
                     TestKit.WriteFile(Path.Combine(data, "mapped.json"), "{\"account\":{\"tier\":\"Enterprise\"},\"usage\":{\"requests\":250,\"reset\":" + TestKit.Unix(now.AddDays(2)) + "},\"limits\":{\"requests\":1000}}");
                     TestKit.WriteFile(Path.Combine(data, "dict.json"), "{\"quotas\":{\"a\":{\"pct\":10},\"b\":{\"pct\":20},\"c\":{\"pct\":30}}}");
                     TestKit.WriteFile(Path.Combine(data, "list.json"), "{\"items\":[{\"model\":\"m1\",\"left\":0.75},{\"model\":\"m2\",\"left\":0.5}]}");
-                    TestKit.WriteFile(Path.Combine(data, "print.cmd"), "@echo off\r\necho starting up...\r\ntype \"%~dp0acme.json\"\r\n");
+                    // a script that prints a log line before the JSON (cmd on Windows, sh elsewhere)
+                    string script = Path.Combine(data, Os.Windows ? "print.cmd" : "print.sh");
+                    TestKit.WriteFile(script, Os.Windows ? "@echo off\r\necho starting up...\r\ntype \"%~dp0acme.json\"\r\n"
+                                                         : "echo starting up...\ncat \"$(dirname \"$0\")/acme.json\"\n");
                     web.Route("/usage", 200, "{\"meters\":[{\"label\":\"API\",\"used\":12.5,\"windowMinutes\":43200}]}");
                     web.Route("/down", 500, "{\"error\":\"boom\"}");
 
@@ -137,8 +140,10 @@ namespace SentriPet
                         "\"metersFrom\":{\"path\":\"$.quotas\",\"used\":\"pct\",\"labels\":{\"a\":\"Alpha\",\"b\":\"Beta\"},\"windowMinutes\":{\"a\":300},\"onlyLabeled\":true}}");
                     plugin("list", "{\"source\":{\"type\":\"file\",\"path\":\"" + esc(Path.Combine(data, "list.json")) + "\"}," +
                         "\"metersFrom\":{\"path\":\"$.items\",\"keyField\":\"model\",\"remaining\":\"left\",\"scale\":100}}");
-                    plugin("cmd", "{\"source\":{\"type\":\"command\",\"command\":\"" + esc(Path.Combine(data, "print.cmd")) + "\",\"timeoutSeconds\":20}}");
-                    plugin("cmdargs", "{\"source\":{\"type\":\"command\",\"command\":\"cmd.exe\",\"args\":[\"/d\",\"/c\",\"type\",\"" + esc(Path.Combine(data, "acme.json")) + "\"]}}");
+                    plugin("cmd", "{\"source\":{\"type\":\"command\",\"command\":\"" + esc(script) + "\",\"timeoutSeconds\":20}}");
+                    plugin("cmdargs", Os.Windows
+                        ? "{\"source\":{\"type\":\"command\",\"command\":\"cmd.exe\",\"args\":[\"/d\",\"/c\",\"type\",\"" + esc(Path.Combine(data, "acme.json")) + "\"]}}"
+                        : "{\"source\":{\"type\":\"command\",\"command\":\"/bin/sh\",\"args\":[\"-c\",\"cat '" + Path.Combine(data, "acme.json") + "'\"]}}");
                     plugin("web", "{\"source\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:" + web.Port + "/usage\",\"headers\":{\"X-Token\":\"${env:SENTRIPET_TEST_TOKEN}\"}}}");
                     plugin("down", "{\"source\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:" + web.Port + "/down\"}}");
                     plugin("weird", "{\"source\":{\"type\":\"ftp\"}}");
@@ -147,7 +152,7 @@ namespace SentriPet
                     plugin("off", "{\"enabled\":false,\"source\":{\"type\":\"file\",\"path\":\"x\"}}");
                     plugin("detectno", "{\"detect\":{\"paths\":[\"" + esc(Path.Combine(dir, "nope")) + "\"],\"commands\":[\"sentripet-no-such-command\"]}}");
                     plugin("detectenv", "{\"detect\":{\"paths\":[\"" + esc(Path.Combine(dir, "nope")) + "\"],\"env\":[\"SENTRIPET_TEST_ENV\"]}}");
-                    plugin("detectpath", "{\"detect\":{\"paths\":[\"" + esc(Path.Combine(data, "*.cmd")) + "\"]}}");
+                    plugin("detectpath", "{\"detect\":{\"paths\":[\"" + esc(Path.Combine(data, "*" + Path.GetExtension(script))) + "\"]}}");
                     TestKit.WriteFile(Path.Combine(dir, "broken.json"), "{ this is broken");
 
                     var all = CustomProvider.LoadFrom(dir);
@@ -158,7 +163,7 @@ namespace SentriPet
                     t.Equal("指令參數的 ~ 是家目錄", AppPaths.Home + "/tools/usage.py", AppPaths.ExpandArg("~/tools/usage.py"));
                     t.Equal("檔案路徑的 ~ 與 /", Path.Combine(AppPaths.Home, "a", "b.json"), AppPaths.Expand("~/a/b.json"));
                     var acme = get("acme");
-                    t.Check("名稱、顏色、造型、最短 10 秒更新", acme != null && acme.Name == "Acme AI" && acme.Mascot == "cat" && acme.IntervalSeconds == 10 && acme.Color == Palette.Hex("#FF8800") && !acme.BuiltIn);
+                    t.Check("名稱、顏色、造型、最短 10 秒更新", acme != null && acme.Name == "Acme AI" && acme.Mascot == "cat" && acme.IntervalSeconds == 10 && acme.Color == Rgba.Hex("#FF8800") && !acme.BuiltIn);
                     t.Check("沒有 detect：一律視為已安裝", acme != null && acme.Detect().Installed);
 
                     var s = new AppSettings();

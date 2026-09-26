@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The platform-neutral core: the same source files the Windows build compiles (src/Core, src/Providers). -->
+  <PropertyGroup>
+    <AssemblyName>SentriPet.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\Core\**\*.cs" LinkBase="Core" />
+    <Compile Include="..\..\src\Providers\**\*.cs" LinkBase="Providers" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SentriPet.Tests" />
+    <InternalsVisibleTo Include="SentriPet.Desktop" />
+  </ItemGroup>
+</Project>

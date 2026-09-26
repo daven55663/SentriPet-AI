@@ -367,7 +367,7 @@ namespace SentriPet
 
         FrameworkElement MakeMember(ProviderView v)
         {
-            var m = new Member { Id = v.Id, Color = v.HasData ? v.Color : G.Desaturate(v.Color, 0.7), Mascot = v.Mascot };
+            var m = new Member { Id = v.Id, Color = v.HasData ? v.Color.ToWpf() : G.Desaturate(v.Color, 0.7), Mascot = v.Mascot };
             var grid = new Grid { Tag = "pv:" + v.Id, Background = G.B(Colors.Black, 0.001) };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });

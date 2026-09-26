@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Windows.Media;
 
 namespace SentriPet
 {
@@ -76,7 +75,7 @@ namespace SentriPet
         public string Id;
         public string Name;
         public string Mascot;
-        public Color Color;
+        public Rgba Color;
         public Snapshot Snap;
         public List<Meter> Meters = new List<Meter>();
         public Meter Primary;         // most constrained window (drives the mood)
@@ -95,8 +94,8 @@ namespace SentriPet
         public string Error;
         public string StatusText;
 
-        public Color Dark { get { return Palette.Darken(Color, 0.35); } }
-        public Color Light { get { return Palette.Lighten(Color, 0.55); } }
+        public Rgba Dark { get { return Color.Darken(0.35); } }
+        public Rgba Light { get { return Color.Lighten(0.55); } }
 
         /// <summary>
         /// The window a one-line "↻ resets in …" status talks about: the one that is nearly used up (it is what
@@ -153,70 +152,6 @@ namespace SentriPet
             if (hours <= 24 && left >= 10) return 2;
             if (hours <= 48 && left >= 30) return 1;
             return 0;
-        }
-    }
-
-    static class Palette
-    {
-        public static Color Hex(string hex)
-        {
-            try { return (Color)ColorConverter.ConvertFromString(hex); }
-            catch { return Colors.Gray; }
-        }
-
-        public static Color Mix(Color a, Color b, double t)
-        {
-            t = Math.Max(0, Math.Min(1, t));
-            return Color.FromArgb(
-                (byte)(a.A + (b.A - a.A) * t),
-                (byte)(a.R + (b.R - a.R) * t),
-                (byte)(a.G + (b.G - a.G) * t),
-                (byte)(a.B + (b.B - a.B) * t));
-        }
-
-        public static Color Lighten(Color c, double t) { return Mix(c, Color.FromArgb(c.A, 255, 255, 255), t); }
-        public static Color Darken(Color c, double t) { return Mix(c, Color.FromArgb(c.A, 0, 0, 0), t); }
-        public static Color A(Color c, double alpha) { return Color.FromArgb((byte)Math.Max(0, Math.Min(255, alpha * 255)), c.R, c.G, c.B); }
-
-        public static SolidColorBrush Brush(Color c)
-        {
-            var b = new SolidColorBrush(c);
-            b.Freeze();
-            return b;
-        }
-
-        public static SolidColorBrush Brush(string hex) { return Brush(Hex(hex)); }
-
-        /// <summary>Traffic-light colour for a remaining percentage.</summary>
-        public static Color Level(double remaining)
-        {
-            if (remaining >= 50) return Hex("#4ADE80");
-            if (remaining >= 20) return Hex("#FBBF24");
-            return Hex("#F87171");
-        }
-
-        /// <summary>Stable pleasant colour for an unknown provider id.</summary>
-        public static Color FromId(string id)
-        {
-            int h = 0;
-            foreach (char ch in id ?? "") h = h * 31 + ch;
-            double hue = Math.Abs(h % 360);
-            return Hsl(hue, 0.62, 0.58);
-        }
-
-        public static Color Hsl(double h, double s, double l)
-        {
-            double c = (1 - Math.Abs(2 * l - 1)) * s;
-            double x = c * (1 - Math.Abs((h / 60) % 2 - 1));
-            double m = l - c / 2;
-            double r = 0, g = 0, b = 0;
-            if (h < 60) { r = c; g = x; }
-            else if (h < 120) { r = x; g = c; }
-            else if (h < 180) { g = c; b = x; }
-            else if (h < 240) { g = x; b = c; }
-            else if (h < 300) { r = x; b = c; }
-            else { r = c; b = x; }
-            return Color.FromRgb((byte)((r + m) * 255), (byte)((g + m) * 255), (byte)((b + m) * 255));
         }
     }
 

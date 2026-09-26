@@ -30,7 +30,7 @@ namespace SentriPet
             Name = Json.Str(Json.Get(d, "name")) ?? Id;
             Mascot = Json.Str(Json.Get(d, "mascot")) ?? "antenna";
             string color = Json.Str(Json.Get(d, "color"));
-            Color = color != null ? Palette.Hex(color) : Palette.FromId(Id);
+            Color = color != null ? Rgba.Hex(color) : Rgba.FromId(Id);
             interval = (int)Math.Max(10, Json.Num(Json.Get(d, "intervalSeconds")) ?? 120);
         }
 

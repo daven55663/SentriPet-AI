@@ -101,6 +101,15 @@ namespace SentriPet
 
         public static long Unix(DateTime utc) { return (long)Math.Round(Json.ToUnixMs(utc) / 1000.0); }
 
+        /// <summary>How to start this program again (the fake codex app-server): the exe itself, or "dotnet app.dll".</summary>
+        public static void SelfLaunch(out string exe, out string argsPrefix)
+        {
+            exe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+            argsPrefix = "";
+            if (Path.GetFileNameWithoutExtension(exe).ToLowerInvariant() == "dotnet")
+                argsPrefix = "\"" + System.Reflection.Assembly.GetEntryAssembly().Location + "\" ";
+        }
+
         /// <summary>Waits for a condition (polling), for things that run on worker threads.</summary>
         public static bool WaitUntil(Func<bool> condition, int timeoutMs)
         {
@@ -138,7 +147,7 @@ namespace SentriPet
         {
             Id = id;
             Name = name;
-            Color = Palette.FromId(id);
+            Color = Rgba.FromId(id);
         }
 
         public override int IntervalSeconds { get { return 1; } }

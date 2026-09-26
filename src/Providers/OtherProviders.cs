@@ -16,7 +16,7 @@ namespace SentriPet
             Id = "copilot";
             Name = "Copilot";
             Mascot = "goggles";
-            Color = Palette.Hex("#A371F7");
+            Color = Rgba.Hex("#A371F7");
         }
 
         public override int IntervalSeconds { get { return 60; } }
@@ -28,21 +28,29 @@ namespace SentriPet
         {
             if (CacheOverride != null) return File.Exists(CacheOverride) ? CacheOverride : null;
             var cands = new List<string>();
-            cands.AddRange(AppPaths.Glob(@"%LOCALAPPDATA%\copilot\*user*cache*.json"));
-            cands.AddRange(AppPaths.Glob(@"~\.copilot\*user*cache*.json"));
+            foreach (var dir in CacheDirs()) cands.AddRange(AppPaths.Glob(Path.Combine(dir, "*user*cache*.json")));
             return cands.Where(File.Exists).OrderByDescending(f => File.GetLastWriteTimeUtc(f)).FirstOrDefault();
         }
 
         public override Detection Detect()
         {
             var d = new Detection();
-            if (Directory.Exists(Path.Combine(AppPaths.Home, ".copilot")) || Directory.Exists(Path.Combine(AppPaths.LocalAppData, "copilot")))
-                d.Evidence.Add("Copilot CLI");
+            if (CacheDirs().Any(Directory.Exists)) d.Evidence.Add("Copilot CLI");
             if (AppPaths.EditorExtensions("github.copilot").Count > 0) d.Evidence.Add("VS Code 擴充");
             if (AppPaths.Which("copilot") != null) d.Evidence.Add("copilot 指令");
             d.Installed = d.Evidence.Count > 0;
             if (FindCache() == null) d.Hint = "執行一次 Copilot CLI 就會產生額度快取";
             return d;
+        }
+
+        /// <summary>Where the Copilot CLI may keep its entitlement cache on this system.</summary>
+        static IEnumerable<string> CacheDirs()
+        {
+            yield return Path.Combine(AppPaths.Home, ".copilot");
+            if (Os.Windows) { yield return Path.Combine(AppPaths.LocalAppData, "copilot"); yield break; }
+            yield return Path.Combine(AppPaths.Cache, "copilot");
+            yield return Path.Combine(AppPaths.AppData, "copilot");
+            yield return Path.Combine(AppPaths.LocalAppData, "copilot");
         }
 
         static string LabelFor(string key)
@@ -180,14 +188,17 @@ namespace SentriPet
             Id = "ollama";
             Name = "Ollama";
             Mascot = "llama";
-            Color = Palette.Hex("#C9B79C");
+            Color = Rgba.Hex("#C9B79C");
         }
 
         public override int IntervalSeconds { get { return 30; } }
 
         static string FindExe()
         {
-            foreach (var p in new[] { @"%LOCALAPPDATA%\Programs\Ollama\ollama.exe", @"%ProgramFiles%\Ollama\ollama.exe" })
+            var known = Os.Windows ? new[] { @"%LOCALAPPDATA%\Programs\Ollama\ollama.exe", @"%ProgramFiles%\Ollama\ollama.exe" } :
+                        Os.Mac ? new[] { "/Applications/Ollama.app/Contents/Resources/ollama", "/usr/local/bin/ollama", "/opt/homebrew/bin/ollama" } :
+                                 new[] { "/usr/local/bin/ollama", "/usr/bin/ollama", "/snap/bin/ollama" };
+            foreach (var p in known)
                 if (File.Exists(AppPaths.Expand(p))) return AppPaths.Expand(p);
             return AppPaths.Which("ollama");
         }
@@ -196,7 +207,7 @@ namespace SentriPet
         {
             var d = new Detection();
             if (FindExe() != null) d.Evidence.Add("Ollama 程式");
-            bool models = Directory.Exists(Path.Combine(AppPaths.Home, ".ollama", "models"));
+            bool models = Directory.Exists(Path.Combine(AppPaths.Home, ".ollama", "models")) || (Os.Linux && Directory.Exists("/usr/share/ollama/.ollama/models"));
             d.Installed = d.Evidence.Count > 0;
             if (models) d.Evidence.Add("模型資料夾");
             if (!d.Installed) d.Hint = models ? "只找到模型資料夾，Ollama 程式可能已移除" : null;
