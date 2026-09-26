@@ -16,6 +16,9 @@ AI-Powered Real-Time Monitoring Desktop Companion
 - 可用 JSON 外掛接上任何 AI 服務
 - 輕量：原生 WPF 程式，約 90 MB 記憶體、整體 CPU 不到 1%（省電模式更低）
 
+> **macOS／Linux 版開發中**：用 Avalonia 重寫畫面層，核心程式與測試已經在三個系統上通過。
+> 進度見[開發日誌](docs/DEVLOG.md)與 [#12](https://github.com/daven55663/SentriPet-AI/issues/12)。
+
 ## 安裝
 
 需求：Windows 10 / 11（內建的 .NET Framework 4.8 即可，不需要另外安裝任何東西）。

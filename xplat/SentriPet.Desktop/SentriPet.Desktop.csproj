@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The cross-platform desk pet (Avalonia): Windows, macOS, Linux. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>SentriPet</AssemblyName>
+    <ApplicationIcon>..\..\assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
+    <!-- off-screen rendering for the snapshot mode (screenshots in CI on every system) -->
+    <PackageReference Include="Avalonia.Headless" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Skia" Version="12.1.3" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SentriPet.Core\SentriPet.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\assets\app.ico" Link="Assets\app.ico" />
+  </ItemGroup>
+</Project>

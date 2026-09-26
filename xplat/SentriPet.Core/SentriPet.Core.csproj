@@ -11,6 +11,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="SentriPet.Tests" />
-    <InternalsVisibleTo Include="SentriPet.Desktop" />
+    <InternalsVisibleTo Include="SentriPet" />
   </ItemGroup>
 </Project>

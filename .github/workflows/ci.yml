@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   core:
-    name: Core tests (${{ matrix.os }})
+    name: Cross-platform (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -46,12 +46,26 @@ jobs:
           grep '^FAIL ' core-report.txt | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
           exit $code
 
-      - name: Upload the report
+      - name: Chinese fonts for the screenshots (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends fonts-noto-cjk > /dev/null
+
+      - name: Render the desk pet off-screen (Avalonia, no display needed)
+        shell: bash
+        run: |
+          dotnet run --no-build -c Release --project xplat/SentriPet.Desktop -- --snapshot pet-shots
+          ls pet-shots
+          if ls pet-shots/*_error.txt >/dev/null 2>&1; then cat pet-shots/*_error.txt; exit 1; fi
+          echo "Rendered $(ls pet-shots/*.png | wc -l) screenshots on ${{ runner.os }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the report and screenshots
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: core-report-${{ runner.os }}
-          path: core-report.txt
+          name: core-${{ runner.os }}
+          path: |
+            core-report.txt
+            pet-shots/
           if-no-files-found: warn
 
   build-and-test:

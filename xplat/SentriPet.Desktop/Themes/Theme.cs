@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Media.Effects;
-using System.Windows.Shapes;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Media.Immutable;
 
 namespace SentriPet
 {
@@ -14,14 +15,14 @@ namespace SentriPet
     {
         AppSettings Settings { get; }
         Random Rng { get; }
-        /// <summary>Mouse position (global, even outside the widget) in the coordinates of <paramref name="element"/>.</summary>
-        Point? CursorIn(FrameworkElement element);
+        /// <summary>Mouse position in the coordinates of <paramref name="element"/>, when it is known.</summary>
+        Point? CursorIn(Visual element);
         void SaveSettings();
     }
 
     /// <summary>
-    /// A visual style for the widget. Themes build their own visual tree from <see cref="ProviderView"/>s.
-    /// Elements that represent a provider set Tag = "pv:{id}" so the window can hit-test hovers and clicks.
+    /// A visual style for the widget (Avalonia port of the WPF themes). Elements that represent a provider set
+    /// Tag = "pv:{id}" so the window can hit-test hovers and clicks.
     /// </summary>
     abstract class Theme
     {
@@ -30,7 +31,7 @@ namespace SentriPet
         public abstract string Mood { get; }
         public abstract string Blurb { get; }
 
-        public FrameworkElement Root { get; private set; }
+        public Control Root { get; private set; }
         protected IThemeHost Host;
         protected List<ProviderView> Views = new List<ProviderView>();
         protected double Time;
@@ -68,53 +69,42 @@ namespace SentriPet
             return sb.ToString();
         }
 
-        protected abstract FrameworkElement CreateRoot();
+        protected abstract Control CreateRoot();
         /// <summary>Recreate the provider visuals (provider list or meter layout changed).</summary>
         protected abstract void Rebuild();
         /// <summary>Update numbers and texts. Called on data change and once per second.</summary>
         protected abstract void Refresh();
         /// <summary>Animation frame.</summary>
         public virtual void Tick(double dt) { Time += dt; }
-        /// <summary>
-        /// Show a speech line for a provider (null = whole widget). Return false when the theme has no speech of
-        /// its own — the window then shows the line in a floating bubble.
-        /// </summary>
+        /// <summary>Show a speech line (null = whole widget). False when the theme has no speech of its own.</summary>
         public virtual bool Say(string providerId, string text) { return false; }
-        /// <summary>User clicked a provider. Return false when the theme has no reaction of its own.</summary>
+        /// <summary>User clicked a provider. False when the theme has no reaction of its own.</summary>
         public virtual bool Poke(string providerId) { return false; }
-        /// <summary>Clicked somewhere in the widget; return true when the theme handled it.</summary>
+        /// <summary>Clicked somewhere in the widget; true when the theme handled it.</summary>
         public virtual bool Click(Point rootPoint) { return false; }
-        /// <summary>"reset" | "warn" | "critical" events from the controller.</summary>
         public virtual void Celebrate(string providerId) { }
         public virtual void Detach() { }
 
-        /// <summary>
-        /// The visible part of the widget, in the coordinates of <paramref name="relativeTo"/>. The hover card is
-        /// placed outside this area. Themes with transparent spare room (e.g. a speech-bubble zone) override it.
-        /// </summary>
-        public virtual Rect ContentBounds(Visual relativeTo)
+        /// <summary>The visible part of the widget in the coordinates of <paramref name="relativeTo"/> (null if not laid out).</summary>
+        public virtual Rect? ContentBounds(Visual relativeTo)
         {
             return BoundsOf(Root, relativeTo);
         }
 
-        protected static Rect BoundsOf(FrameworkElement e, Visual relativeTo)
+        protected static Rect? BoundsOf(Control e, Visual relativeTo)
         {
-            try
-            {
-                if (e == null || e.ActualWidth <= 0 || !relativeTo.IsAncestorOf(e)) return Rect.Empty;
-                return e.TransformToAncestor(relativeTo).TransformBounds(new Rect(0, 0, e.ActualWidth, e.ActualHeight));
-            }
-            catch { return Rect.Empty; }
+            if (e == null || e.Bounds.Width <= 0) return null;
+            var m = e.TransformToVisual(relativeTo);
+            if (m == null) return null;
+            return new Rect(e.Bounds.Size).TransformToAABB(m.Value);
         }
 
         protected ProviderView View(string id) { return Views.FirstOrDefault(v => v.Id == id); }
-
-        protected static string PvTag(ProviderView v) { return "pv:" + v.Id; }
     }
 
     class ThemeInfo
     {
-        public string Id, Name, Mood, Blurb, Glyph;
+        public string Id, Name, Mood, Blurb;
         public Func<Theme> Create;
     }
 
@@ -122,14 +112,7 @@ namespace SentriPet
     {
         public static readonly List<ThemeInfo> All = new List<ThemeInfo>
         {
-            new ThemeInfo { Id = "pet", Name = "果凍桌寵", Mood = "元氣滿滿", Glyph = "●", Blurb = "果凍小怪獸，額度越多肚子越滿", Create = () => new PetTheme() },
-            new ThemeInfo { Id = "glass", Name = "極簡玻璃", Mood = "平靜專注", Glyph = "◎", Blurb = "毛玻璃卡片＋圓環，乾淨俐落", Create = () => new GlassTheme() },
-            new ThemeInfo { Id = "pixel", Name = "像素勇者", Mood = "想打電動", Glyph = "▦", Blurb = "RPG 狀態列，HP/MP 就是你的額度", Create = () => new PixelTheme() },
-            new ThemeInfo { Id = "terminal", Name = "駭客終端", Mood = "進入心流", Glyph = "▮", Blurb = "綠色磷光 CRT，點標題列換顏色", Create = () => new TerminalTheme() },
-            new ThemeInfo { Id = "gauge", Name = "賽車儀表", Mood = "全速前進", Glyph = "◔", Blurb = "油表指針＋警示燈，AI 工作時遠光燈會亮", Create = () => new GaugeTheme() },
-            new ThemeInfo { Id = "potion", Name = "魔法藥水", Mood = "有點夢幻", Glyph = "⚗", Blurb = "每個額度一瓶藥水，會冒泡泡", Create = () => new PotionTheme() },
-            new ThemeInfo { Id = "neon", Name = "霓虹夜城", Mood = "深夜模式", Glyph = "◆", Blurb = "賽博龐克霓虹燈管，偶爾故障閃爍", Create = () => new NeonTheme() },
-            new ThemeInfo { Id = "note", Name = "手寫便利貼", Mood = "慢慢來", Glyph = "✎", Blurb = "貼在螢幕角落的手寫小紙條", Create = () => new NoteTheme() },
+            new ThemeInfo { Id = "pet", Name = "果凍桌寵", Mood = "元氣滿滿", Blurb = "果凍小怪獸，額度越多肚子越滿", Create = () => new PetTheme() },
         };
 
         public static ThemeInfo Get(string id)
@@ -138,93 +121,100 @@ namespace SentriPet
         }
     }
 
+    /// <summary>Avalonia colours and brushes (the core uses the framework-free <see cref="Rgba"/>).</summary>
+    static class Palette
+    {
+        public static Color Hex(string hex) { return Rgba.Hex(hex).ToColor(); }
+        public static Color Mix(Color a, Color b, double t) { return a.ToRgba().Mix(b.ToRgba(), t).ToColor(); }
+        public static Color Lighten(Color c, double t) { return c.ToRgba().Lighten(t).ToColor(); }
+        public static Color Darken(Color c, double t) { return c.ToRgba().Darken(t).ToColor(); }
+        public static Color A(Color c, double alpha) { return c.ToRgba().WithAlpha(alpha).ToColor(); }
+        public static IBrush Brush(Color c) { return new ImmutableSolidColorBrush(c); }
+        public static IBrush Brush(string hex) { return Brush(Hex(hex)); }
+        public static Color Level(double remaining) { return Rgba.Level(remaining).ToColor(); }
+        public static Color FromId(string id) { return Rgba.FromId(id).ToColor(); }
+        public static Color Hsl(double h, double s, double l) { return Rgba.Hsl(h, s, l).ToColor(); }
+    }
+
+    static class AvaloniaColor
+    {
+        public static Color ToColor(this Rgba c) { return Color.FromArgb(c.A, c.R, c.G, c.B); }
+        public static Rgba ToRgba(this Color c) { return Rgba.FromArgb(c.A, c.R, c.G, c.B); }
+    }
+
     /// <summary>Drawing helpers shared by the themes.</summary>
     static class G
     {
-        public static readonly FontFamily Ui = new FontFamily("Microsoft JhengHei UI, Segoe UI");
-        public static readonly FontFamily Num = new FontFamily("Segoe UI Variable Display, Segoe UI, Microsoft JhengHei UI");
-        public static readonly FontFamily Mono = new FontFamily("Cascadia Mono, Consolas, Microsoft JhengHei UI");
-        public static readonly FontFamily Din = new FontFamily("Bahnschrift, Segoe UI, Microsoft JhengHei UI");
-        public static readonly FontFamily Hand = new FontFamily("Ink Free, Segoe Print, DFKai-SB");
-        public static readonly FontFamily Kai = new FontFamily("DFKai-SB, 標楷體, Microsoft JhengHei UI");
+        // font lists: the first one installed wins (Windows, macOS, Linux)
+        public static readonly FontFamily Ui = new FontFamily("Microsoft JhengHei UI, PingFang TC, Noto Sans CJK TC, Noto Sans TC, Source Han Sans TC, Segoe UI, Helvetica Neue, Noto Sans");
+        public static readonly FontFamily Num = new FontFamily("Segoe UI Variable Display, Segoe UI, SF Pro Display, Helvetica Neue, Noto Sans, Microsoft JhengHei UI, PingFang TC");
+        public static readonly FontFamily Mono = new FontFamily("Cascadia Mono, Consolas, SF Mono, Menlo, DejaVu Sans Mono, Noto Sans Mono");
 
-        public static SolidColorBrush B(Color c) { return Palette.Brush(c); }
-        public static SolidColorBrush B(string hex) { return Palette.Brush(hex); }
-        public static SolidColorBrush B(Color c, double alpha) { return Palette.Brush(Palette.A(c, alpha)); }
+        public static IBrush B(Color c) { return Palette.Brush(c); }
+        public static IBrush B(string hex) { return Palette.Brush(hex); }
+        public static IBrush B(Color c, double alpha) { return Palette.Brush(Palette.A(c, alpha)); }
 
         public static TextBlock T(string text, double size, Color color, FontWeight weight, FontFamily font)
         {
-            return new TextBlock
-            {
-                Text = text,
-                FontSize = size,
-                Foreground = B(color),
-                FontWeight = weight,
-                FontFamily = font ?? Ui,
-                TextTrimming = TextTrimming.None,
-                SnapsToDevicePixels = true,
-            };
+            return new TextBlock { Text = text, FontSize = size, Foreground = B(color), FontWeight = weight, FontFamily = font ?? Ui };
         }
 
-        public static TextBlock T(string text, double size, Color color)
-        {
-            return T(text, size, color, FontWeights.Normal, Ui);
-        }
+        public static TextBlock T(string text, double size, Color color) { return T(text, size, color, FontWeight.Normal, Ui); }
 
-        public static LinearGradientBrush Lg(Color a, Color b, double angleDeg)
+        static RelativePoint Rel(double x, double y) { return new RelativePoint(x, y, RelativeUnit.Relative); }
+
+        public static IBrush Lg(Color a, Color b, double angleDeg)
         {
             var rad = angleDeg * Math.PI / 180;
             var br = new LinearGradientBrush
             {
-                StartPoint = new Point(0.5 - Math.Cos(rad) / 2, 0.5 - Math.Sin(rad) / 2),
-                EndPoint = new Point(0.5 + Math.Cos(rad) / 2, 0.5 + Math.Sin(rad) / 2),
+                StartPoint = Rel(0.5 - Math.Cos(rad) / 2, 0.5 - Math.Sin(rad) / 2),
+                EndPoint = Rel(0.5 + Math.Cos(rad) / 2, 0.5 + Math.Sin(rad) / 2),
             };
             br.GradientStops.Add(new GradientStop(a, 0));
             br.GradientStops.Add(new GradientStop(b, 1));
-            br.Freeze();
-            return br;
+            return br.ToImmutable();
         }
 
-        public static LinearGradientBrush Vertical(params Color[] colors)
+        public static IBrush Vertical(params Color[] colors)
         {
-            var br = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+            var br = new LinearGradientBrush { StartPoint = Rel(0, 0), EndPoint = Rel(0, 1) };
             for (int i = 0; i < colors.Length; i++)
                 br.GradientStops.Add(new GradientStop(colors[i], colors.Length == 1 ? 0 : (double)i / (colors.Length - 1)));
-            br.Freeze();
-            return br;
+            return br.ToImmutable();
         }
 
-        public static DropShadowEffect Shadow(double blur, double depth, double opacity, Color color)
+        public static IEffect Shadow(double blur, double depth, double opacity, Color color)
         {
-            return new DropShadowEffect { BlurRadius = blur, ShadowDepth = depth, Opacity = opacity, Color = color, Direction = 270, RenderingBias = RenderingBias.Performance };
+            return new DropShadowEffect { BlurRadius = blur, OffsetX = 0, OffsetY = depth, Opacity = opacity, Color = color };
         }
 
-        public static DropShadowEffect Glow(Color color, double blur, double opacity)
+        public static IEffect Glow(Color color, double blur, double opacity)
         {
-            return new DropShadowEffect { BlurRadius = blur, ShadowDepth = 0, Opacity = opacity, Color = color, RenderingBias = RenderingBias.Performance };
+            return new DropShadowEffect { BlurRadius = blur, OffsetX = 0, OffsetY = 0, Opacity = opacity, Color = color };
         }
 
-        public static void Place(UIElement e, double x, double y)
+        public static void Place(Control e, double x, double y)
         {
             Canvas.SetLeft(e, x);
             Canvas.SetTop(e, y);
         }
 
-        public static Ellipse Circle(double cx, double cy, double r, Brush fill, Brush stroke, double thickness)
+        public static Ellipse Circle(double cx, double cy, double r, IBrush fill, IBrush stroke, double thickness)
         {
             var e = new Ellipse { Width = r * 2, Height = r * 2, Fill = fill, Stroke = stroke, StrokeThickness = thickness };
             Place(e, cx - r, cy - r);
             return e;
         }
 
-        public static Ellipse Oval(double cx, double cy, double w, double h, Brush fill)
+        public static Ellipse Oval(double cx, double cy, double w, double h, IBrush fill)
         {
             var e = new Ellipse { Width = w, Height = h, Fill = fill };
             Place(e, cx - w / 2, cy - h / 2);
             return e;
         }
 
-        public static Path P(string data, Brush fill, Brush stroke, double thickness)
+        public static Path P(string data, IBrush fill, IBrush stroke, double thickness)
         {
             return new Path
             {
@@ -232,36 +222,19 @@ namespace SentriPet
                 Fill = fill,
                 Stroke = stroke,
                 StrokeThickness = thickness,
-                StrokeLineJoin = PenLineJoin.Round,
-                StrokeStartLineCap = PenLineCap.Round,
-                StrokeEndLineCap = PenLineCap.Round,
+                StrokeJoin = PenLineJoin.Round,
+                StrokeLineCap = PenLineCap.Round,
             };
         }
+
+        /// <summary>Scale/rotate around a point given in the element's own coordinates (WPF's CenterX/CenterY).</summary>
+        public static RelativePoint At(double x, double y) { return new RelativePoint(x, y, RelativeUnit.Absolute); }
 
         /// <summary>Point on a circle; 0° = 12 o'clock, clockwise.</summary>
         public static Point Polar(Point c, double r, double deg)
         {
             double rad = (deg - 90) * Math.PI / 180;
             return new Point(c.X + r * Math.Cos(rad), c.Y + r * Math.Sin(rad));
-        }
-
-        /// <summary>Open arc geometry from a0 to a1 degrees (0° = up, clockwise).</summary>
-        public static Geometry Arc(Point c, double r, double a0, double a1)
-        {
-            if (a1 < a0) { var t = a0; a0 = a1; a1 = t; }
-            double sweep = a1 - a0;
-            if (sweep >= 359.99) return new EllipseGeometry(c, r, r);
-            if (sweep < 0.01) sweep = 0.01;
-            var start = Polar(c, r, a0);
-            var end = Polar(c, r, a0 + sweep);
-            var g = new StreamGeometry();
-            using (var ctx = g.Open())
-            {
-                ctx.BeginFigure(start, false, false);
-                ctx.ArcTo(end, new Size(r, r), 0, sweep > 180, SweepDirection.Clockwise, true, false);
-            }
-            g.Freeze();
-            return g;
         }
 
         /// <summary>Filled star/sparkle polygon.</summary>
@@ -274,11 +247,11 @@ namespace SentriPet
                 {
                     double r = i % 2 == 0 ? rOuter : rInner;
                     var p = Polar(c, r, rotDeg + i * 180.0 / points);
-                    if (i == 0) ctx.BeginFigure(p, true, true);
-                    else ctx.LineTo(p, true, true);
+                    if (i == 0) ctx.BeginFigure(p, true);
+                    else ctx.LineTo(p);
                 }
+                ctx.EndFigure(true);
             }
-            g.Freeze();
             return g;
         }
 
@@ -311,10 +284,7 @@ namespace SentriPet
             return level >= 3 ? Palette.Hex("#EF4444") : level == 2 ? Palette.Hex("#F97316") : Palette.Hex("#F59E0B");
         }
 
-        /// <summary>
-        /// Opacity of a bar whose quota is about to expire unused: a slow breath at level 1, quicker on the last day,
-        /// a fast blink in the last hours.
-        /// </summary>
+        /// <summary>Opacity of a bar whose quota is about to expire unused (slow breath → fast blink).</summary>
         public static double UrgentPulse(int level, double t)
         {
             double period = level >= 3 ? 0.7 : level == 2 ? 1.2 : 2.4;
@@ -323,19 +293,8 @@ namespace SentriPet
             return Math.Round(low + (1 - low) * s, 2);
         }
 
-        public static Border Pill(UIElement child, Brush bg, double radius, Thickness pad)
-        {
-            return new Border { Child = child, Background = bg, CornerRadius = new CornerRadius(radius), Padding = pad };
-        }
-
-        public static FrameworkElement Tagged(FrameworkElement e, ProviderView v)
-        {
-            e.Tag = "pv:" + v.Id;
-            return e;
-        }
-
         /// <summary>Simple horizontal progress bar (remaining) with rounded ends.</summary>
-        public static Grid Bar(double width, double height, Brush track, out Border fill)
+        public static Grid Bar(double width, double height, IBrush track, out Border fill)
         {
             var g = new Grid { Width = width, Height = height };
             g.Children.Add(new Border { Background = track, CornerRadius = new CornerRadius(height / 2) });
@@ -352,14 +311,7 @@ namespace SentriPet
             return (m.ResetApprox ? "≈" : "") + Fmt.Countdown(m.ResetsAt);
         }
 
-        public static string ClockText(Meter m)
-        {
-            if (m == null || m.Unlimited) return "--:--:--";
-            if (!m.ResetsAt.HasValue) return "--:--:--";
-            return (m.ResetApprox ? "≈" : "") + Fmt.Clock(m.ResetsAt);
-        }
-
-        /// <summary>A brighter, more saturated variant for dark/neon themes.</summary>
+        /// <summary>A brighter, more saturated variant for dark themes.</summary>
         public static Color Vivid(Color c)
         {
             double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0;
@@ -375,8 +327,8 @@ namespace SentriPet
             return Palette.Hsl(h, 0.95, 0.62);
         }
 
-        public static Color Vivid(Rgba c) { return Vivid(c.ToWpf()); }
-        public static Color Desaturate(Rgba c, double t) { return Desaturate(c.ToWpf(), t); }
+        public static Color Vivid(Rgba c) { return Vivid(c.ToColor()); }
+        public static Color Desaturate(Rgba c, double t) { return Desaturate(c.ToColor(), t); }
 
         public static Color Desaturate(Color c, double t)
         {

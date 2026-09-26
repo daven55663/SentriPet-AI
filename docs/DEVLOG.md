@@ -57,7 +57,7 @@ xplat/                新的跨平台版（.NET 10）
   `~/Library/Application Support`（macOS）、`~/.config`（Linux）；PATH 搜尋、萬用字元路徑、
   執行外部指令、結束 codex 程序改成跨平台寫法；各資料來源加上 macOS／Linux 的資料位置。
   Windows 版照常編譯，300 多項測試全部通過。
-- [ ] **第 2 階段：跨平台核心專案＋三系統 CI**
+- [x] **第 2 階段：跨平台核心專案＋三系統 CI**
   建立 `xplat/SentriPet.Core`、`xplat/SentriPet.Tests`；GitHub CI 在 Windows、macOS、Linux
   三台機器上跑核心測試。
 - [ ] **第 3 階段：Avalonia 桌寵骨架**
@@ -96,3 +96,17 @@ xplat/                新的跨平台版（.NET 10）
   - 新增顏色與作業系統相關測試：Windows 版自我測試 305 → 327 項，全部通過。
 - 2026-09-27：**第 2 階段完成（本機）**。建立 `SentriPet.slnx`、`xplat/SentriPet.Core`、`xplat/SentriPet.Tests`（.NET 10），
   核心原始碼直接連結、第一次編譯就過；287 項核心測試在 .NET 10（Windows）全部通過。CI 加入 Windows／macOS／Linux 三系統核心測試。
+- 2026-09-27：**第 2 階段完成**。CI 結果：核心測試 macOS 287/287、Linux 287/287、Windows 287/287，
+  整個資料層（Claude 推算、Codex 協定、Copilot、Ollama、外掛）在三個系統上都確認正確。
+- 2026-09-27：**第 3 階段進行中：Avalonia 桌寵骨架**（`xplat/SentriPet.Desktop`，執行檔名 `SentriPet`）。
+  - 查了 Avalonia 12 的重大變更：`SystemDecorations` 改名 `WindowDecorations`；12.0 預覽版的「透明視窗變黑」問題
+    只發生在開啟 `ExtendClientAreaToDecorationsHint` 時，而且已修好，桌寵不用那個設定；手動指定 Skia 時要加 `UseHarfBuzz()`。
+  - 完成：透明、無邊框、置頂、不出現在工作列的視窗；拖曳移動、靠近螢幕邊緣吸附、記住固定的角落（跨螢幕）；
+    點一下互動、右鍵選單（立即更新、大小、移到螢幕、置頂、會說話、快用掉提醒、藏起來、結束）；
+    系統匣圖示（顯示／隱藏、立即更新、結束）；用量提醒與「快用掉」提醒沿用核心的判斷。
+  - **果凍桌寵造型移植完成**：WPF 與 Avalonia 的 API 很接近，用腳本做機械式轉換（`Visibility` → `IsVisible`、
+    變形中心改用 `RenderTransformOrigin` 等）後一次編譯成功；無頭截圖和 WPF 版幾乎一模一樣（著急表情、鬧鐘、閃爍、睡覺、泡泡）。
+  - 在 Windows 實際開啟：透明背景、位置、真實用量都正常。
+  - `--snapshot 資料夾`：不需要螢幕的無頭截圖；CI 在 Windows／macOS／Linux 都畫一次（Linux 安裝 Noto CJK 字型）。
+  - 待辦：懸停詳情卡、沒有對話框的造型用的浮動泡泡、眼睛只在滑鼠經過桌寵時才會跟著看（各系統沒有共通的全域游標 API，
+    Windows 之後可用原生 API）、記憶體約 270 MB（WPF 版約 90 MB，之後試 ReadyToRun／裁剪／GC 設定）。

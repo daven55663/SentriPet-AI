@@ -31,6 +31,7 @@ Processes started from the Claude desktop app's tools inherit its package file v
 - `src/Core` and `src/Providers` are shared by the WPF build and the .NET 10 projects in `xplat/` (linked source files). Keep them free of WPF/WinForms/Win32 (use `Rgba`, `Os`, `AppPaths`) and in C# 5 syntax; use `#if NET` for .NET-10-only APIs.
 - .NET 10 SDK: `"C:\Program Files\dotnet\dotnet.exe"` (not on the tool shell's PATH). Set `DOTNET_CLI_TELEMETRY_OPTOUT=1`.
 - `dotnet build SentriPet.slnx -c Release`, then `xplat/SentriPet.Tests/bin/Release/net10.0/SentriPet.Tests.exe <report>` runs the core checks (exit code = failures). CI runs them on Windows, macOS and Linux.
+- `xplat/SentriPet.Desktop` is the Avalonia 12 app (assembly `SentriPet`); `xplat/SentriPet.Desktop/Themes` are ports of `src/Themes` (same structure; `IsVisible` instead of `Visibility`, `RenderTransformOrigin` instead of transform centres, `Rect?` bounds). `bin/Release/net10.0/SentriPet.exe --snapshot <dir> [--frames N]` renders the themes headlessly; `--dev` runs it with a separate profile (stop it afterwards).
 - Record progress in `docs/DEVLOG.md` (newest first) and on issue #12.
 
 ## Layout
