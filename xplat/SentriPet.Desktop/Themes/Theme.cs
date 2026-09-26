@@ -8,6 +8,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.Media.Imaging;
 
 namespace SentriPet
 {
@@ -100,11 +101,13 @@ namespace SentriPet
         }
 
         protected ProviderView View(string id) { return Views.FirstOrDefault(v => v.Id == id); }
+
+        protected static string PvTag(ProviderView v) { return "pv:" + v.Id; }
     }
 
     class ThemeInfo
     {
-        public string Id;
+        public string Id, Glyph;
         public Func<Theme> Create;
         string name, mood, blurb;
         public string Name { get { return L.T(name); } set { name = value; } }
@@ -116,7 +119,14 @@ namespace SentriPet
     {
         public static readonly List<ThemeInfo> All = new List<ThemeInfo>
         {
-            new ThemeInfo { Id = "pet", Name = L.N("果凍桌寵"), Mood = L.N("元氣滿滿"), Blurb = L.N("果凍小怪獸，額度越多肚子越滿"), Create = () => new PetTheme() },
+            new ThemeInfo { Id = "pet", Name = L.N("果凍桌寵"), Mood = L.N("元氣滿滿"), Glyph = "●", Blurb = L.N("果凍小怪獸，額度越多肚子越滿"), Create = () => new PetTheme() },
+            new ThemeInfo { Id = "glass", Name = L.N("極簡玻璃"), Mood = L.N("平靜專注"), Glyph = "◎", Blurb = L.N("毛玻璃卡片＋圓環，乾淨俐落"), Create = () => new GlassTheme() },
+            new ThemeInfo { Id = "pixel", Name = L.N("像素勇者"), Mood = L.N("想打電動"), Glyph = "▦", Blurb = L.N("RPG 狀態列，HP/MP 就是你的額度"), Create = () => new PixelTheme() },
+            new ThemeInfo { Id = "terminal", Name = L.N("駭客終端"), Mood = L.N("進入心流"), Glyph = "▮", Blurb = L.N("綠色磷光 CRT，點標題列換顏色"), Create = () => new TerminalTheme() },
+            new ThemeInfo { Id = "gauge", Name = L.N("賽車儀表"), Mood = L.N("全速前進"), Glyph = "◔", Blurb = L.N("油表指針＋警示燈，AI 工作時遠光燈會亮"), Create = () => new GaugeTheme() },
+            new ThemeInfo { Id = "potion", Name = L.N("魔法藥水"), Mood = L.N("有點夢幻"), Glyph = "⚗", Blurb = L.N("每個額度一瓶藥水，會冒泡泡"), Create = () => new PotionTheme() },
+            new ThemeInfo { Id = "neon", Name = L.N("霓虹夜城"), Mood = L.N("深夜模式"), Glyph = "◆", Blurb = L.N("賽博龐克霓虹燈管，偶爾故障閃爍"), Create = () => new NeonTheme() },
+            new ThemeInfo { Id = "note", Name = L.N("手寫便利貼"), Mood = L.N("慢慢來"), Glyph = "✎", Blurb = L.N("貼在螢幕角落的手寫小紙條"), Create = () => new NoteTheme() },
         };
 
         public static ThemeInfo Get(string id)
@@ -150,7 +160,7 @@ namespace SentriPet
     static class G
     {
         // font lists: the first one installed wins (Windows, macOS, Linux)
-        public static FontFamily Ui, Num, Mono;
+        public static FontFamily Ui, Num, Mono, Din, Hand, Kai;
 
         static G() { UseFonts(); }
 
@@ -176,6 +186,23 @@ namespace SentriPet
             Ui = new FontFamily(script == "latin" ? Latin + ", " + cjk : cjk + ", " + Latin);
             Num = new FontFamily("Segoe UI Variable Display, Segoe UI, SF Pro Display, Helvetica Neue, Noto Sans, Ubuntu, DejaVu Sans, Liberation Sans, " + cjk);
             Mono = new FontFamily("Cascadia Mono, Consolas, SF Mono, Menlo, DejaVu Sans Mono, Noto Sans Mono, " + cjk);
+            Din = new FontFamily("Bahnschrift, DIN Alternate, Avenir Next Condensed, Roboto Condensed, Ubuntu Condensed, DejaVu Sans Condensed, " + Latin + ", " + cjk);
+            string brush = BrushFonts(script);
+            Hand = new FontFamily("Ink Free, Segoe Print, Chalkboard SE, Marker Felt, Comic Neue, " + brush + ", " + cjk);
+            Kai = new FontFamily(brush + ", " + cjk);
+        }
+
+        /// <summary>A handwritten / brush style font for the sticky note (Windows, macOS, Linux).</summary>
+        static string BrushFonts(string script)
+        {
+            switch (script)
+            {
+                case "sc": return "KaiTi, STKaiti, Kaiti SC, AR PL UKai CN, Noto Serif CJK SC"; // i18n-ignore
+                case "ja": return "UD Digi Kyokasho N-R, Klee, YuKyokasho, Noto Serif CJK JP";
+                case "ko": return "Gungsuh, Nanum Pen Script, Nanum Brush Script, Noto Serif CJK KR";
+                case "latin": return "Segoe Print, Ink Free, Chalkboard SE, Marker Felt, Comic Neue";
+                default: return "DFKai-SB, BiauKai, Kaiti TC, AR PL UKai TW, Noto Serif CJK TC"; // i18n-ignore
+            }
         }
 
         public static IBrush B(Color c) { return Palette.Brush(c); }
@@ -253,6 +280,50 @@ namespace SentriPet
                 StrokeJoin = PenLineJoin.Round,
                 StrokeLineCap = PenLineCap.Round,
             };
+        }
+
+        /// <summary>A bitmap from 32-bit ARGB pixels (row by row), for the pixel-art sprites and font.</summary>
+        public static Bitmap Pixels(int w, int h, int[] argb)
+        {
+            var bmp = new WriteableBitmap(new PixelSize(w, h), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Unpremul);
+            using (var fb = bmp.Lock())
+            {
+                for (int y = 0; y < h; y++)
+                    System.Runtime.InteropServices.Marshal.Copy(argb, y * w, fb.Address + y * fb.RowBytes, w);
+            }
+            return bmp;
+        }
+
+        /// <summary>Open arc geometry from a0 to a1 degrees (0° = up, clockwise).</summary>
+        public static Geometry Arc(Point c, double r, double a0, double a1)
+        {
+            if (a1 < a0) { var t = a0; a0 = a1; a1 = t; }
+            double sweep = a1 - a0;
+            if (sweep >= 359.99) return new EllipseGeometry(new Rect(c.X - r, c.Y - r, 2 * r, 2 * r));
+            if (sweep < 0.01) sweep = 0.01;
+            var start = Polar(c, r, a0);
+            var end = Polar(c, r, a0 + sweep);
+            var g = new StreamGeometry();
+            using (var ctx = g.Open())
+            {
+                ctx.BeginFigure(start, false);
+                ctx.ArcTo(end, new Size(r, r), 0, sweep > 180, SweepDirection.Clockwise);
+                ctx.EndFigure(false);
+            }
+            return g;
+        }
+
+        public static Control Tagged(Control e, ProviderView v)
+        {
+            e.Tag = "pv:" + v.Id;
+            return e;
+        }
+
+        public static string ClockText(Meter m)
+        {
+            if (m == null || m.Unlimited) return "--:--:--";
+            if (!m.ResetsAt.HasValue) return "--:--:--";
+            return (m.ResetApprox ? "≈" : "") + Fmt.Clock(m.ResetsAt);
         }
 
         /// <summary>Scale/rotate around a point given in the element's own coordinates (WPF's CenterX/CenterY).</summary>
