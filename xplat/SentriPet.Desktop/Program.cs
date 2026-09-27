@@ -68,6 +68,12 @@ namespace SentriPet
                 UseLanguage(LanguageOverride ?? L.Source);
                 return Demo.Run(args);
             }
+            if (mode == "--social-card")
+            {
+                AppPaths.UseDevProfile();
+                UseLanguage("en");
+                return Demo.SocialCard(args);
+            }
             if (Array.IndexOf(args, "--dev") >= 0) AppPaths.UseDevProfile();
             // one copy per user: a second start asks the running one to show itself
             if (!Integration.ClaimSingleInstance(() => Avalonia.Threading.Dispatcher.UIThread.Post(() =>

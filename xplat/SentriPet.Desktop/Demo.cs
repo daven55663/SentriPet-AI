@@ -16,6 +16,7 @@ namespace SentriPet
     /// --demo FILE.gif [--lang xx] [--scale 1]: the animated tour for the README and for posts — the jelly pets
     /// (normal, then with quota about to reset unused), then the other looks — drawn off-screen with the sample
     /// data like --snapshot, and saved as a GIF (a palette per scene, only the changed pixels per frame).
+    /// --social-card FILE.png: the repository's social preview (1280 × 640, English).
     /// </summary>
     static class Demo
     {
@@ -129,6 +130,67 @@ namespace SentriPet
                 UsageService.MakeView(new CodexProvider(), codex),
                 UsageService.MakeView(new CopilotProvider(), copilot),
             };
+        }
+
+        public static int SocialCard(string[] args)
+        {
+            string file = args.Length > 1 ? args[1] : Path.Combine(Path.GetTempPath(), "sentripet-social.png");
+            AppBuilder.Configure<DesktopApp>()
+                .UseSkia()
+                .UseHarfBuzz()
+                .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
+                .SetupWithoutStarting();
+            var host = new DemoHost();
+            var theme = ThemeCatalog.Get("pet").Create();
+            theme.Attach(host);
+            var views = Calm();
+            theme.Update(views);
+            for (int i = 0; i < 45; i++) { host.Time += 1 / 30.0; theme.Tick(1 / 30.0); }
+
+            const int W = 1280, H = 640;
+            var card = new Grid { Width = W, Height = H, Background = Wallpaper() };
+            card.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(560) });
+            card.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            RenderOptions.SetTextRenderingMode(card, TextRenderingMode.Antialias);
+            var text = new StackPanel { Margin = new Thickness(72, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Spacing = 18 };
+            text.Children.Add(new TextBlock { Text = AppInfo.Name, FontFamily = G.Ui, FontSize = 76, FontWeight = FontWeight.Bold, Foreground = Brushes.White });
+            text.Children.Add(new TextBlock
+            {
+                Text = "A desktop pet that shows how much of your AI plan is left — and nudges you to use it before it resets.",
+                FontFamily = G.Ui, FontSize = 29, LineHeight = 40, TextWrapping = TextWrapping.Wrap,
+                Foreground = Palette.Brush(Palette.A(Colors.White, 0.92)),
+            });
+            text.Children.Add(new TextBlock
+            {
+                Text = "Claude · Codex · Copilot · Ollama\nWindows · macOS · Linux · open source",
+                FontFamily = G.Ui, FontSize = 22, LineHeight = 34, Margin = new Thickness(0, 8, 0, 0),
+                Foreground = Palette.Brush(Palette.A(Colors.White, 0.6)),
+            });
+            card.Children.Add(text);
+            var pets = new LayoutTransformControl
+            {
+                LayoutTransform = new ScaleTransform(1.55, 1.55),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 40, 0),
+                Child = theme.Root,
+            };
+            Grid.SetColumn(pets, 1);
+            card.Children.Add(pets);
+            host.Stage = card;
+            for (int i = 0; i < 6; i++) { host.Time += 1 / 30.0; theme.Tick(1 / 30.0); }
+
+            var panel = new Panel();
+            panel.Children.Add(card);
+            panel.Measure(new Size(W, H));
+            panel.Arrange(new Rect(0, 0, W, H));
+            Dispatcher.UIThread.RunJobs();
+            using (var rtb = new RenderTargetBitmap(new PixelSize(W, H), new Vector(96, 96)))
+            {
+                rtb.Render(panel);
+                rtb.Save(file);
+            }
+            Console.WriteLine(file);
+            return 0;
         }
 
         /// <summary>The theme on a sample wallpaper, zoomed and centred, with a caption under it.</summary>

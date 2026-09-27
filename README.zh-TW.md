@@ -1,15 +1,16 @@
-# SentriPet-AI
+# SentriPet
+
+[English](README.md) | **繁體中文**
 
 [![CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/daven55663/SentriPet-AI)](https://github.com/daven55663/SentriPet-AI/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-AI-Powered Real-Time Monitoring Desktop Companion
-
 **SentriPet** 是放在桌面上的 AI 用量監控桌寵。它會自動偵測電腦上的 AI 工具（Claude、Codex、Copilot…），
-即時顯示還剩多少額度、多久後重置，不用再一直點開「設定 → 用量」。支援 **Windows、macOS、Linux**。
+即時顯示還剩多少額度、多久後重置，不用再一直點開「設定 → 用量」；每週額度快重置卻還沒用完時，還會催你把它用掉。
+支援 **Windows、macOS、Linux**。
 
-<p align="center"><img src="docs/images/hero.png" alt="果凍桌寵：Claude、Codex、Copilot 三隻果凍，肚子裡的果凍就是剩下的額度" width="560"></p>
+<p align="center"><img src="docs/images/demo.zh-TW.gif" alt="示範動畫：果凍桌寵顯示 Claude、Codex、Copilot 的剩餘額度；額度快重置還沒用完時著急提醒；接著展示另外 7 種造型" width="720"></p>
 
 ## 特色
 
@@ -49,6 +50,26 @@ AI-Powered Real-Time Monitoring Desktop Companion
 
 ## 安裝手冊
 
+### 用套件管理器安裝（推薦）
+
+**Windows**（[Scoop](https://scoop.sh)）：裝好後桌寵會直接出現，之後用 `scoop update sentripet` 更新。
+
+```
+scoop bucket add sentripet https://github.com/daven55663/SentriPet-AI
+scoop install sentripet
+```
+
+**macOS**（[Homebrew](https://brew.sh)）：裝到「應用程式」，之後用 `brew upgrade --cask sentripet` 更新。
+
+```
+brew tap daven55663/sentripet https://github.com/daven55663/SentriPet-AI
+brew install --cask sentripet
+```
+
+Homebrew 安裝時會移除 macOS 的隔離標記，所以不會出現「無法確認開發者」的阻擋（這個 App 沒有 Apple 開發者簽章）。
+
+### 下載安裝檔
+
 到 **[Releases](https://github.com/daven55663/SentriPet-AI/releases/latest)** 下載最新版：
 
 | 系統 | 檔案 | 需求 |
@@ -81,11 +102,12 @@ install.cmd
 ### macOS
 
 1. 下載對應晶片的 zip（Apple 晶片選 `osx-arm64`，Intel 選 `osx-x64`），解壓縮後把 `SentriPet.app` 拖到「應用程式」。
-2. **第一次開啟**：這個 App 沒有 Apple 開發者簽章，請在 `SentriPet.app` 上按右鍵 →「打開」→「打開」。
-   也可以在終端機執行：
+2. **第一次開啟**：這個 App 沒有 Apple 開發者簽章，macOS 會擋下來。在終端機執行下面這行就能打開：
    ```
    xattr -dr com.apple.quarantine /Applications/SentriPet.app
    ```
+   或是先開一次（會被擋），再到「系統設定 → 隱私權與安全性」往下捲，按 SentriPet 旁邊的按鈕允許打開
+   （macOS 14 以前也可以在 `SentriPet.app` 上按右鍵 →「打開」）。用 Homebrew 安裝就不需要這一步。
 3. 桌寵出現在桌面上，選單列會有果凍圖示（不會出現在 Dock）。第一次跳通知時，macOS 可能會問要不要允許通知。
 4. 開機自動啟動用的是 `~/Library/LaunchAgents/com.sentripet.app.plist`，右鍵選單可以關。
 
@@ -106,9 +128,10 @@ cd SentriPet-<版本>-linux-x64
 
 ### 更新與移除
 
-- **更新**：下載新版覆蓋舊的檔案即可（Windows 先在右鍵選單按「結束」；Linux 重新執行 `install.sh`），設定會保留。
-- **移除**：右鍵選單取消「開機自動啟動」→「結束」，再刪掉程式與設定資料夾（位置見最下面的「檔案位置」）。
-  從原始碼安裝的 Windows 版執行 `uninstall.cmd` 即可。
+- **更新**：Scoop 用 `scoop update sentripet`、Homebrew 用 `brew upgrade --cask sentripet`（先在右鍵選單按「結束」）；
+  自己下載的版本，下載新版覆蓋舊的檔案即可（Linux 重新執行 `install.sh`）。設定都會保留。
+- **移除**：右鍵選單取消「開機自動啟動」→「結束」，再執行 `scoop uninstall sentripet`／`brew uninstall --cask sentripet`，
+  或刪掉程式與設定資料夾（位置見最下面的「檔案位置」）。從原始碼安裝的 Windows 版執行 `uninstall.cmd` 即可。
 
 ## 使用方式
 
@@ -210,7 +233,10 @@ macOS 的全螢幕 App 會在自己的桌面空間裡，桌寵本來就不會出
 點系統匣圖示，或再開一次程式（已經在執行時會把桌寵叫回來）。
 
 **macOS 說「無法打開，因為無法確認開發者」**
-見上面 macOS 安裝第 2 步。
+見上面 macOS 安裝第 2 步，或改用 Homebrew 安裝。
+
+**Windows 出現「Windows 已保護您的電腦」**
+程式沒有數位簽章，按「其他資訊」→「仍要執行」。用 Scoop 安裝不會出現這個畫面。
 
 ## 資料從哪裡來（全部在本機，不讀、不傳任何登入憑證）
 
@@ -254,19 +280,22 @@ xplat/package.sh win-x64                                           打包（osx-
 - 新增內建 AI：在 `src/Providers` 新增一個繼承 `Provider` 的類別，並加到 `ProviderRegistry`。
 - `--lang en`：指定語言（`zh-TW`、`zh-CN`、`en`、`ja`、`ko`）；`--dev --show-detail claude`：強制顯示某隻的詳情卡 45 秒。
 - `--snapshot 資料夾`：用範例資料把所有造型、詳情卡、泡泡、設定頁畫成 PNG（不需要螢幕）。
+- `--demo 檔案.gif --lang zh-TW`：產生 README 上的示範動畫（`docs/images/demo*.gif`）。
 - `--probe 檔案`：輸出偵測與用量報告。
 
 ### 自動測試、CI 與發佈
 
 | 測試 | 內容 | 數量 |
 |---|---|---|
-| `xplat/SentriPet.Tests` | 核心、每個資料來源（範例檔與本機假伺服器，不碰真實資料）、提醒、翻譯 | 354 項 |
-| `SentriPet --selftest 報告.txt` | 8 種造型、果凍的表情、詳情卡與擺放位置、泡泡、設定頁、語言、系統匣圖示、開機啟動、通知、單一執行 | 70 項 |
-| `SentriPet --dev --smoke-test 報告.txt` | 真的開啟程式 15 秒：視窗有出來、在螢幕內、有在動畫、系統匣、沒有錯誤 | 6 項 |
+| `xplat/SentriPet.Tests` | 核心、每個資料來源（範例檔與本機假伺服器，不碰真實資料）、提醒、翻譯、Claude Code 狀態列 | 396 項 |
+| `SentriPet --selftest 報告.txt` | 8 種造型、果凍的表情、詳情卡與擺放位置、泡泡、選單、設定頁、語言、系統匣圖示、開機啟動、通知、單一執行、示範動畫 | 86 項 |
+| `SentriPet --dev --smoke-test 報告.txt` | 真的開啟程式 15 秒：視窗有出來、在螢幕內、第一次在右下角、有在動畫、系統匣、沒有錯誤 | 7 項 |
 
 每次推送，[CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) 會在 Windows、macOS、Linux 上編譯、跑全部測試
 （Linux 用虛擬螢幕真的開一次程式）、畫出所有造型的截圖，並打包各系統的安裝檔（在該次執行的 Artifacts）。
-推送 `v*` 標籤時，[Release](.github/workflows/release.yml) 流程會在各系統打包、讓每個安裝檔先跑一次自我測試，全部通過才發佈。
+推送 `v*` 標籤時，[Release](.github/workflows/release.yml) 流程會在各系統打包、讓每個安裝檔先跑一次自我測試，全部通過才發佈；
+發佈後自動更新 Scoop、Homebrew、winget 的安裝設定（`bucket/`、`Casks/`、`packaging/winget/`），
+再用 Scoop 和 Homebrew 實際安裝一次、跑自我測試（[Package managers](.github/workflows/packages.yml)）。
 開發紀錄見 [docs/DEVLOG.md](docs/DEVLOG.md)。
 
 ## 檔案位置

@@ -199,5 +199,17 @@ xplat/                新的跨平台版（.NET 10）
   win-x64 41 MB、osx-arm64 41 MB、osx-x64 43 MB、linux-x64 40 MB。新增 `--connect-claude-statusline`／`--disconnect-claude-statusline`
   （開程式時直接開關橋接，給捷徑或腳本用）。依使用者要求在這台電腦開啟：用帶參數的捷徑經 explorer 啟動（在 Claude 桌面 App 的容器外），
   `settings.json` 加上狀態列指令、原檔備份為 `settings.json.sentripet-backup`；用範例資料實測已安裝的指令 0.1 秒。
+- 2026-09-28：**推廣準備**（使用者要求：英文 README、示範動圖、GitHub 頁面、套件管理器）。
+  - `README.md` 改成英文、原本的繁中搬到 `README.zh-TW.md`（兩份互相連結），英文版附英文介面的截圖（`docs/images/en/`）；
+    修正 macOS 15 以後「右鍵 → 打開」已經不能略過未簽章 App 的說明、更新測試數量。
+  - `--demo 檔案.gif`：用真的造型與範例資料逐格畫出 18 秒的示範動畫（平常的果凍 → 額度快過期還沒用完的著急表情 →
+    其他 7 種造型），自己寫的 GIF 編碼器（每幕一組調色盤、有序抖色、每格只存變動的區域），約 2.4 MB；
+    五種語言都能產生（日文、韓文版可用在各國社群）。自我測試會產生一個 GIF 再解碼、逐像素比對（+7 項）。
+    `--social-card`：GitHub 分享連結時顯示的 1280×640 預覽圖。
+  - 套件管理器：repo 本身當 Scoop bucket（`bucket/`）與 Homebrew tap（`Casks/`），`packaging/winget/` 是給 winget-pkgs 的設定
+    （`winget validate` 通過）。Scoop 不用 shim（GUI 程式經過 shim 會跟著終端機一起被關），改成裝好直接啟動，
+    開始選單捷徑由程式自己建立（通知需要）。Homebrew 安裝時移除隔離標記（沒有 Apple 開發者簽章）。
+    新的 Package managers 流程在 Windows／macOS 上真的用 Scoop、Homebrew 安裝、跑自我測試、移除；
+    發佈流程在發佈後自動更新這三種設定並觸發它。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。

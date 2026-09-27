@@ -15,6 +15,7 @@ Desktop widget that shows AI plan usage (Claude, Codex, Copilot, Ollama, JSON pl
 - `dotnet build SentriPet.slnx -c Release`; the app is `xplat/SentriPet.Desktop/bin/Release/net10.0/SentriPet.exe`.
 - `install.cmd` publishes a single-file build to `%LOCALAPPDATA%\Programs\SentriPet` and starts it through `explorer.exe`; `uninstall.cmd` removes it. Run scripts by absolute path (`cmd /c "<repo>\install.cmd"`).
 - `xplat/package.sh <win-x64|osx-arm64|osx-x64|linux-x64>` builds a self-contained package into `dist/`.
+- Package managers: this repo is also a Scoop bucket (`bucket/sentripet.json`) and a Homebrew tap (`Casks/sentripet.rb`); `packaging/winget/` holds the manifests for microsoft/winget-pkgs. `python packaging/update-manifests.py <version>` rewrites all of them from a published release (the Release workflow does this and then runs `packages.yml`, which installs through Scoop and Homebrew and self-tests).
 
 ## Checking changes without touching the user's mouse
 
@@ -23,7 +24,9 @@ All of these use a separate dev profile:
 - `SentriPet.exe --selftest <file>` — the app's checks (themes, faces, card and placement, bubble, settings page, languages, tray icon, integration); exit code = failures. `xplat/SentriPet.Tests/bin/Release/net10.0/SentriPet.Tests.exe <file>` — the core checks. Run both before every push.
 - `SentriPet.exe --snapshot <dir> [--theme id] [--frames N] [--lang xx]` renders every theme with sample data (sets a/b/c; c = quota about to expire unused at levels 1–3), the hover cards, the speech bubble and the settings page to PNG, headless.
 - `SentriPet.exe --dev --smoke-test <file>` runs the real app for 15 s and reports window, frames, theme, tray and logged errors (a window appears on screen).
+- `SentriPet.exe --demo <file.gif> [--lang xx]` renders the README demo (`docs/images/demo.gif` = en, `demo.zh-TW.gif`); `--social-card <file.png>` the repository's social preview (`docs/images/social-preview.png`).
 - `--probe <file>` prints detection + live usage (incl. the Claude estimate calibration) for every provider. `--dev --show-detail <id>` forces one hover card open for 45 s. `--lang <code>` forces a language.
+- READMEs: `README.md` (English) and `README.zh-TW.md` (Traditional Chinese) — keep both in step.
 - The desktop app's `get_usage` tool (ccd_session_mgmt) returns the official live Claude numbers — use it to check the Claude estimate.
 - CI (`.github/workflows/ci.yml`) runs the core tests, `--selftest`, `--probe`, `--smoke-test` (xvfb on Linux) and `--snapshot` on Windows, macOS and Linux, and builds the packages. Pushing a `v*` tag runs `release.yml` (draft → packages self-tested → published); ask the user before tagging a release.
 
