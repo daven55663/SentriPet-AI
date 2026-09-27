@@ -87,10 +87,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - name: Validate the manifests and install from them
+      - name: Update winget (the runner's is too old for the 1.12 manifests winget-pkgs asks for)
         shell: pwsh
         run: |
           winget --version
+          Install-PackageProvider -Name NuGet -Force -Scope CurrentUser | Out-Null
+          Install-Module Microsoft.WinGet.Client -Force -Scope CurrentUser -Repository PSGallery
+          Repair-WinGetPackageManager -Latest -Force
+          winget --version
+      - name: Validate the manifests and install from them
+        shell: pwsh
+        run: |
           winget validate --manifest packaging/winget
           if ($LASTEXITCODE) { exit 1 }
           winget settings --enable LocalManifestFiles
