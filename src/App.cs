@@ -9,8 +9,8 @@ using System.Threading;
 [assembly: AssemblyProduct("SentriPet")]
 [assembly: AssemblyDescription("AI 用量監控桌寵")] // i18n-ignore
 [assembly: AssemblyCopyright("Copyright © 2026 歐育典 · MIT License")] // i18n-ignore
-[assembly: AssemblyVersion("1.3.0.0")]
-[assembly: AssemblyFileVersion("1.3.0.0")]
+[assembly: AssemblyVersion("1.4.0.0")]
+[assembly: AssemblyFileVersion("1.4.0.0")]
 
 namespace SentriPet
 {

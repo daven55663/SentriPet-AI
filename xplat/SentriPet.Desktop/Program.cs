@@ -56,7 +56,15 @@ namespace SentriPet
         /// <summary>Also used by the Avalonia designer.</summary>
         public static AppBuilder BuildAvaloniaApp()
         {
-            return AppBuilder.Configure<DesktopApp>().UsePlatformDetect().LogToTrace();
+            var b = AppBuilder.Configure<DesktopApp>().UsePlatformDetect().LogToTrace();
+            // a small widget draws cheaper on the CPU than through a GPU device (and saves the driver's memory);
+            // --gpu keeps the default (like the WPF version)
+            // (measured on Windows: 108 MB instead of 252 MB, half the CPU)
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--gpu") < 0)
+                b = b.With(new Win32PlatformOptions { RenderingMode = new[] { Win32RenderingMode.Software } })
+                     .With(new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Software } })
+                     .With(new AvaloniaNativePlatformOptions { RenderingMode = new[] { AvaloniaNativeRenderingMode.Software } });
+            return b;
         }
     }
 }

@@ -15,7 +15,7 @@ pub="$out/publish-$rid"
 rm -rf "$pub"
 mkdir -p "$out"
 dotnet publish "$root/xplat/SentriPet.Desktop/SentriPet.Desktop.csproj" -c Release -r "$rid" --self-contained true \
-  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -o "$pub"
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o "$pub"
 cp -R "$root/examples" "$pub/examples"
 cp "$root/LICENSE" "$pub/LICENSE.txt" 2>/dev/null || true
 

@@ -198,6 +198,23 @@ namespace SentriPet
             return h != null && Win.ForegroundIsFullscreen(h.Handle);
         }
 
+        // ------------------------------------------------------------------ mouse
+
+        static bool x11CursorFailed;
+
+        /// <summary>The mouse position on an X11 desktop (also XWayland), in screen pixels; null elsewhere.</summary>
+        public static Avalonia.PixelPoint? X11Cursor()
+        {
+            if (!Os.Linux || x11CursorFailed) return null;
+            try
+            {
+                int x, y;
+                if (X11.Pointer(out x, out y)) return new Avalonia.PixelPoint(x, y);
+            }
+            catch (Exception ex) { x11CursorFailed = true; Log.Warn("X11 cursor: " + ex.Message); }
+            return null;
+        }
+
         // ------------------------------------------------------------------ files and folders
 
         public static void OpenPath(string path)
@@ -323,8 +340,22 @@ namespace SentriPet
             [DllImport("libX11.so.6")] static extern int XFlush(IntPtr display);
             [DllImport("libXext.so.6")] static extern void XShapeCombineRectangles(IntPtr display, IntPtr window, int destKind, int x, int y, IntPtr rects, int n, int op, int ordering);
             [DllImport("libXext.so.6")] static extern void XShapeCombineMask(IntPtr display, IntPtr window, int destKind, int x, int y, IntPtr pixmap, int op);
+            [DllImport("libX11.so.6")] static extern IntPtr XDefaultRootWindow(IntPtr display);
+            [DllImport("libX11.so.6")]
+            static extern bool XQueryPointer(IntPtr display, IntPtr window, out IntPtr root, out IntPtr child, out int rootX, out int rootY, out int winX, out int winY, out uint mask);
             const int ShapeInput = 2, ShapeSet = 0, Unsorted = 0;
             static IntPtr display;
+
+            public static bool Pointer(out int x, out int y)
+            {
+                x = y = 0;
+                if (display == IntPtr.Zero) display = XOpenDisplay(IntPtr.Zero);
+                if (display == IntPtr.Zero) return false;
+                IntPtr root, child;
+                int wx, wy;
+                uint mask;
+                return XQueryPointer(display, XDefaultRootWindow(display), out root, out child, out x, out y, out wx, out wy, out mask);
+            }
 
             public static void SetInputPassThrough(IntPtr window, bool on)
             {

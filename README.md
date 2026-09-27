@@ -17,8 +17,9 @@ AI-Powered Real-Time Monitoring Desktop Companion
 - 可用 JSON 外掛接上任何 AI 服務
 - 輕量：原生 WPF 程式，約 90 MB 記憶體、整體 CPU 不到 1%（省電模式更低）
 
-> **macOS／Linux 版開發中**：用 Avalonia 重寫畫面層，核心程式與測試已經在三個系統上通過。
-> 進度見[開發日誌](docs/DEVLOG.md)與 [#12](https://github.com/daven55663/SentriPet-AI/issues/12)。
+> **macOS／Linux 版（跨平台版）**：用 Avalonia 重寫的版本，8 種造型、設定頁、提醒、系統匣、開機啟動都已完成，
+> 自動測試在 Windows、macOS、Linux 上都通過；還沒有在實機的 Mac／Linux 上長時間試用。見下方「跨平台版」與
+> [開發日誌](docs/DEVLOG.md)、[#12](https://github.com/daven55663/SentriPet-AI/issues/12)。
 
 ## 安裝
 
@@ -102,6 +103,23 @@ install.cmd
 在 `%APPDATA%\SentriPet\providers` 放一個 JSON 設定檔就能新增一隻桌寵，
 支援「執行一支程式印出 JSON」、「呼叫 HTTP API」、「讀取 JSON 檔」三種方式。
 說明與範例：[`examples/providers/README.md`](examples/providers/README.md)（設定 → AI 服務 → 開啟外掛資料夾，會自動複製範例過去）。
+
+## 跨平台版（macOS、Linux，也能在 Windows 上跑）
+
+每次推送，GitHub Actions 都會打包好不需要另外安裝 .NET 的版本（在該次執行的 **Artifacts** 下載）：
+
+| 系統 | 檔案 | 安裝 |
+|---|---|---|
+| Windows | `SentriPet-<版本>-win-x64.zip` | 解壓縮後執行 `SentriPet.exe` |
+| macOS（Apple 晶片／Intel） | `SentriPet-<版本>-osx-arm64.zip`／`osx-x64.zip` | 解壓縮，把 `SentriPet.app` 拖到「應用程式」。沒有 Apple 開發者簽章，第一次請按右鍵 →「打開」（或執行 `xattr -dr com.apple.quarantine /Applications/SentriPet.app`） |
+| Linux | `SentriPet-<版本>-linux-x64.tar.gz` | 解壓縮後執行 `./install.sh`（裝到 `~/.local/share/sentripet`、加進應用程式選單並啟動） |
+
+- 和 Windows 版共用同一份設定格式；設定放在 macOS 的 `~/Library/Application Support/SentriPet`、Linux 的 `~/.config/SentriPet`。
+- 開機啟動：macOS 用 LaunchAgent、Linux 用 `~/.config/autostart`；通知：macOS 通知中心、Linux `notify-send`。
+- 目前的差異：macOS／Linux 沒有「全螢幕時自動躲起來」；macOS 上桌寵的眼睛只在滑鼠經過時跟著看；
+  Claude 桌面版沒有 Linux 版，所以 Linux 上讀不到 Claude 的方案用量（#9）。
+- 從原始碼執行：安裝 .NET 10 SDK 後 `dotnet run -c Release --project xplat/SentriPet.Desktop`；
+  打包：`xplat/package.sh <win-x64|osx-arm64|osx-x64|linux-x64>`。
 
 ## 開發
 

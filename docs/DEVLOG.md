@@ -60,14 +60,14 @@ xplat/                新的跨平台版（.NET 10）
 - [x] **第 2 階段：跨平台核心專案＋三系統 CI**
   建立 `xplat/SentriPet.Core`、`xplat/SentriPet.Tests`；GitHub CI 在 Windows、macOS、Linux
   三台機器上跑核心測試。
-- [ ] **第 3 階段：Avalonia 桌寵骨架**
+- [x] **第 3 階段：Avalonia 桌寵骨架**
   透明、置頂、可拖曳到任何螢幕的視窗；系統匣圖示與右鍵選單；懸停詳情卡；
   先移植果凍桌寵造型；無頭（headless）截圖讓 CI 在三個系統上都畫得出畫面。
 - [x] **第 4 階段：移植其餘 7 種造型、設定頁、泡泡**
-- [ ] **第 5 階段：各系統整合**
+- [x] **第 5 階段：各系統整合**
   開機啟動（Windows 登錄檔／macOS LaunchAgent／Linux `~/.config/autostart`）、
   通知、只允許一個執行中的程式、滑鼠穿透、全螢幕時躲起來。
-- [ ] **第 6 階段：打包發佈**
+- [ ] **第 6 階段：打包發佈**（打包完成，每次推送都由 CI 產生；上傳到 GitHub Releases 等使用者同意）
   Windows zip、macOS `.app`、Linux tar.gz／AppImage，放上 GitHub Releases（發佈前先跟使用者確認）。
 - [ ] **第 7 階段：切換**
   新版在 Windows 上功能追平後改成預設，WPF 版退役。
@@ -145,6 +145,17 @@ xplat/                新的跨平台版（.NET 10）
   - 只允許一個在執行：具名 Mutex，第二個開的會透過本機 named pipe 請第一個跳出來再自己結束（實測通過）。
   - 新增 `--selftest`：Avalonia 版自己的檢查（8 種造型、詳情卡、泡泡、設定頁、英文沒有中文、韓文斷行、開機啟動檔案格式、
     通知指令、單一執行），37 項；CI 在三個系統上都跑。
-- 第 3 階段剩下的待辦：沒有對話框的造型用的浮動泡泡（等第 4 階段移植其他造型時一起做）、
-  macOS／Linux 的全域游標（眼睛目前只在滑鼠經過桌寵時跟著看）、記憶體約 270 MB（WPF 版約 90 MB，
-  之後試 ReadyToRun／裁剪／GC 設定）、實機試用（拖曳、系統匣在 macOS／Linux 上的表現）。
+- 2026-09-27：**第 6 階段：打包**（`xplat/package.sh`）。不需要另外安裝 .NET 的單一執行檔：Windows zip、
+  macOS `.app`（Apple 晶片與 Intel，ad hoc 簽章、不出現在 Dock）、Linux tar.gz（附 `install.sh`）。
+  CI 在各自的系統上打包，再讓打包好的程式跑一次自己的 `--selftest`，通過才上傳成 Artifact（尚未公開發佈）。
+  大小約 40 MB（macOS、Linux）。
+  - **macOS 卡住的問題**：手寫便利貼要的楷體類字型（Kaiti、BiauKai、Klee、Nanum…）在 macOS 上是「用到才下載」的字型，
+    無頭環境下文字排版會一直等，整個截圖步驟卡到被取消。改成 Mac 只用內建字型；自我測試加上看門狗，卡住時會報出卡在哪裡。
+- 2026-09-27：**記憶體**：Avalonia 預設用 GPU 繪圖，工作集約 252 MB；改成和 WPF 版一樣用 CPU 繪圖（`--gpu` 可改回），
+  Windows 上實測降到 **108 MB**、CPU 也少一半（0.56% → 0.26%）。GC 設定（非並行、ConserveMemory）沒有幫助。
+- 2026-09-27：Linux 上桌寵的眼睛改用 X11 的全域游標位置（整個螢幕都跟著看）；macOS 仍只在滑鼠經過時跟著看
+  （座標換算要在實機確認）。版本升為 **1.4.0**。
+- 目前還沒做的：
+  - 實機試用：拖曳、系統匣、通知、開機啟動、滑鼠穿透在真的 Mac／Linux 桌面上的表現（開發機只有 Windows，靠 CI 無頭測試）。
+  - macOS 的全域游標（眼睛只在滑鼠經過時跟著看）；macOS／Linux 的「全螢幕時躲起來」。
+  - 第 6 階段的公開發佈（GitHub Releases）與第 7 階段的切換，等使用者決定。

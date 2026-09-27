@@ -141,6 +141,8 @@ namespace SentriPet
                 if (NativeMethods.GetCursorPos(out p)) return new PixelPoint(p.X, p.Y);
                 return null;
             }
+            var x11 = Integration.X11Cursor();
+            if (x11 != null) return x11;
             if (pointer != null) return this.PointToScreen(pointer.Value);
             return null;
         }
