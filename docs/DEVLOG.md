@@ -195,5 +195,9 @@ xplat/                新的跨平台版（.NET 10）
   每一項右邊用灰字標出心情，「交給命運吧（隨機）」和「每天隨機換一個」也放進來；選造型時桌寵照樣說「今天是『…』模式」。
   選單最上面的用量摘要改成每個 AI 一行（原本一行太長會被截斷）。選單改成可以離線建立：`--snapshot` 會畫出選單與子選單，
   自我測試檢查「只有一個換造型、沒有重複的心情選單、8 種造型都標出心情、目前的打勾」。README 截圖全部換成 2.x 的畫面。
+- 2026-09-28：**發佈 [v2.1.0](https://github.com/daven55663/SentriPet-AI/releases/tag/v2.1.0)**（使用者同意）：狀態列橋接與選單整理；
+  win-x64 41 MB、osx-arm64 41 MB、osx-x64 43 MB、linux-x64 40 MB。新增 `--connect-claude-statusline`／`--disconnect-claude-statusline`
+  （開程式時直接開關橋接，給捷徑或腳本用）。依使用者要求在這台電腦開啟：用帶參數的捷徑經 explorer 啟動（在 Claude 桌面 App 的容器外），
+  `settings.json` 加上狀態列指令、原檔備份為 `settings.json.sentripet-backup`；用範例資料實測已安裝的指令 0.1 秒。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。
