@@ -314,6 +314,50 @@ namespace SentriPet
                 t.Check("浮動泡泡量得出大小、不超過最大寬度", size.Width > 60 && size.Width < 300 && size.Height > 30, size.ToString());
                 t.Check("泡泡在秒數到了之前不會消失", bubble.Until > DateTime.UtcNow.AddSeconds(3));
             });
+            Progress = "demo gif";
+            t.Run("demo gif", () =>
+            {
+                // frames with colours 32 apart (the palette holds them exactly, the dithering never flips one),
+                // noisy enough that the LZW table fills up and is cleared
+                int w = 160, h = 120;
+                var rng = new Random(11);
+                var colours = Enumerable.Range(0, 200).Select(i => (rng.Next(8) * 32 << 16) | (rng.Next(8) * 32 << 8) | rng.Next(8) * 32).ToArray();
+                Func<int, int[]> noise = seed =>
+                {
+                    var r = new Random(seed);
+                    return Enumerable.Range(0, w * h).Select(i => colours[r.Next(colours.Length)]).ToArray();
+                };
+                Func<int[], int, int[]> square = (bg, x0) =>
+                {
+                    var px = (int[])bg.Clone();
+                    for (int y = 30; y < 60; y++) for (int x = x0; x < x0 + 30; x++) px[y * w + x] = 0xE0E0E0;
+                    return px;
+                };
+                var bgA = noise(1);
+                var scene1 = new List<int[]> { square(bgA, 10), square(bgA, 10), square(bgA, 40) };   // the second one is unchanged
+                var scene2 = new List<int[]> { noise(2), square(noise(2), 90) };
+                Func<int[], byte[]> bgra = px =>
+                {
+                    var b = new byte[px.Length * 4];
+                    for (int i = 0; i < px.Length; i++) { b[i * 4] = (byte)px[i]; b[i * 4 + 1] = (byte)(px[i] >> 8); b[i * 4 + 2] = (byte)(px[i] >> 16); b[i * 4 + 3] = 255; }
+                    return b;
+                };
+                var gif = new GifWriter(w, h);
+                gif.AddScene(scene1.Select(bgra).ToList(), 10);
+                gif.AddScene(scene2.Select(bgra).ToList(), 10);
+                string file = Path.Combine(Path.GetTempPath(), "sentripet-selftest.gif");
+                gif.Save(file);
+                List<int> delays;
+                var shown = DecodeGif(File.ReadAllBytes(file), out delays);
+                try { File.Delete(file); } catch { }
+                var expected = new List<int[]> { scene1[0], scene1[2], scene2[0], scene2[1] };
+                t.Equal("GIF：沒變的畫格併進上一格（4 格）", 4, shown.Count);
+                t.Equal("GIF：總長度不變（5 × 0.1 秒）", 50, delays.Sum());
+                t.Equal("GIF：沒變的那格讓上一格停兩倍久", 20, delays.Count > 0 ? delays[0] : -1);
+                for (int i = 0; i < Math.Min(shown.Count, expected.Count); i++)
+                    t.Check("GIF：解碼後第 " + (i + 1) + " 格的每個像素都對（只存變動區域、換調色盤、LZW 清表）",
+                        shown[i].SequenceEqual(expected[i]));
+            });
             Progress = "menu";
             t.Run("menu", () =>
             {
@@ -519,6 +563,84 @@ namespace SentriPet
                 t.Check("不同剩餘額度畫出不同的圖", !SamePixels(TrayArt.Draw(90, false, 32), TrayArt.Draw(10, false, 32)));
             });
             if (OperatingSystem.IsWindows()) ShortcutChecks(t);
+        }
+
+        /// <summary>Decodes a GIF (for the demo writer's check): the screen after each frame, as 0xRRGGBB.</summary>
+        static List<int[]> DecodeGif(byte[] g, out List<int> delays)
+        {
+            delays = new List<int>();
+            var frames = new List<int[]>();
+            int w = g[6] | g[7] << 8, h = g[8] | g[9] << 8, pos = 13;
+            int[] global = null;
+            if ((g[10] & 0x80) != 0) { global = Colours(g, pos, 2 << (g[10] & 7)); pos += 3 * (2 << (g[10] & 7)); }
+            var screen = new int[w * h];
+            int transparent = -1, delay = 0;
+            while (g[pos] != 0x3B)
+            {
+                if (g[pos] == 0x21)
+                {
+                    if (g[pos + 1] == 0xF9) { delay = g[pos + 4] | g[pos + 5] << 8; transparent = (g[pos + 3] & 1) != 0 ? g[pos + 6] : -1; }
+                    pos += 2;
+                    while (g[pos] != 0) pos += g[pos] + 1;
+                    pos++;
+                    continue;
+                }
+                int fx = g[pos + 1] | g[pos + 2] << 8, fy = g[pos + 3] | g[pos + 4] << 8, fw = g[pos + 5] | g[pos + 6] << 8, fh = g[pos + 7] | g[pos + 8] << 8;
+                int flags = g[pos + 9];
+                pos += 10;
+                var pal = global;
+                if ((flags & 0x80) != 0) { pal = Colours(g, pos, 2 << (flags & 7)); pos += 3 * (2 << (flags & 7)); }
+                int min = g[pos++];
+                var data = new List<byte>();
+                while (g[pos] != 0) { for (int i = 1; i <= g[pos]; i++) data.Add(g[pos + i]); pos += g[pos] + 1; }
+                pos++;
+                var indices = Unlzw(data, min, fw * fh);
+                for (int i = 0; i < indices.Count && i < fw * fh; i++)
+                    if (indices[i] != transparent) screen[(fy + i / fw) * w + fx + i % fw] = pal[indices[i]];
+                frames.Add((int[])screen.Clone());
+                delays.Add(delay);
+            }
+            return frames;
+        }
+
+        static int[] Colours(byte[] g, int pos, int n)
+        {
+            var c = new int[n];
+            for (int i = 0; i < n; i++) c[i] = g[pos + i * 3] << 16 | g[pos + i * 3 + 1] << 8 | g[pos + i * 3 + 2];
+            return c;
+        }
+
+        static List<int> Unlzw(List<byte> data, int min, int count)
+        {
+            var output = new List<int>(count);
+            int clear = 1 << min, end = clear + 1, size = min + 1, bit = 0;
+            var table = new List<int[]>();
+            Action reset = () =>
+            {
+                table.Clear();
+                for (int i = 0; i < clear; i++) table.Add(new[] { i });
+                table.Add(null);
+                table.Add(null);
+                size = min + 1;
+            };
+            reset();
+            int[] prev = null;
+            while (bit + size <= data.Count * 8)
+            {
+                int code = 0;
+                for (int i = 0; i < size; i++, bit++) if ((data[bit >> 3] >> (bit & 7) & 1) != 0) code |= 1 << i;
+                if (code == clear) { reset(); prev = null; continue; }
+                if (code == end) break;
+                int[] entry;
+                if (code < table.Count && table[code] != null) entry = table[code];
+                else if (code == table.Count && prev != null) entry = prev.Concat(new[] { prev[0] }).ToArray();
+                else throw new InvalidDataException("bad LZW code " + code);
+                output.AddRange(entry);
+                if (prev != null && table.Count < 4096) table.Add(prev.Concat(new[] { entry[0] }).ToArray());
+                prev = entry;
+                if (table.Count == 1 << size && size < 12) size++;
+            }
+            return output;
         }
     }
 }

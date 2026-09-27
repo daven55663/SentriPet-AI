@@ -67,3 +67,27 @@ jobs:
     steps:
       - name: Make the release public
         run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+
+  manifests:
+    name: Update the Scoop, Homebrew and winget manifests
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Write them for this version and commit
+        shell: bash
+        run: |
+          python3 packaging/update-manifests.py "${GITHUB_REF_NAME#v}"
+          git add bucket Casks packaging/winget
+          if git diff --cached --quiet; then echo "manifests already up to date"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Package manifests for ${GITHUB_REF_NAME}"
+          git push origin HEAD:main
+      - name: Install through them (Package managers workflow)
+        run: gh workflow run packages.yml --ref main --repo "$GITHUB_REPOSITORY"

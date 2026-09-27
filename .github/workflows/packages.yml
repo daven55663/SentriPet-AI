@@ -1,0 +1,79 @@
+name: Package managers
+
+# Installs the published release through this repository's Scoop bucket (bucket/) and Homebrew tap (Casks/),
+# runs the installed program's self-test and removes it again. Runs when the manifests change, and after each
+# release (the Release workflow updates the manifests and starts this one).
+on:
+  push:
+    branches: [main]
+    paths: ['bucket/**', 'Casks/**', 'packaging/**', '.github/workflows/packages.yml']
+  workflow_dispatch:
+
+jobs:
+  scoop:
+    name: Scoop (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Install Scoop
+        shell: pwsh
+        run: |
+          iex "& {$(irm get.scoop.sh)} -RunAsAdmin"
+          Join-Path (Resolve-Path ~).Path "scoop\shims" >> $env:GITHUB_PATH
+      - name: Install SentriPet from this bucket
+        shell: pwsh
+        run: |
+          scoop bucket add sentripet "$env:GITHUB_WORKSPACE"
+          scoop install sentripet
+          if ($LASTEXITCODE) { exit 1 }
+          Start-Sleep 8
+          # post_install starts it
+          $running = Get-Process SentriPet -ErrorAction SilentlyContinue
+          if (-not $running) { Write-Error "SentriPet did not start after the install"; exit 1 }
+          $running | Format-Table Id, Path -AutoSize
+          $running | Stop-Process -Force
+      - name: Self-test of the installed program
+        shell: pwsh
+        run: |
+          $exe = Join-Path (scoop prefix sentripet) 'SentriPet.exe'
+          $p = Start-Process $exe -ArgumentList '--selftest', "$env:GITHUB_WORKSPACE\scoop-test.txt" -Wait -PassThru
+          Get-Content scoop-test.txt -Tail 1
+          "### Scoop: $(Get-Content scoop-test.txt -Tail 1)" >> $env:GITHUB_STEP_SUMMARY
+          if ($p.ExitCode -ne 0) { Get-Content scoop-test.txt; exit 1 }
+      - name: Uninstall
+        shell: pwsh
+        run: |
+          scoop uninstall sentripet
+          if ($LASTEXITCODE) { exit 1 }
+
+  homebrew:
+    name: Homebrew (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Tap this repository and check the cask
+        run: |
+          brew tap daven55663/sentripet "$GITHUB_WORKSPACE"
+          brew style daven55663/sentripet
+          brew audit --cask --online daven55663/sentripet/sentripet || echo "::warning::brew audit reported problems (see above)"
+          # the Intel package too (this runner is Apple silicon): download and check its SHA-256
+          brew fetch --cask --arch=intel daven55663/sentripet/sentripet
+      - name: Install, self-test, uninstall
+        run: |
+          brew install --cask daven55663/sentripet/sentripet
+          if xattr -p com.apple.quarantine /Applications/SentriPet.app 2>/dev/null; then
+            echo "SentriPet.app is still quarantined"; exit 1
+          fi
+          code=0
+          /Applications/SentriPet.app/Contents/MacOS/SentriPet --selftest "$GITHUB_WORKSPACE/brew-test.txt" || code=$?
+          tail -n 1 brew-test.txt
+          echo "### Homebrew: $(tail -n 1 brew-test.txt)" >> "$GITHUB_STEP_SUMMARY"
+          [ $code -eq 0 ] || { cat brew-test.txt; exit 1; }
+          brew uninstall --cask sentripet
+          [ ! -e /Applications/SentriPet.app ]

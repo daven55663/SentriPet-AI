@@ -196,6 +196,8 @@
   "已安裝 App": "app installed",
   "目前沒有公開的用量來源，可在外掛資料夾放一個 JSON 設定檔接上": "No public usage source yet; add a JSON file to the plugins folder to connect it",
   "ChatGPT 桌面版": "ChatGPT desktop",
+  "AI 額度還剩多少，看桌寵就知道": "How much AI quota is left? Just look at your pets",
+  "額度快重置了還沒用完？牠們會提醒你": "Quota resetting soon, still unused? They'll nudge you",
   "我在這裡！": "I'm here!",
   "新的一天，今天換成「{0}」！": "A new day! Today I'm \"{0}\"!",
   "這麼晚還在寫 code？別熬夜喔": "Still coding this late? Don't stay up too long",

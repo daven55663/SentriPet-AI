@@ -8,6 +8,7 @@ namespace SentriPet
     ///   SentriPet                     run the desk pet
     ///   SentriPet --dev               separate profile (settings, logs), for testing
     ///   SentriPet --snapshot DIR      render the themes off-screen to PNG (sample data), no window
+    ///   SentriPet --demo FILE.gif     the animated tour for the README (sample data), no window
     ///   ... --lang en                 use a language (zh-TW, zh-CN, en, ja, ko; default: the setting / zh-TW for snapshots)
     /// </summary>
     static class Program
@@ -60,6 +61,12 @@ namespace SentriPet
                 AppPaths.UseDevProfile();
                 UseLanguage(LanguageOverride ?? L.Source);
                 return Snapshots.Run(args);
+            }
+            if (mode == "--demo")
+            {
+                AppPaths.UseDevProfile();
+                UseLanguage(LanguageOverride ?? L.Source);
+                return Demo.Run(args);
             }
             if (Array.IndexOf(args, "--dev") >= 0) AppPaths.UseDevProfile();
             // one copy per user: a second start asks the running one to show itself

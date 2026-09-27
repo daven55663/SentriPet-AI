@@ -95,6 +95,8 @@ jobs:
           for l in en ja ko zh-CN; do
             dotnet run --no-build -c Release --project xplat/SentriPet.Desktop -- --snapshot pet-shots/lang-$l --lang $l
           done
+          # the animated tour for the README (docs/images/demo*.gif)
+          dotnet run --no-build -c Release --project xplat/SentriPet.Desktop -- --demo pet-shots/demo.gif --lang en
           ls -R pet-shots
           errors=$(find pet-shots -name '*_error.txt')
           if [ -n "$errors" ]; then cat $errors; exit 1; fi
