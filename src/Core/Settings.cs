@@ -29,6 +29,8 @@ namespace SentriPet
         public string Anchor = "br";          // which corner stays fixed when the widget resizes
         public int CodexLiveMinutes = 5;      // 0 = only local session logs
         public string ClaudeWeeklyReset = ""; // optional override, e.g. "Thu 23:00" / "週四 23:00"
+        public bool ClaudeStatusBridge;       // SentriPet is Claude Code's status-line command (official usage, see ClaudeStatusLine)
+        public string ClaudeStatusLineChain;  // the user's own statusLine object (JSON), shown through SentriPet and restored when turned off
         public Dictionary<string, bool> Enabled = new Dictionary<string, bool>();
         public List<string> Order = new List<string>();
         public bool FirstRunDone;
@@ -74,6 +76,8 @@ namespace SentriPet
                 s.Anchor = Json.Str(Json.Get(o, "anchor")) ?? "br";
                 s.CodexLiveMinutes = (int)Clamp(Json.Num(Json.Get(o, "codexLiveMinutes")) ?? 5, 0, 120);
                 s.ClaudeWeeklyReset = Json.Str(Json.Get(o, "claudeWeeklyReset")) ?? "";
+                s.ClaudeStatusBridge = Json.Bool(Json.Get(o, "claudeStatusBridge")) ?? false;
+                s.ClaudeStatusLineChain = Json.Str(Json.Get(o, "claudeStatusLineChain"));
                 s.FirstRunDone = Json.Bool(Json.Get(o, "firstRunDone")) ?? false;
                 s.TerminalColor = Json.Str(Json.Get(o, "terminalColor")) ?? "green";
                 s.Language = Json.Str(Json.Get(o, "language")) ?? "auto";
@@ -117,6 +121,8 @@ namespace SentriPet
                 o["anchor"] = Anchor;
                 o["codexLiveMinutes"] = CodexLiveMinutes;
                 o["claudeWeeklyReset"] = ClaudeWeeklyReset;
+                o["claudeStatusBridge"] = ClaudeStatusBridge;
+                if (ClaudeStatusLineChain != null) o["claudeStatusLineChain"] = ClaudeStatusLineChain;
                 o["firstRunDone"] = FirstRunDone;
                 o["terminalColor"] = TerminalColor;
                 o["language"] = Language;

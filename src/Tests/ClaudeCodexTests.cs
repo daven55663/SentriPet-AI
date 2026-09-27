@@ -275,7 +275,7 @@ namespace SentriPet
 
                 ClaudeProvider.HistoryOverride = Path.Combine(root2, "missing.json");
                 var missing = new ClaudeProvider().Fetch(false, new AppSettings());
-                t.Check("找不到紀錄：說明原因", !missing.Meters.Any() && missing.Error.Contains("找不到用量紀錄"), missing.Error);
+                t.Check("找不到紀錄：說明原因", !missing.Meters.Any() && missing.Error.Contains(Os.Linux ? "狀態列" : "找不到用量紀錄"), missing.Error);
                 TestKit.WriteFile(history2, "{\"samples\":[]}");
                 ClaudeProvider.HistoryOverride = history2;
                 var empty = new ClaudeProvider().Fetch(false, new AppSettings());

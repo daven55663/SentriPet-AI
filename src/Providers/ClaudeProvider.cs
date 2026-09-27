@@ -9,7 +9,9 @@ namespace SentriPet
     /// <summary>
     /// Claude plan usage. Reads the history file the Claude desktop app keeps (plan-usage-history.json,
     /// a sample every ~15 min with "fh" = 5-hour % and "sd" = 7-day %). No credentials involved.
-    /// Reset times are not in that file, so they are estimated from when the numbers dropped back to zero.
+    /// Reset times are not in that file, so they are estimated from when the numbers dropped back to zero —
+    /// unless the Claude Code status-line bridge is on (<see cref="ClaudeStatusLine"/>): its official numbers and reset
+    /// times win whenever they are newer, and they are the only source where there is no desktop app (Linux).
     /// </summary>
     class ClaudeProvider : Provider
     {
@@ -79,7 +81,7 @@ namespace SentriPet
             if (AppPaths.Which("claude") != null) d.Evidence.Add(L.T("claude 指令"));
             d.Installed = d.Evidence.Count > 0;
             if (FindHistory() == null)
-                d.Hint = Os.Linux ? L.T("Claude 桌面版沒有 Linux 版，目前讀不到方案用量（之後會改讀 Claude Code 狀態列）") : L.T("開啟 Claude 桌面版後就會開始記錄用量");
+                d.Hint = Os.Linux ? L.T("在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」就能讀到 Claude 的用量") : L.T("開啟 Claude 桌面版後就會開始記錄用量");
             return d;
         }
 
@@ -88,8 +90,25 @@ namespace SentriPet
             if (activity == null) activity = new ActivityWatcher(ClaudeCodeUsage.Root, "*.jsonl");
             activity.Ensure();
 
+            var now = DateTime.UtcNow;
+            // official numbers from Claude Code's status line (when the bridge is on), ignored once a week old
+            var bridge = settings.ClaudeStatusBridge ? ClaudeStatusLine.Load() : null;
+            if (bridge != null && (now - bridge.ObservedAt).TotalDays > 7) bridge = null;
+            bool estimate = settings.ClaudeEstimate;
+            if (estimate)
+            {
+                try { usage.Update(); }
+                catch (Exception ex) { Log.Warn("claude transcripts: " + ex.Message); }
+            }
+            var events = estimate ? usage : null;
+
             string f = FindHistory();
-            if (f == null) return Snapshot.Fail(L.T("找不到用量紀錄：請開啟 Claude 桌面版"));
+            if (f == null)
+            {
+                if (bridge != null) return FromBridge(bridge, events, now);
+                return Snapshot.Fail(Os.Linux ? L.T("讀不到 Claude 用量：請在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」")
+                                              : L.T("找不到用量紀錄：請開啟 Claude 桌面版"));
+            }
             var fi = new FileInfo(f);
             if (cachedSamples == null || f != cachedFile || fi.LastWriteTimeUtc != cachedMtime || fi.Length != cachedLen)
             {
@@ -99,18 +118,15 @@ namespace SentriPet
                 cachedLen = fi.Length;
             }
             var samples = cachedSamples;
-            if (samples.Count == 0) return Snapshot.Fail(L.T("用量紀錄是空的：請開啟 Claude 桌面版"));
+            if (samples.Count == 0)
+            {
+                if (bridge != null) return FromBridge(bridge, events, now);
+                return Snapshot.Fail(L.T("用量紀錄是空的：請開啟 Claude 桌面版"));
+            }
 
             var last = samples[samples.Count - 1];
-            var now = DateTime.UtcNow;
             var lastUtc = Json.FromUnix(last.T);
-            bool estimate = settings.ClaudeEstimate;
-            if (estimate)
-            {
-                try { usage.Update(); }
-                catch (Exception ex) { Log.Warn("claude transcripts: " + ex.Message); }
-            }
-            var events = estimate ? usage : null;
+            bool officialReset = false, officialUsed = false;
             var snap = new Snapshot();
             snap.ObservedAt = lastUtc;
             snap.Source = L.T("Claude 桌面版快取");
@@ -144,9 +160,42 @@ namespace SentriPet
                     m.ResetsAt = EstimateFromFirstUse(samples, key, win, events);
                 }
 
-                // usage recorded by Claude Code after this moment is added on top of the desktop app's number
-                DateTime extrapolateFrom = lastUtc;
-                if (m.ResetsAt.HasValue && m.ResetsAt.Value <= now && lastUtc < m.ResetsAt.Value)
+                // the status line's official numbers: the reset time always, the percentage when it is the newer reading
+                DateTime baseUtc = lastUtc;
+                var bw = bridge != null ? bridge.For(key) : null;
+                if (bw != null)
+                {
+                    if (bw.ResetsAt > now)
+                    {
+                        m.ResetsAt = bw.ResetsAt;
+                        m.ResetApprox = false;
+                        officialReset = true;
+                        if (bridge.ObservedAt >= lastUtc)
+                        {
+                            m.Used = bw.Used;
+                            baseUtc = bridge.ObservedAt;
+                            officialUsed = true;
+                        }
+                    }
+                    else if (lastUtc < bw.ResetsAt)
+                    {
+                        // that window ended after both readings: handled as a reset just below
+                        m.ResetsAt = bw.ResetsAt;
+                    }
+                    else if (win >= 1440)
+                    {
+                        // the desktop app already saw the new week: it ends a week after the official reset
+                        var next = bw.ResetsAt;
+                        while (next <= now) next = next.AddMinutes(win);
+                        m.ResetsAt = next;
+                        m.ResetApprox = false;
+                        officialReset = true;
+                    }
+                }
+
+                // usage recorded by Claude Code after this moment is added on top of the latest reading
+                DateTime extrapolateFrom = baseUtc;
+                if (m.ResetsAt.HasValue && m.ResetsAt.Value <= now && baseUtc < m.ResetsAt.Value)
                 {
                     // the window ended after the last sample was written
                     var ended = m.ResetsAt.Value;
@@ -160,12 +209,13 @@ namespace SentriPet
                         // a new 5-hour window opens with the first request after the old one ended
                         var start = events != null ? events.FirstAfter(ended, now) : null;
                         m.ResetsAt = start.HasValue ? FloorToMinute(start.Value).AddMinutes(win) : (DateTime?)null;
+                        m.ResetApprox = true;
                     }
                 }
-                else if (win < 1440 && m.Used <= 0 && events != null)
+                else if (win < 1440 && m.Used <= 0 && events != null && m.ResetApprox)
                 {
                     // idle (or just reset) at the last sample: the first request since then opens the window
-                    var start = events.FirstAfter(lastUtc, now);
+                    var start = events.FirstAfter(baseUtc, now);
                     if (start.HasValue) m.ResetsAt = FloorToMinute(start.Value).AddMinutes(win);
                 }
 
@@ -185,21 +235,72 @@ namespace SentriPet
             }
 
             string baseTime = lastUtc.ToLocalTime().ToString("HH:mm");
+            if (officialUsed)
+            {
+                snap.ObservedAt = bridge.ObservedAt;
+                snap.Source = L.T("Claude Code 狀態列（官方）");
+            }
             if (estimated)
             {
                 snap.ObservedAt = now;
                 snap.Source = L.T("即時推算");
-                snap.Note = L.F("以桌面版 {0} 的數字為基準，加上之後 Claude Code 用掉的 token 推算（≈）；桌面版約每 15 分鐘校正一次", baseTime);
+                snap.Note = officialUsed
+                    ? L.F("以 Claude Code 狀態列 {0} 的官方數字為基準，加上之後用掉的 token 推算（≈）", bridge.ObservedAt.ToLocalTime().ToString("HH:mm"))
+                    : L.F("以桌面版 {0} 的數字為基準，加上之後 Claude Code 用掉的 token 推算（≈）；桌面版約每 15 分鐘校正一次", baseTime);
             }
-            if ((now - lastUtc).TotalMinutes > 35)
+            var newest = officialUsed && bridge.ObservedAt > lastUtc ? bridge.ObservedAt : lastUtc;
+            if ((now - newest).TotalMinutes > 35 && !officialUsed)
             {
                 snap.Stale = true;
                 snap.Note = L.F(estimated ? "Claude 桌面版沒在執行，基準停在 {0}，之後的用量為推算" : "Claude 桌面版沒在執行，基準停在 {0}", lastUtc.ToLocalTime().ToString("M/d HH:mm"));
             }
             else if (!estimated)
             {
-                snap.Note = L.F("桌面版約每 15 分鐘更新一次（這次是 {0}）；重置時間為推算值", baseTime);
+                snap.Note = officialUsed ? L.F("官方數字，來自 Claude Code 狀態列（{0}）；只有用 Claude Code 時才會更新", bridge.ObservedAt.ToLocalTime().ToString("M/d HH:mm"))
+                          : officialReset ? L.F("桌面版約每 15 分鐘更新一次（這次是 {0}）；重置時間是 Claude Code 狀態列的官方時間", baseTime)
+                          : L.F("桌面版約每 15 分鐘更新一次（這次是 {0}）；重置時間為推算值", baseTime);
             }
+            snap.Active = activity.ActiveWithin(90);
+            return snap;
+        }
+
+        /// <summary>Only the status line's numbers (no desktop app, e.g. Linux).</summary>
+        Snapshot FromBridge(ClaudeStatusLine.Data bridge, ClaudeCodeUsage events, DateTime now)
+        {
+            var snap = new Snapshot { Source = L.T("Claude Code 狀態列（官方）"), ObservedAt = bridge.ObservedAt };
+            foreach (var key in new[] { "fh", "sd" })
+            {
+                var bw = bridge.For(key);
+                if (bw == null) continue;
+                int win = WindowFor(key);
+                var m = new Meter
+                {
+                    Key = key,
+                    WindowMinutes = win,
+                    Used = bw.Used,
+                    Label = LabelFor(key, win),
+                    ShortLabel = ShortFor(key, win),
+                    ResetsAt = bw.ResetsAt,
+                    ResetApprox = false,
+                };
+                if (bw.ResetsAt <= now)
+                {
+                    // the window ended since Claude Code last reported it
+                    m.Used = 0;
+                    m.WasReset = true;
+                    if (win >= 1440)
+                        while (m.ResetsAt.Value <= now) m.ResetsAt = m.ResetsAt.Value.AddMinutes(win);
+                    else
+                    {
+                        var start = events != null ? events.FirstAfter(bw.ResetsAt, now) : null;
+                        m.ResetsAt = start.HasValue ? FloorToMinute(start.Value).AddMinutes(win) : (DateTime?)null;
+                        m.ResetApprox = true;
+                    }
+                }
+                snap.Meters.Add(m);
+            }
+            snap.Note = L.F("官方數字，來自 Claude Code 狀態列（{0}）；只有用 Claude Code 時才會更新", bridge.ObservedAt.ToLocalTime().ToString("M/d HH:mm"));
+            if ((now - bridge.ObservedAt).TotalHours > 6) snap.Stale = true;
             snap.Active = activity.ActiveWithin(90);
             return snap;
         }

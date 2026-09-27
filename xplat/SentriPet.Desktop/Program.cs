@@ -26,6 +26,20 @@ namespace SentriPet
         static int Main(string[] args)
         {
             string mode = args.Length > 0 ? args[0] : "";
+            // Claude Code's status-line command (#9): fast, no window, no single-instance check
+            if (mode == "--statusline")
+            {
+                if (Array.IndexOf(args, "--dev") >= 0) AppPaths.UseDevProfile();   // tests
+                try
+                {
+                    var settings = AppSettings.Load();
+                    L.Use(settings.Language);
+                    Console.OutputEncoding = new System.Text.UTF8Encoding(false);
+                    var stdin = new System.IO.StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false));
+                    return ClaudeStatusLine.Run(stdin, Console.Out, settings);
+                }
+                catch (Exception ex) { Log.Error("status line", ex); Console.WriteLine(AppInfo.Name); return 0; }
+            }
             // --lang <code>: force a language (snapshots default to the source language, Traditional Chinese)
             int li = Array.IndexOf(args, "--lang");
             if (li >= 0 && li + 1 < args.Length) LanguageOverride = args[li + 1];

@@ -4,7 +4,7 @@ Desktop widget that shows AI plan usage (Claude, Codex, Copilot, Ollama, JSON pl
 
 ## Layout
 
-- `src/Core` — usage model, settings, reminders (`Trackers`), lines the pets say, translations (`I18n.cs`), `AppPaths` per OS, `Probe`. No UI code (colours are `Rgba`).
+- `src/Core` — usage model, settings, reminders (`Trackers`), lines the pets say, translations (`I18n.cs`), `AppPaths` per OS, `Probe`, `ClaudeStatusLine` (the Claude Code status-line bridge, #9: `SentriPet --statusline` saves the official `rate_limits` and runs the user's own status line; Connect/Disconnect edit `~/.claude/settings.json` with a backup — only when the user turns it on). No UI code (colours are `Rgba`).
 - `src/Providers` — one class per AI (detection + `Fetch`), `CustomProvider` for JSON plugins; `ClaudeCodeUsage` reads Claude Code transcript token counts to extrapolate between the desktop app's ~15-minute usage samples.
 - `src/Lang/*.json` — translations; `src/Tests` — core checks (run by `xplat/SentriPet.Tests`).
 - `xplat/SentriPet.Desktop` (assembly `SentriPet`) — the app: `PetWindow` (transparent widget; hover is polled against provider bounding boxes), `DetailWindow.cs` (hover card, speech bubble, placement), `SettingsWindow`, `DesktopController` (menus, tray, reminders), `Themes/` (8 themes, provider elements tagged `Tag = "pv:{id}"`), `Integration.cs` (everything that differs per OS: autostart, notifications, click-through, full screen, single instance, Start menu shortcut, global cursor), `TrayArt`, `DesktopTests` (`--selftest`).

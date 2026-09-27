@@ -18,6 +18,7 @@ namespace SentriPet
             SettingsTests.Run(t);
             TrackerTests.Run(t);
             ClaudeTests.Run(t);
+            ClaudeStatusLineTests.Run(t);
             CodexTests.Run(t);
             ProviderTests.Run(t);
             ServiceTests.Run(t);

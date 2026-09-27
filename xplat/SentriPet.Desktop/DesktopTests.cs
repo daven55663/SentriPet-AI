@@ -466,6 +466,31 @@ namespace SentriPet
                 t.Check("第二個執行的會退出", !second);
                 t.Check("第二個執行的會請第一個顯示出來", shown.Wait(5000));
             });
+            t.Run("statusline command", () =>
+            {
+                // the program as Claude Code runs it: JSON in, one line out, quickly
+                var now = DateTime.UtcNow;
+                string input = "{\"rate_limits\":{\"five_hour\":{\"used_percentage\":25,\"resets_at\":" + (Json.ToUnixMs(now.AddHours(2)) / 1000) +
+                               "},\"seven_day\":{\"used_percentage\":40,\"resets_at\":" + (Json.ToUnixMs(now.AddDays(3)) / 1000) + "}}}";
+                var psi = new ProcessStartInfo(Environment.ProcessPath)
+                {
+                    UseShellExecute = false, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
+                    CreateNoWindow = true, StandardOutputEncoding = System.Text.Encoding.UTF8,
+                };
+                psi.ArgumentList.Add("--statusline");
+                psi.ArgumentList.Add("--dev");
+                var sw = Stopwatch.StartNew();
+                using (var p = Process.Start(psi))
+                {
+                    var w = new StreamWriter(p.StandardInput.BaseStream, new System.Text.UTF8Encoding(false));
+                    w.Write(input);
+                    w.Close();
+                    string output = p.StandardOutput.ReadToEnd();
+                    bool exited = p.WaitForExit(20000);
+                    t.Check("狀態列指令：讀得到輸入、印出剩餘額度", exited && p.ExitCode == 0 && output.Contains("5h") && output.Contains("75%"), output.Trim());
+                    t.Check("狀態列指令：夠快（Claude Code 每次回覆都會執行）", sw.ElapsedMilliseconds < 5000, sw.ElapsedMilliseconds + " ms");
+                }
+            });
             t.Check("全螢幕偵測：Windows 與 Linux（X11）", Integration.CanDetectFullscreen == (Os.Windows || Os.Linux));
             t.Run("tray icon", () =>
             {

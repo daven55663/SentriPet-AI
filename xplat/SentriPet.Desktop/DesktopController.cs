@@ -48,6 +48,7 @@ namespace SentriPet
             if (Settings.DailyRandomTheme) PickDailyTheme(false);
             Integration.SetAutostart(Settings.AutoStart);
             Integration.EnsureStartMenuShortcut();
+            if (!AppPaths.Dev) ClaudeStatusLine.Repair(Settings, Environment.ProcessPath);
             Service = new UsageService(Settings);
             Service.Changed += () => Dispatcher.UIThread.Post(RefreshViews);
 

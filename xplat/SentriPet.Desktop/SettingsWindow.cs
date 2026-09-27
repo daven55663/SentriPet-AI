@@ -319,6 +319,35 @@ namespace SentriPet
             hint.MaxWidth = 180;
             right.Children.Add(hint);
             Row(body, L.T("Claude 每週重置時間（選填）"), L.T("Claude 的快取沒有重置時間，預設用歷史紀錄推算。想要精準，照 Claude 設定 → 用量 頁面上寫的時間填一次，例如「週四 23:00」"), right);
+            var bridgeError = Txt("", 11, Palette.Hex("#FCA5A5"), FontWeight.Normal);
+            bridgeError.IsVisible = false;
+            ToggleSwitch bridge = null;
+            bridge = Toggle(S.ClaudeStatusBridge && ClaudeStatusLine.IsConnected(), v =>
+            {
+                if (v == (S.ClaudeStatusBridge && ClaudeStatusLine.IsConnected())) return;
+                try
+                {
+                    if (v) ClaudeStatusLine.Connect(S, Environment.ProcessPath);
+                    else ClaudeStatusLine.Disconnect(S);
+                    bridgeError.IsVisible = false;
+                    SaveSoon();
+                    ctl.Service.RefreshNow("claude");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("status line bridge", ex);
+                    bridgeError.Text = L.F("沒辦法修改 Claude 的設定：{0}", ex.Message);
+                    bridgeError.IsVisible = true;
+                    bridge.IsChecked = !v;
+                }
+            });
+            var bridgeBox = new StackPanel();
+            bridgeBox.Children.Add(bridge);
+            bridgeBox.Children.Add(bridgeError);
+            bridgeError.MaxWidth = 200;
+            Row(body, L.T("連接 Claude Code 狀態列（官方用量）"),
+                L.T("在 ~/.claude/settings.json 加上狀態列設定：Claude Code 每次回覆都會把官方的用量與重置時間交給 SentriPet。原本的狀態列照常顯示，關掉時會還原。Linux 沒有 Claude 桌面版，要開這個才讀得到 Claude 用量"),
+                bridgeBox);
             Row(body, L.T("Claude 即時推算"), L.T("Claude 桌面版約每 15 分鐘才記錄一次用量。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算這段空檔的用量，數字前面會標「≈」"),
                 Toggle(S.ClaudeEstimate, v => { S.ClaudeEstimate = v; SaveSoon(); ctl.Service.RefreshNow("claude"); }));
             RefreshProviders();

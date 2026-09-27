@@ -102,6 +102,7 @@ cd SentriPet-<版本>-linux-x64
 - 需要有合成器的桌面才會是透明背景（GNOME、KDE、Xfce 等大多都有）。
 - GNOME 要顯示系統匣圖示，需要「AppIndicator and KStatusNotifierItem Support」擴充；沒有系統匣時用桌寵的右鍵選單即可。
 - 通知用 `notify-send`（Debian／Ubuntu：`sudo apt install libnotify-bin`）。
+- Linux 沒有 Claude 桌面版：要看 Claude 的用量，請在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」。
 
 ### 更新與移除
 
@@ -115,7 +116,8 @@ cd SentriPet-<版本>-linux-x64
 
 SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一隻桌寵，並打聲招呼。要讀到用量，需要：
 
-- **Claude**：開著 Claude 桌面版（它每 15 分鐘記錄一次用量；有用 Claude Code 時會在兩次之間即時推算）
+- **Claude**：開著 Claude 桌面版（它每 15 分鐘記錄一次用量；有用 Claude Code 時會在兩次之間即時推算），
+  或開啟 設定 → AI 服務 →「連接 Claude Code 狀態列」，直接拿 Claude Code 提供的官方數字（Linux 只能用這個方式，見下面的說明）
 - **Codex**：裝了 Codex 桌面版、VS Code 擴充或 `codex` 指令，並用 ChatGPT 帳號登入
 - **Copilot**：用過一次 Copilot CLI（它會留下額度快取）
 
@@ -138,7 +140,7 @@ SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一�
 |---|---|
 | 造型 | 看 8 種造型的即時預覽並切換；每天隨機換一個 |
 | 外觀 | 大小、不透明度、永遠在最上層、全螢幕時躲起來、滑鼠穿透、會說話、省電模式 |
-| AI 服務 | 每個 AI 偵測到什麼、目前讀到的數字；開關個別 AI；Codex 即時查詢頻率；Claude 每週重置時間與即時推算 |
+| AI 服務 | 每個 AI 偵測到什麼、目前讀到的數字；開關個別 AI；Codex 即時查詢頻率；Claude 每週重置時間、Claude Code 狀態列、即時推算 |
 | 提醒 | 額度提醒通知、「催我用完週額度」、提醒與緊急門檻 |
 | 一般 | 語言、開機自動啟動、開啟設定／記錄檔／程式資料夾 |
 
@@ -179,11 +181,20 @@ SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一�
 ## 常見問題
 
 **沒有偵測到 Claude／Claude 顯示「找不到用量紀錄」**
-開啟 Claude 桌面版就會開始記錄。Linux 沒有 Claude 桌面版，目前讀不到方案用量（[#9](https://github.com/daven55663/SentriPet-AI/issues/9)）。
+開啟 Claude 桌面版就會開始記錄。Linux 沒有 Claude 桌面版：請開啟「連接 Claude Code 狀態列」（見下一題）。
+
+**「連接 Claude Code 狀態列」是什麼？**
+Claude Code 每次回覆後，會把官方的用量與重置時間交給它的「狀態列指令」。開啟這個選項後，SentriPet 會在
+`~/.claude/settings.json` 把自己設成狀態列指令（修改前會備份成 `settings.json.sentripet-backup`），記下官方數字：
+
+- Linux 上靠它才讀得到 Claude 用量；Windows／macOS 上重置時間會變成官方的（不再是推算值）。
+- 你原本的狀態列照常顯示（SentriPet 會代為執行原本的指令）；沒有的話，狀態列會顯示剩餘額度。關掉選項就會原封不動還原。
+- 數字只在使用 Claude Code 時更新；只在 claude.ai 網頁、手機或桌面版聊天的用量，要等下次用 Claude Code 才會反映出來。
+- 需要 Pro 或 Max 訂閱（用 API 金鑰時 Claude Code 不會提供這些數字）。
 
 **Claude 的重置時間和官網差一點**
-Claude 桌面版的紀錄裡沒有重置時間，是用歷史紀錄推算的。到 設定 → AI 服務 → Claude 每週重置時間，
-照 Claude「設定 → 用量」頁面寫的時間填一次（例如 `週四 23:00`）就會準。
+Claude 桌面版的紀錄裡沒有重置時間，是用歷史紀錄推算的。開啟「連接 Claude Code 狀態列」就會用官方的時間；
+或到 設定 → AI 服務 → Claude 每週重置時間，照 Claude「設定 → 用量」頁面寫的時間填一次（例如 `週四 23:00`）。
 
 **在 claude.ai 網頁或手機上聊天，數字沒有馬上變**
 那部分只能等 Claude 桌面版下一次更新紀錄（約 15 分鐘）。
@@ -205,7 +216,7 @@ macOS 的全螢幕 App 會在自己的桌面空間裡，桌寵本來就不會出
 
 | AI | 來源 | 更新頻率 |
 |---|---|---|
-| Claude | Claude 桌面版自己記錄的 `plan-usage-history.json`（和「設定 → 用量」同一份數字），加上 Claude Code 本機對話紀錄裡的 token 數（只讀數字，不讀內容） | 桌面版約每 15 分鐘寫一次；兩次之間用 Claude Code 的 token 用量即時推算（比例會用你自己的歷史紀錄自動校準，實測誤差約 1 個百分點） |
+| Claude | Claude 桌面版自己記錄的 `plan-usage-history.json`（和「設定 → 用量」同一份數字），加上 Claude Code 本機對話紀錄裡的 token 數（只讀數字，不讀內容）；開啟「連接 Claude Code 狀態列」時，另外使用 Claude Code 交給狀態列的官方用量與重置時間 | 桌面版約每 15 分鐘寫一次；兩次之間用 Claude Code 的 token 用量即時推算（比例會用你自己的歷史紀錄自動校準，實測誤差約 1 個百分點）；狀態列在 Claude Code 每次回覆後更新 |
 | Codex | 官方 `codex app-server` 的 `account/rateLimits/read`，加上 `~/.codex/sessions` 對話紀錄裡的 rate_limits | 預設每 5 分鐘即時查詢一次；用 Codex 時本機紀錄會即時更新 |
 | Copilot | Copilot CLI 的額度快取 | 用 Copilot CLI 時才會更新 |
 | Ollama | 本機 `http://127.0.0.1:11434`（沒有額度，只顯示載入中的模型） | 30 秒 |

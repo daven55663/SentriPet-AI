@@ -180,5 +180,15 @@ xplat/                新的跨平台版（.NET 10）
   在這台電腦用新的 `install.cmd` 安裝 2.0.0：啟動正常、開始選單捷徑建立、記憶體約 128 MB。
 - 2026-09-27：**發佈 [v2.0.0](https://github.com/daven55663/SentriPet-AI/releases/tag/v2.0.0)**（使用者同意）：
   win-x64 41 MB、osx-arm64 41 MB、osx-x64 43 MB、linux-x64 40 MB，四個安裝檔都先跑過自己的自我測試才發佈。
+- 2026-09-27：**#9 Claude Code 狀態列橋接**（Linux 讀得到 Claude 用量、各系統的重置時間改用官方的）。
+  - 查 Claude Code 文件確認：狀態列指令在每次回覆後收到 JSON，其中 `rate_limits.five_hour`／`seven_day` 有 `used_percentage`（0–100）
+    與 `resets_at`（Unix 秒）；只有 Pro／Max 訂閱、而且第一次回覆之後才有。Windows 上透過 Git Bash（沒有就用 PowerShell）執行。
+  - `SentriPet --statusline`：讀輸入、把官方數字存到資料夾的 `claude-code-status.json`，再代為執行使用者原本的狀態列指令
+    （用同樣的 shell、同樣的輸入），畫面照常；沒有原本的狀態列就顯示「5h 剩 76% · 週 剩 59%」。實測一次 0.1 秒。
+  - 設定頁「連接 Claude Code 狀態列」：修改 `~/.claude/settings.json`（先備份一次原檔、保留其他設定與狀態列的 padding 等選項），
+    關掉時原封不動還原；程式搬家時自動更新路徑，使用者自己在 Claude 拿掉時開關也跟著關。只有使用者自己按才會修改。
+  - Claude 資料來源：狀態列比桌面版紀錄新時用官方的用量；重置時間一律用官方的（不再標 ≈）；沒有桌面版時（Linux）只用狀態列。
+  - 測試：核心 +42 項（解析、代為執行原本的狀態列、開關與還原、搬家、壞掉的設定檔不修改、資料來源的各種組合），
+    桌寵自我測試 +2 項（真的把程式當狀態列指令執行）。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
-  Linux 上讀不到 Claude 方案用量（#9）。
+  Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。
