@@ -106,7 +106,8 @@ install.cmd
 
 ## 跨平台版（macOS、Linux，也能在 Windows 上跑）
 
-每次推送，GitHub Actions 都會打包好不需要另外安裝 .NET 的版本（在該次執行的 **Artifacts** 下載）：
+到 [Releases](https://github.com/daven55663/SentriPet-AI/releases/latest) 下載不需要另外安裝 .NET 的版本
+（每次推送，GitHub Actions 也會在該次執行的 **Artifacts** 打包一份最新的）：
 
 | 系統 | 檔案 | 安裝 |
 |---|---|---|
