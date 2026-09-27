@@ -26,7 +26,8 @@ jobs:
       - name: Install SentriPet from this bucket
         shell: pwsh
         run: |
-          scoop bucket add sentripet "$env:GITHUB_WORKSPACE"
+          # exactly what users run (Scoop only takes a git URL, not a local folder; this workflow runs on main)
+          scoop bucket add sentripet "https://github.com/$env:GITHUB_REPOSITORY"
           scoop install sentripet
           if ($LASTEXITCODE) { exit 1 }
           Start-Sleep 8
@@ -60,7 +61,7 @@ jobs:
       - name: Tap this repository and check the cask
         run: |
           brew tap daven55663/sentripet "$GITHUB_WORKSPACE"
-          brew style daven55663/sentripet
+          brew style --cask daven55663/sentripet/sentripet
           brew audit --cask --online daven55663/sentripet/sentripet || echo "::warning::brew audit reported problems (see above)"
           # the Intel package too (this runner is Apple silicon): download and check its SHA-256
           brew fetch --cask --arch=intel daven55663/sentripet/sentripet
