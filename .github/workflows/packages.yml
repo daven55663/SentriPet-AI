@@ -103,8 +103,17 @@ jobs:
         shell: pwsh
         run: |
           $alias = "$env:LOCALAPPDATA\Microsoft\WinGet\Links\sentripet.exe"
-          Get-Item $alias | Format-List FullName, LinkType, Target
-          $p = Start-Process $alias -ArgumentList '--selftest', "$env:GITHUB_WORKSPACE\winget-test.txt" -Wait -PassThru
+          $item = Get-Item $alias
+          $item | Format-List FullName, LinkType, Target
+          # downloaded-file mark on the installed program (Explorer and Start-Process then ask before running it)
+          Get-Item ($item.Target | Select-Object -First 1) -Stream * | Format-Table Stream, Length -AutoSize
+          # started like typing "sentripet" in a terminal (CreateProcess; Start-Process goes through the shell,
+          # whose "open file" prompt nobody can answer here)
+          $psi = New-Object System.Diagnostics.ProcessStartInfo $alias
+          $psi.Arguments = "--selftest `"$env:GITHUB_WORKSPACE\winget-test.txt`""
+          $psi.UseShellExecute = $false
+          $p = [System.Diagnostics.Process]::Start($psi)
+          $p.WaitForExit()
           Get-Content winget-test.txt -Tail 1
           "### winget: $(Get-Content winget-test.txt -Tail 1)" >> $env:GITHUB_STEP_SUMMARY
           if ($p.ExitCode -ne 0) { Get-Content winget-test.txt; exit 1 }
