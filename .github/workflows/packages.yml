@@ -91,7 +91,7 @@ jobs:
         shell: pwsh
         run: |
           winget --version
-          Install-PackageProvider -Name NuGet -Force -Scope CurrentUser | Out-Null
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module Microsoft.WinGet.Client -Force -Scope CurrentUser -Repository PSGallery
           Repair-WinGetPackageManager -Latest -Force
           winget --version
