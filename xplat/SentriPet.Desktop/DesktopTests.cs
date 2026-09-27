@@ -31,6 +31,7 @@ namespace SentriPet
                 .SetupWithoutStarting();
             var t = new TestKit();
             var sw = Stopwatch.StartNew();
+            Watchdog(t, outFile, 300);
             AppPaths.DataDirOverride = t.TempDir("profile");
             try
             {
@@ -53,6 +54,23 @@ namespace SentriPet
             if (outFile == null) Console.Write(text);
             else File.WriteAllText(outFile, text, new UTF8Encoding(false));
             return t.Failed;
+        }
+
+        /// <summary>What the test is doing (printed when the watchdog fires).</summary>
+        static volatile string Progress = "start";
+
+        /// <summary>Ends the run with the partial report when it takes far too long (a hang in CI then shows where).</summary>
+        static void Watchdog(TestKit t, string outFile, int seconds)
+        {
+            var th = new Thread(() =>
+            {
+                Thread.Sleep(seconds * 1000);
+                string text = "TIMEOUT after " + seconds + " s while: " + Progress + Environment.NewLine + t.Report;
+                Console.WriteLine(text);
+                try { if (outFile != null) File.WriteAllText(outFile, text + Environment.NewLine + "1 FAILED (timeout)" + Environment.NewLine); } catch { }
+                Environment.Exit(99);
+            }) { IsBackground = true };
+            th.Start();
         }
 
         // ------------------------------------------------------------------ themes
@@ -99,6 +117,8 @@ namespace SentriPet
         /// <summary>Draws a theme with every sample set (and pokes it a little); returns the texts on screen.</summary>
         static List<string> Exercise(ThemeInfo info, List<string> problems)
         {
+            Progress = "theme " + info.Id + " (" + L.Current + ")";
+            Console.WriteLine(Progress);
             var texts = new List<string>();
             foreach (var set in Sets)
             {
@@ -146,6 +166,7 @@ namespace SentriPet
         static void Windows(TestKit t)
         {
             t.Section("詳情卡、泡泡、設定頁");
+            Progress = "hover card";
             t.Run("card", () =>
             {
                 foreach (var v in MockData.C().Concat(MockData.B()))
@@ -157,6 +178,7 @@ namespace SentriPet
                 }
                 t.Check("詳情卡畫得出來（每個模擬 AI）", true);
             });
+            Progress = "speech bubble";
             t.Run("speech", () =>
             {
                 var v = MockData.A()[0];
@@ -167,6 +189,7 @@ namespace SentriPet
                 t.Check("浮動泡泡量得出大小、不超過最大寬度", size.Width > 60 && size.Width < 300 && size.Height > 30, size.ToString());
                 t.Check("泡泡在秒數到了之前不會消失", bubble.Until > DateTime.UtcNow.AddSeconds(3));
             });
+            Progress = "settings page";
             t.Run("settings", () =>
             {
                 var host = new TestHost();
@@ -272,6 +295,7 @@ namespace SentriPet
                 else if (ok) t.Check("Linux 通知：用 notify-send", exe.EndsWith("notify-send") && args.Contains("Claude 快用完了 <&>"));
                 else t.Skip("Linux 通知", "這台機器沒有 notify-send");
             });
+            Progress = "single instance";
             t.Run("single instance", () =>
             {
                 string name = "SentriPet.test." + Guid.NewGuid().ToString("N").Substring(0, 8);

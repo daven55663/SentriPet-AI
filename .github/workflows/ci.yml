@@ -85,6 +85,49 @@ jobs:
             pet-shots/
           if-no-files-found: warn
 
+  package:
+    name: Package (${{ matrix.rid }})
+    needs: core
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64, exe: dist/publish-win-x64/SentriPet.exe }
+          - { os: macos-latest, rid: osx-arm64, exe: dist/osx-arm64/SentriPet.app/Contents/MacOS/SentriPet }
+          - { os: macos-latest, rid: osx-x64, exe: dist/osx-x64/SentriPet.app/Contents/MacOS/SentriPet }
+          - { os: ubuntu-latest, rid: linux-x64, exe: dist/publish-linux-x64/SentriPet }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build the self-contained package
+        shell: bash
+        run: bash xplat/package.sh ${{ matrix.rid }}
+
+      - name: Smoke test (the packaged program runs its own self-test)
+        shell: bash
+        run: |
+          "${{ matrix.exe }}" --selftest package-test.txt
+          tail -n 1 package-test.txt
+          echo "### ${{ matrix.rid }}: $(ls dist/SentriPet-* | xargs -n1 basename) — $(tail -n 1 package-test.txt)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v7
+        with:
+          name: SentriPet-${{ matrix.rid }}
+          path: |
+            dist/SentriPet-*.zip
+            dist/SentriPet-*.tar.gz
+          if-no-files-found: error
+
   build-and-test:
     name: Windows app (WPF) + self-test
     runs-on: windows-latest

@@ -69,6 +69,7 @@ namespace SentriPet
             foreach (var info in ThemeCatalog.All)
             {
                 if (only != null && info.Id != only) continue;
+                Console.WriteLine("rendering " + info.Id);
                 foreach (var set in sets)
                 {
                     try

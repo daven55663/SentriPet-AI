@@ -188,13 +188,17 @@ namespace SentriPet
             Mono = new FontFamily("Cascadia Mono, Consolas, SF Mono, Menlo, DejaVu Sans Mono, Noto Sans Mono, " + cjk);
             Din = new FontFamily("Bahnschrift, DIN Alternate, Avenir Next Condensed, Roboto Condensed, Ubuntu Condensed, DejaVu Sans Condensed, " + Latin + ", " + cjk);
             string brush = BrushFonts(script);
-            Hand = new FontFamily("Ink Free, Segoe Print, Chalkboard SE, Marker Felt, Comic Neue, " + brush + ", " + cjk);
-            Kai = new FontFamily(brush + ", " + cjk);
+            string lead = brush.Length > 0 ? brush + ", " : "";
+            Hand = new FontFamily("Ink Free, Segoe Print, Chalkboard SE, Marker Felt, Comic Neue, " + lead + cjk);
+            Kai = new FontFamily(lead + cjk);
         }
 
         /// <summary>A handwritten / brush style font for the sticky note (Windows, macOS, Linux).</summary>
         static string BrushFonts(string script)
         {
+            // macOS's brush-style CJK fonts (Kaiti, BiauKai, Klee, Nanum…) are downloaded on demand: asking for one
+            // stalls the text layout (it hung the headless tests), so a Mac uses its built-in fonts only
+            if (Os.Mac) return script == "latin" ? "Chalkboard SE, Marker Felt" : "";
             switch (script)
             {
                 case "sc": return "KaiTi, STKaiti, Kaiti SC, AR PL UKai CN, Noto Serif CJK SC"; // i18n-ignore
