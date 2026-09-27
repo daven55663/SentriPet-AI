@@ -143,7 +143,7 @@ namespace SentriPet
             body.Children.Add(new Path { Data = shape.Glass, Fill = G.Vertical(Color.FromArgb(0x38, 0xFF, 0xFF, 0xFF), Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF)) });
             // liquid
             var vivid = G.Vivid(color);
-            f.Glow = new DropShadowEffect { Color = vivid, BlurRadius = 16, ShadowDepth = 0, Opacity = 0 };
+            f.Glow = new DropShadowEffect { Color = vivid, BlurRadius = 16, OffsetX = 0, OffsetY = 0, Opacity = 0 };
             f.Liquid = new Path { Fill = G.Vertical(Palette.Lighten(vivid, 0.35), vivid, Palette.Darken(color, 0.3)), Clip = shape.Glass, Effect = f.Glow };
             f.Surface = new Path { Stroke = G.B(Palette.Lighten(vivid, 0.6), 0.9), StrokeThickness = 1.4, Clip = shape.Glass };
             body.Children.Add(f.Liquid);
@@ -197,6 +197,7 @@ namespace SentriPet
                 CornerRadius = new CornerRadius(3),
                 Padding = new Thickness(0, 1, 0, 1),
                 RenderTransform = new RotateTransform(-4),
+                RenderTransformOrigin = G.At(0, 0),
             };
             G.Place(label, 8, shape.FillBottom - 36);
             body.Children.Add(label);
@@ -231,7 +232,7 @@ namespace SentriPet
                 Padding = new Thickness(8, 3, 8, 4),
                 Effect = G.Shadow(6, 2, 0.35, Colors.Black),
                 RenderTransform = new RotateTransform(Rng.NextDouble() * 4 - 2),
-                RenderTransformOrigin = new Point(0.5, 0),
+                RenderTransformOrigin = new RelativePoint(0.5, 0, RelativeUnit.Relative),
             });
             return sp;
         }

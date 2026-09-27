@@ -96,6 +96,25 @@ namespace SentriPet
                     File.WriteAllText(Path.Combine(outDir, "detail_" + set.Key + "_error.txt"), ex.ToString());
                 }
             }
+            // the floating speech bubble (themes without speech of their own)
+            if (only == null)
+            {
+                try
+                {
+                    var views = MockData.A();
+                    var bubble = new SpeechWindow();
+                    bubble.SetText(views[0].Id, Lines.Poke(views[0], new Random(5)), views[0].Color.ToColor(), 5);
+                    bubble.SetPointer(DetailPlacement.Side.Above, 60);
+                    var content = (Control)bubble.Content;
+                    bubble.Content = null;
+                    Render(content, Path.Combine(outDir, "speech.png"), scale, true);
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "speech_error.txt"), ex.ToString());
+                }
+            }
             return failures;
         }
 
@@ -118,6 +137,7 @@ namespace SentriPet
             }
             else DetachFromParent(element);
             var host = new Panel();
+            RenderOptions.SetTextRenderingMode(host, TextRenderingMode.Antialias);   // like the windows (see PetWindow)
             host.Children.Add(visual);
             host.Measure(Size.Infinity);
             host.Arrange(new Rect(host.DesiredSize));

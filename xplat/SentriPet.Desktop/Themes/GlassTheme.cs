@@ -239,7 +239,7 @@ namespace SentriPet
                     if (Math.Abs(ring.A.Value - ring.Drawn) < 0.05) continue;
                     ring.Drawn = ring.A.Value;
                     double sweep = 360 * Math.Max(0, Math.Min(100, ring.A.Value)) / 100;
-                    ring.Arc.Data = sweep < 0.5 ? Geometry.Empty : G.Arc(new Point(RingSize / 2, RingSize / 2), RingR, 0, sweep);
+                    ring.Arc.Data = sweep < 0.5 ? null : G.Arc(new Point(RingSize / 2, RingSize / 2), RingR, 0, sweep);
                     ring.Arc.Opacity = sweep < 0.5 ? 0 : 1;
                 }
             }

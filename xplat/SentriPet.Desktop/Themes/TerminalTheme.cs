@@ -13,6 +13,20 @@ using Avalonia.Media.Imaging;
 
 namespace SentriPet
 {
+    /// <summary>CRT scanlines: a dark line every 3 px, drifting down with <see cref="Offset"/> (WPF used a tiled drawing brush).</summary>
+    class Scanlines : Control
+    {
+        public double Offset;
+        static readonly IBrush Line = G.B(Colors.Black, 0.55);
+
+        public override void Render(DrawingContext dc)
+        {
+            double w = Bounds.Width, h = Bounds.Height;
+            for (double y = Offset - 1; y < h; y += 3)
+                if (y >= 0) dc.FillRectangle(Line, new Rect(0, y, w, 1));
+        }
+    }
+
     /// <summary>Green-phosphor CRT terminal. Click the title bar to change the phosphor colour.</summary>
     class TerminalTheme : Theme
     {
@@ -23,8 +37,7 @@ namespace SentriPet
         Border root;
         Grid titleBar;
         TextBlock title, screen;
-        Rectangle scan;
-        TranslateTransform scanMove;
+        Scanlines scan;
         readonly List<Ellipse> lights = new List<Ellipse>();
         int colorIdx;
         Color bright, dim;
@@ -34,7 +47,7 @@ namespace SentriPet
         double revealClock;
         readonly List<Run> spinners = new List<Run>();
         // bars of a quota that expires unused soon: run, level, lit brush, dim brush
-        readonly List<Tuple<Run, int, Brush, Brush>> blinkers = new List<Tuple<Run, int, Brush, Brush>>();
+        readonly List<Tuple<Run, int, IBrush, IBrush>> blinkers = new List<Tuple<Run, int, IBrush, IBrush>>();
         Run cursor;
         string lastSig;
 
@@ -77,31 +90,19 @@ namespace SentriPet
                 FontSize = 12.5,
                 Margin = new Thickness(14, 6, 16, 12),
                 LineHeight = 18,
-                LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
             };
             Grid.SetRow(screen, 1);
             grid.Children.Add(screen);
 
             // scanlines + vignette
-            var lineBrush = new DrawingBrush
-            {
-                TileMode = TileMode.Tile,
-                Viewport = new Rect(0, 0, 4, 3),
-                ViewportUnits = BrushMappingMode.Absolute,
-                Viewbox = new Rect(0, 0, 4, 3),
-                ViewboxUnits = BrushMappingMode.Absolute,
-                Drawing = new GeometryDrawing(G.B(Colors.Black, 0.55), null, new RectangleGeometry(new Rect(0, 2, 4, 1))),
-            };
-            scanMove = new TranslateTransform();
-            lineBrush.Transform = scanMove;
-            scan = new Rectangle { Fill = lineBrush, IsHitTestVisible = false, Opacity = 0.35 };
+            scan = new Scanlines { IsHitTestVisible = false, Opacity = 0.35 };
             Grid.SetRowSpan(scan, 2);
             grid.Children.Add(scan);
             var vignette = new Border
             {
                 CornerRadius = new CornerRadius(8),
                 IsHitTestVisible = false,
-                Background = new RadialGradientBrush(Color.FromArgb(0, 0, 0, 0), Color.FromArgb(0x70, 0, 0, 0)) { RadiusX = 0.75, RadiusY = 0.85 },
+                Background = G.Radial(Color.FromArgb(0, 0, 0, 0), Color.FromArgb(0x70, 0, 0, 0), 0.5, 0.5, 0.75, 0.85),
             };
             Grid.SetRowSpan(vignette, 2);
             grid.Children.Add(vignette);
@@ -253,7 +254,7 @@ namespace SentriPet
                     budget -= s.Text.Length;
                     var run = new Run(t) { Foreground = G.B(s.Color) };
                     if (t == "*") spinners.Add(run);
-                    if (s.Blink > 0) blinkers.Add(Tuple.Create(run, s.Blink, (Brush)G.B(s.Color), (Brush)G.B(s.Color, 0.22)));
+                    if (s.Blink > 0) blinkers.Add(Tuple.Create(run, s.Blink, G.B(s.Color), G.B(s.Color, 0.22)));
                     screen.Inlines.Add(run);
                 }
             }
@@ -280,13 +281,16 @@ namespace SentriPet
                 var brush = G.UrgentPulse(b.Item2, Time) > 0.6 ? b.Item3 : b.Item4;
                 if (b.Item1.Foreground != brush) b.Item1.Foreground = brush;
             }
-            scanMove.Y = (Time * 6) % 3;
+            scan.Offset = (Time * 6) % 3;
+            scan.InvalidateVisual();
             if (Rng.NextDouble() < 0.08) root.Opacity = 0.93 + Rng.NextDouble() * 0.07;
         }
 
         public override bool Click(Point rootPoint)
         {
-            var p = root.TranslatePoint(rootPoint, titleBar);
+            var tp = root.TranslatePoint(rootPoint, titleBar);
+            if (tp == null) return false;
+            var p = tp.Value;
             if (p.Y >= 0 && p.Y <= titleBar.Bounds.Height && p.X >= 0 && p.X <= titleBar.Bounds.Width)
             {
                 colorIdx = (colorIdx + 1) % ColorNames.Length;

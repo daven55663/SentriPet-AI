@@ -48,7 +48,7 @@ namespace SentriPet
 
         protected override Control CreateRoot()
         {
-            root = new Grid { Margin = new Thickness(20, 16, 20, 20), LayoutTransform = new RotateTransform(-1.6) };
+            root = new Grid { Margin = new Thickness(20, 16, 20, 20) };
             var paper = new Border
             {
                 Background = G.Vertical(Palette.Hex("#FFF7B0"), Palette.Hex("#FFEE85")),
@@ -99,10 +99,10 @@ namespace SentriPet
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, -11, 0, 0),
                 RenderTransform = new RotateTransform(4),
-                RenderTransformOrigin = new Point(0.5, 0.5),
+                RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
             };
             root.Children.Add(tape);
-            return root;
+            return new LayoutTransformControl { LayoutTransform = new RotateTransform(-1.6), Child = root };
         }
 
         protected override void Rebuild()
@@ -141,6 +141,7 @@ namespace SentriPet
             it.Doodle = G.T("", 15, Palette.Hex("#E0A100"), FontWeight.Bold, G.Hand);
             it.Doodle.Margin = new Thickness(8, 0, 0, 0);
             it.Doodle.RenderTransform = new RotateTransform(-8);
+            it.Doodle.RenderTransformOrigin = G.At(0, 0);   // WPF turns around the top-left corner
             head.Children.Add(it.Doodle);
             sp.Children.Add(head);
 
@@ -158,7 +159,7 @@ namespace SentriPet
                 {
                     var ln = new Line { Key = m.Key, Seed = Hash(v.Id + m.Key) };
                     var g = new Grid { Margin = new Thickness(14, 2, 0, 0) };
-                    g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
+                    g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(L.Script == "latin" ? 66 : 52) });   // English labels ("Premium") are wider
                     g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(BarW + 8) });
                     g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                     var lbl = G.T(m.Label.Replace(" ", ""), 12.5, InkBlue, FontWeight.Normal, G.Kai);

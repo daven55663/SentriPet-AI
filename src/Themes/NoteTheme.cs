@@ -155,7 +155,7 @@ namespace SentriPet
                 {
                     var ln = new Line { Key = m.Key, Seed = Hash(v.Id + m.Key) };
                     var g = new Grid { Margin = new Thickness(14, 2, 0, 0) };
-                    g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
+                    g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(L.Script == "latin" ? 66 : 52) });   // English labels ("Premium") are wider
                     g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(BarW + 8) });
                     g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                     var lbl = G.T(m.Label.Replace(" ", ""), 12.5, InkBlue, FontWeights.Normal, G.Kai);

@@ -171,6 +171,35 @@ namespace SentriPet
             string sum = views.Count == 0 ? L.T("正在偵測 AI…") : string.Join("  ·  ", views.Select(v => v.Summary));
             items.Add(new MenuItem { Header = sum, IsEnabled = false });
             items.Add(new Separator());
+            var themes = new MenuItem { Header = L.T("換造型") };
+            var themeItems = new List<object>();
+            foreach (var t in ThemeCatalog.All)
+            {
+                var info = t;
+                var mi = Toggle(t.Name, Settings.Theme == t.Id, () => ChangeTheme(info.Id));
+                mi.ToggleType = MenuItemToggleType.Radio;
+                themeItems.Add(mi);
+            }
+            themes.ItemsSource = themeItems;
+            items.Add(themes);
+
+            var mood = new MenuItem { Header = L.T("今天心情如何？") };
+            var moodItems = new List<object>();
+            foreach (var t in ThemeCatalog.All)
+            {
+                var info = t;
+                moodItems.Add(Item(t.Mood, () => { ChangeTheme(info.Id); window.Say(null, L.F("收到！今天是「{0}」模式 ✦", info.Mood)); }));
+            }
+            moodItems.Add(new Separator());
+            moodItems.Add(Item(L.T("交給命運吧（隨機）"), () =>
+            {
+                var choices = ThemeCatalog.All.Where(x => x.Id != Settings.Theme).ToList();
+                var pick = choices[rng.Next(choices.Count)];
+                ChangeTheme(pick.Id);
+                window.Say(null, L.F("命運選擇了「{0}」！", pick.Name));
+            }));
+            mood.ItemsSource = moodItems;
+            items.Add(mood);
             items.Add(Item(L.T("立即更新"), () => { Service.RefreshNow(null); if (views.Count > 0) window.Say(views[0].Id, L.T("更新中…")); }));
 
             var size = new MenuItem { Header = L.T("大小") };
@@ -232,6 +261,16 @@ namespace SentriPet
             mi.ToggleType = MenuItemToggleType.CheckBox;
             mi.IsChecked = on;
             return mi;
+        }
+
+        public void ChangeTheme(string id)
+        {
+            Log.Info("theme -> " + id);
+            Settings.Theme = ThemeCatalog.Get(id).Id;
+            Settings.DailyRandomTheme = false;
+            Settings.Save();
+            window.SetTheme(ThemeCatalog.Get(id).Create());
+            RefreshViews();
         }
 
         MenuItem LanguageItem(string code, string label)

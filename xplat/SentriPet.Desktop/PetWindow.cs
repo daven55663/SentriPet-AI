@@ -33,6 +33,7 @@ namespace SentriPet
 
         // hover card
         DetailWindow card;
+        SpeechWindow speech;   // floating bubble for themes without speech of their own
         string hoverId, shownId, forcedId;
         DateTime forcedUntil;
         bool cardHovered;
@@ -51,6 +52,8 @@ namespace SentriPet
             Title = AppInfo.Name;
             WindowDecorations = WindowDecorations.None;
             TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
+            // grayscale text: subpixel (ClearType-style) text needs an opaque background
+            RenderOptions.SetTextRenderingMode(this, TextRenderingMode.Antialias);
             Background = Brushes.Transparent;
             CanResize = false;
             ShowInTaskbar = false;
@@ -130,8 +133,48 @@ namespace SentriPet
         public void Say(string providerId, string text)
         {
             if (theme == null || string.IsNullOrEmpty(text)) return;
-            try { theme.Say(providerId, text); }
+            bool handled = false;
+            try { handled = theme.Say(providerId, text); }
             catch (Exception ex) { Log.Error("say", ex); }
+            if (!handled) ShowSpeech(providerId, text);
+        }
+
+        // ------------------------------------------------------------------ floating speech bubble
+
+        void ShowSpeech(string providerId, string text)
+        {
+            if (!IsVisible) return;
+            HideDetail();
+            var v = providerId != null ? ctl.Views.FirstOrDefault(x => x.Id == providerId) : null;
+            if (speech == null) speech = new SpeechWindow();
+            speech.SetText(providerId, text, v != null ? v.Color.ToColor() : Palette.Hex("#94A3B8"), 3.5 + Math.Min(6, text.Length * 0.12));
+            quietUntil = speech.Until.AddSeconds(-1);
+            PlaceSpeech();
+            if (!speech.IsVisible) speech.Show(this);
+            PlaceSpeech();
+        }
+
+        /// <summary>Beside the widget content like the hover card, tail pointing at the speaker.</summary>
+        void PlaceSpeech()
+        {
+            if (speech == null) return;
+            if (speech.ProviderId != null && ProviderScreenRect(speech.ProviderId) == null) ScanTagged();
+            double scaling = DesktopScaling;
+            var size = speech.MeasurePx(scaling);
+            var content = ContentScreenRect();
+            var provider = (speech.ProviderId != null ? ProviderScreenRect(speech.ProviderId) : null) ?? content;
+            var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+            if (screen == null) return;
+            var wa = screen.WorkingArea;
+            double gap = 4 - SpeechWindow.Pad * scaling;
+            var r = DetailPlacement.Compute(content, provider, new Rect(wa.X, wa.Y, wa.Width, wa.Height), size.Width, size.Height, gap);
+            speech.SetPointer(r.Side, r.PointerX / scaling);
+            speech.MoveTo(r.X, r.Y);
+        }
+
+        void HideSpeech()
+        {
+            if (speech != null && speech.IsVisible) speech.Hide();
         }
 
         void OnFrame(object sender, EventArgs e)
@@ -144,6 +187,11 @@ namespace SentriPet
             catch (Exception ex) { Log.Error("theme tick", ex); }
             try { PollHover(now); }
             catch (Exception ex) { Log.Error("hover", ex); }
+            if (speech != null && speech.IsVisible)
+            {
+                if (now >= speech.Until || !IsVisible) HideSpeech();
+                else PlaceSpeech();   // follows the widget while it is dragged
+            }
         }
 
         /// <summary>Called once a second: keep the card's numbers current and follow the widget.</summary>
@@ -365,7 +413,12 @@ namespace SentriPet
             var rootPoint = e.GetPosition(theme.Root);
             if (theme.Click(rootPoint)) return;
             string id = HitProvider(e.GetPosition(host));
-            if (id != null) theme.Poke(id);
+            if (id != null && !theme.Poke(id))
+            {
+                // themes without a reaction of their own answer in a floating bubble
+                var v = ctl.Views.FirstOrDefault(x => x.Id == id);
+                if (v != null) ShowSpeech(id, Lines.Poke(v, new Random()));
+            }
         }
 
         string HitProvider(Point hostPoint)

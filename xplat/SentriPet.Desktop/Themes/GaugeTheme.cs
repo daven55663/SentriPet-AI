@@ -57,7 +57,7 @@ namespace SentriPet
                 }
                 string lit;
                 if (!Map.TryGetValue(ch, out lit)) lit = "g";
-                var c = new Canvas { Width = 11, Height = 20, Margin = new Thickness(0.8, 0, 0.8, 0), RenderTransform = new SkewTransform(-6, 0, 5.5, 10) };
+                var c = new Canvas { Width = 11, Height = 20, Margin = new Thickness(0.8, 0, 0.8, 0), RenderTransform = new SkewTransform(-6, 0), RenderTransformOrigin = G.At(5.5, 10) };
                 for (int i = 0; i < 7; i++)
                 {
                     var b = Boxes[i];
@@ -138,13 +138,13 @@ namespace SentriPet
             var panel = new StackPanel { Width = S + 6, Tag = "pv:" + v.Id, Margin = new Thickness(3, 0, 3, 0) };
             var cv = new Canvas { Width = S, Height = S, HorizontalAlignment = HorizontalAlignment.Center };
 
-            var metal = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
+            var metal = new LinearGradientBrush { StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative) };
             metal.GradientStops.Add(new GradientStop(Palette.Hex("#E3E7EC"), 0));
             metal.GradientStops.Add(new GradientStop(Palette.Hex("#4A505A"), 0.45));
             metal.GradientStops.Add(new GradientStop(Palette.Hex("#B8BFC9"), 0.75));
             metal.GradientStops.Add(new GradientStop(Palette.Hex("#30343B"), 1));
             cv.Children.Add(G.Circle(C.X, C.Y, 68, null, metal, 5));
-            var face = new RadialGradientBrush(Palette.Hex("#2A2F39"), Palette.Hex("#0A0B0E")) { GradientOrigin = new Point(0.5, 0.35) };
+            var face = G.Radial(Palette.Hex("#2A2F39"), Palette.Hex("#0A0B0E"), 0.5, 0.35, 0.5, 0.5);
             cv.Children.Add(G.Circle(C.X, C.Y, 65, face, null, 0));
 
             // red zone + ticks
@@ -197,8 +197,9 @@ namespace SentriPet
             };
             g.Needle = new RotateTransform(-135, C.X, C.Y);
             needle.RenderTransform = g.Needle;
+            needle.RenderTransformOrigin = G.At(0, 0);   // the centre is given in the canvas coordinates
             cv.Children.Add(needle);
-            cv.Children.Add(G.Circle(C.X, C.Y, 8, new RadialGradientBrush(Palette.Hex("#6B7280"), Palette.Hex("#15171B")) { GradientOrigin = new Point(0.35, 0.3) }, G.B(Palette.Hex("#050506")), 1));
+            cv.Children.Add(G.Circle(C.X, C.Y, 8, G.Radial(Palette.Hex("#6B7280"), Palette.Hex("#15171B"), 0.35, 0.3, 0.5, 0.5), G.B(Palette.Hex("#050506")), 1));
             panel.Children.Add(cv);
 
             // LCD countdown
@@ -207,7 +208,7 @@ namespace SentriPet
             g.Label.Margin = new Thickness(0, 2, 0, 3);
             panel.Children.Add(g.Label);
             var lcdRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
-            g.Approx = G.T("≈", 12, Palette.Hex("#7CFFCF"), FontWeight.Bold, G.Din);
+            g.Approx = G.T(G.Approx, 12, Palette.Hex("#7CFFCF"), FontWeight.Bold, G.Din);
             g.Approx.Margin = new Thickness(0, 0, 3, 0);
             g.Approx.VerticalAlignment = VerticalAlignment.Center;
             g.Lcd = new SevenSeg { Effect = G.Glow(Palette.Hex("#7CFFCF"), 8, 0.7) };
@@ -344,7 +345,7 @@ namespace SentriPet
                 if (v != null && v.Active) val += Math.Sin(Time * 30) * 0.4;   // engine vibration
                 g.Needle.Angle = -135 + 270 * val / 100;
                 double shown = Math.Max(0, Math.Min(100, val));
-                g.ValueArc.Data = shown < 0.3 ? Geometry.Empty : G.Arc(C, 45, -135, -135 + 270 * shown / 100);
+                g.ValueArc.Data = shown < 0.3 ? null : G.Arc(C, 45, -135, -135 + 270 * shown / 100);
                 if (g.UrgentLeds > 0 && g.Leds != null)
                 {
                     double o = G.UrgentPulse(g.UrgentLeds, Time);

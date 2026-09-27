@@ -94,8 +94,8 @@ namespace SentriPet
                 if (t == text && c == color) return;
                 text = t;
                 color = c;
-                var src = Render(t, c);
-                var sh = Render(t, Color.FromRgb(0x10, 0x10, 0x28));
+                var src = PixelFont.Render(t, c);
+                var sh = PixelFont.Render(t, Color.FromRgb(0x10, 0x10, 0x28));
                 main.Source = src;
                 shadow.Source = sh;
                 main.Width = shadow.Width = src.PixelSize.Width * scale;
@@ -301,10 +301,8 @@ namespace SentriPet
         protected override Control CreateRoot()
         {
             root = new StackPanel { Margin = new Thickness(10), UseLayoutRounding = true,  };
-            RenderOptions.SetBitmapScalingMode(root, BitmapScalingMode.NearestNeighbor);
+            RenderOptions.SetBitmapInterpolationMode(root, BitmapInterpolationMode.None);
             RenderOptions.SetEdgeMode(root, EdgeMode.Aliased);
-            TextOptions.SetTextRenderingMode(root, TextRenderingMode.Aliased);
-            TextOptions.SetTextFormattingMode(root, TextFormattingMode.Display);
 
             var top = new Grid();
             top.Children.Add(new PixelFrame { P = P });

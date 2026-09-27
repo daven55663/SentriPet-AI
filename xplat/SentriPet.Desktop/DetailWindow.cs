@@ -268,7 +268,7 @@ namespace SentriPet
             {
                 var m = v.Meters.FirstOrDefault(x => x.Key == ui.Key);
                 if (m == null) continue;
-                ui.Pct.Text = m.Unlimited ? L.T("無限制") : L.F("剩 {0}", (m.UsedApprox ? "≈" : "") + Fmt.Pct(m.Remaining));
+                ui.Pct.Text = m.Unlimited ? L.T("無限制") : L.F("剩 {0}", (m.UsedApprox ? G.Approx : "") + Fmt.Pct(m.Remaining));
                 ui.Pct.Foreground = G.B(m.Unlimited ? Palette.Hex("#C4B5FD") : Palette.Level(m.Remaining));
                 if (ui.Fill != null)
                     ui.Fill.Width = m.Remaining > 0.5 ? Math.Max(6, ContentWidth * m.Remaining / 100) : 0;
@@ -320,6 +320,7 @@ namespace SentriPet
             Focusable = false;
             SizeToContent = SizeToContent.WidthAndHeight;
             FontFamily = G.Ui;
+            RenderOptions.SetTextRenderingMode(this, TextRenderingMode.Antialias);
         }
 
         public void SetView(ProviderView v)
@@ -346,6 +347,94 @@ namespace SentriPet
             root.Measure(Size.Infinity);
             var d = root.DesiredSize;
             return new Size(Math.Ceiling(d.Width * scaling), Math.Ceiling(d.Height * scaling));
+        }
+
+        public void MoveTo(int x, int y)
+        {
+            var p = new PixelPoint(x, y);
+            if (Position != p) Position = p;
+        }
+    }
+
+    /// <summary>
+    /// Floating speech bubble for themes without speech of their own (Avalonia port of the WPF SpeechWindow):
+    /// a small owned window beside the widget with a tail pointing at the speaker.
+    /// </summary>
+    class SpeechWindow : Window
+    {
+        public const double Pad = 10;                 // transparent room around the bubble (for the shadow)
+        const double TailW = 14, TailH = 8, MaxText = 230;
+        static readonly Color Paper = Color.FromArgb(0xF8, 0xFF, 0xFF, 0xFF);
+        readonly TextBlock text;
+        readonly Border bubble;
+        readonly Canvas tailUp, tailDown;
+        readonly StackPanel column;
+
+        public string ProviderId { get; private set; }
+        public DateTime Until { get; private set; }
+
+        public SpeechWindow()
+        {
+            Title = AppInfo.Name;
+            WindowDecorations = WindowDecorations.None;
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
+            Background = Brushes.Transparent;
+            CanResize = false;
+            ShowInTaskbar = false;
+            ShowActivated = false;
+            Topmost = true;
+            Focusable = false;
+            IsHitTestVisible = false;
+            SizeToContent = SizeToContent.WidthAndHeight;
+            RenderOptions.SetTextRenderingMode(this, TextRenderingMode.Antialias);
+            text = new TextBlock { FontFamily = G.Ui, FontSize = 12, Foreground = G.B(Palette.Hex("#2B2B35")), TextWrapping = TextWrapping.Wrap, MaxWidth = MaxText };
+            bubble = new Border { Child = text, Background = G.B(Paper), BorderThickness = new Thickness(1.4), CornerRadius = new CornerRadius(12), Padding = new Thickness(11, 7, 11, 8) };
+            tailUp = Tail(true);
+            tailDown = Tail(false);
+            column = new StackPanel { Margin = new Thickness(Pad), Effect = G.Shadow(10, 2, 0.28, Colors.Black), IsHitTestVisible = false };
+            column.Children.Add(tailUp);
+            column.Children.Add(bubble);
+            column.Children.Add(tailDown);
+            Content = column;
+        }
+
+        static Canvas Tail(bool up)
+        {
+            var c = new Canvas { Height = TailH, HorizontalAlignment = HorizontalAlignment.Stretch };
+            c.Children.Add(new Path { Data = Geometry.Parse(up ? "M 0,8.9 L 7,0 L 14,8.9 Z" : "M 0,-0.9 L 14,-0.9 L 7,8 Z"), Fill = G.B(Paper) });
+            c.Children.Add(new Path { Data = Geometry.Parse(up ? "M 0,8 L 7,0 L 14,8" : "M 0,0 L 7,8 L 14,0"), StrokeThickness = 1.4, StrokeJoin = PenLineJoin.Round });
+            return c;
+        }
+
+        public void SetText(string providerId, string s, Color accent, double seconds)
+        {
+            ProviderId = providerId;
+            text.Text = s;
+            var edge = G.B(Palette.Lighten(accent, 0.2));
+            bubble.BorderBrush = edge;
+            ((Path)tailUp.Children[1]).Stroke = edge;
+            ((Path)tailDown.Children[1]).Stroke = edge;
+            Until = DateTime.UtcNow.AddSeconds(seconds);
+        }
+
+        /// <summary>Points the tail at the speaker. <paramref name="x"/> is in DIPs from the window's left.</summary>
+        public void SetPointer(DetailPlacement.Side side, double x)
+        {
+            tailUp.Opacity = side == DetailPlacement.Side.Below ? 1 : 0;
+            tailDown.Opacity = side == DetailPlacement.Side.Above ? 1 : 0;
+            column.Measure(Size.Infinity);
+            double w = column.DesiredSize.Width - 2 * Pad;
+            double left = Math.Max(12, Math.Min(w - 12 - TailW, x - Pad - TailW / 2));
+            foreach (var p in tailUp.Children) Canvas.SetLeft(p, left);
+            foreach (var p in tailDown.Children) Canvas.SetLeft(p, left);
+        }
+
+        /// <summary>Size the window will take, in physical pixels.</summary>
+        public Size MeasurePx(double scaling)
+        {
+            column.Measure(Size.Infinity);
+            var d = column.DesiredSize;
+            return new Size(Math.Ceiling((d.Width + 2 * Pad) * scaling), Math.Ceiling((d.Height + 2 * Pad) * scaling));
         }
 
         public void MoveTo(int x, int y)

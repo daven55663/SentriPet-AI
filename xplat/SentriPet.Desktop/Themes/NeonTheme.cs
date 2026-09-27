@@ -261,7 +261,7 @@ namespace SentriPet
                     var col = m.Unlimited ? Magenta : Level(rem);
                     for (int i = 0; i < Segs; i++)
                         b.Cells[i].Fill = G.B(i < lit ? col : Color.FromArgb(0x24, col.R, col.G, col.B));
-                    if (b.Host.Effect == null || ((System.Windows.Media.Effects.DropShadowEffect)b.Host.Effect).Color != col)
+                    if (b.Host.Effect == null || ((DropShadowEffect)b.Host.Effect).Color != col)
                         b.Host.Effect = G.Glow(col, 9, 0.9);
                     b.Pct.Text = m.Unlimited ? "∞" : Fmt.Pct(rem);
                     b.Pct.Foreground = G.B(Palette.Lighten(col, 0.3));

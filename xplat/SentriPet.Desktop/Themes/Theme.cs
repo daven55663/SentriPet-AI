@@ -282,6 +282,27 @@ namespace SentriPet
             };
         }
 
+        /// <summary>
+        /// The "about" mark in front of estimated numbers. Microsoft JhengHei/YaHei draw ≈ as a blotch at small sizes
+        /// through Skia, so Windows uses ~ (macOS and Linux fonts draw ≈ fine).
+        /// </summary>
+        public static readonly string Approx = Os.Windows ? "~" : "≈";
+
+        /// <summary>WPF-style radial gradient: origin and radii relative to the element (0..1).</summary>
+        public static IBrush Radial(Color inner, Color outer, double originX, double originY, double radiusX, double radiusY)
+        {
+            var br = new RadialGradientBrush
+            {
+                GradientOrigin = new RelativePoint(originX, originY, RelativeUnit.Relative),
+                Center = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+                RadiusX = new RelativeScalar(radiusX, RelativeUnit.Relative),
+                RadiusY = new RelativeScalar(radiusY, RelativeUnit.Relative),
+            };
+            br.GradientStops.Add(new GradientStop(inner, 0));
+            br.GradientStops.Add(new GradientStop(outer, 1));
+            return br.ToImmutable();
+        }
+
         /// <summary>A bitmap from 32-bit ARGB pixels (row by row), for the pixel-art sprites and font.</summary>
         public static Bitmap Pixels(int w, int h, int[] argb)
         {
@@ -323,7 +344,7 @@ namespace SentriPet
         {
             if (m == null || m.Unlimited) return "--:--:--";
             if (!m.ResetsAt.HasValue) return "--:--:--";
-            return (m.ResetApprox ? "≈" : "") + Fmt.Clock(m.ResetsAt);
+            return (m.ResetApprox ? Approx : "") + Fmt.Clock(m.ResetsAt);
         }
 
         /// <summary>Scale/rotate around a point given in the element's own coordinates (WPF's CenterX/CenterY).</summary>
@@ -412,7 +433,7 @@ namespace SentriPet
             if (m == null) return "";
             if (m.Unlimited) return L.T("無限制");
             if (!m.ResetsAt.HasValue) return m.Used <= 0 ? L.T("閒置中") : L.T("重置時間未知");
-            return (m.ResetApprox ? "≈" : "") + Fmt.Countdown(m.ResetsAt);
+            return (m.ResetApprox ? Approx : "") + Fmt.Countdown(m.ResetsAt);
         }
 
         /// <summary>A brighter, more saturated variant for dark themes.</summary>

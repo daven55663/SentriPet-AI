@@ -528,14 +528,14 @@ namespace SentriPet
                     continue;
                 }
                 var head = v.Headline;
-                c.PctText.Text = v.Unlimited ? "∞" : (head != null && head.UsedApprox ? "≈" : "") + Fmt.Pct(v.HeadlineRemaining);
+                c.PctText.Text = v.Unlimited ? "∞" : (head != null && head.UsedApprox ? G.Approx : "") + Fmt.Pct(v.HeadlineRemaining);
                 c.PctText.Foreground = G.B(v.Unlimited ? Palette.Hex("#7C3AED") : LevelInk(v.HeadlineRemaining));
                 foreach (var r in c.Rows)
                 {
                     var m = v.Meters.FirstOrDefault(x => x.Key == r.Key);
                     if (m == null) continue;
                     r.Width.Target = 50 * m.Remaining / 100;
-                    r.Pct.Text = m.Unlimited ? "∞" : (m.UsedApprox ? "≈" : "") + Fmt.Pct(m.Remaining);
+                    r.Pct.Text = m.Unlimited ? "∞" : (m.UsedApprox ? G.Approx : "") + Fmt.Pct(m.Remaining);
                     Color bg, edge, ink;
                     G.UseItColors(r.Urgent, out bg, out edge, out ink);
                     r.Pct.Foreground = G.B(m.Unlimited ? Palette.Hex("#7C3AED") : r.Urgent > 0 ? ink : LevelInk(m.Remaining));
