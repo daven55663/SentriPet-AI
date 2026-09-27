@@ -111,9 +111,9 @@ end
 
 
 def winget(version, sha, date):
-    head = '# yaml-language-server: $schema=https://aka.ms/winget-manifest.%s.1.10.0.schema.json\n\n'
+    head = '# yaml-language-server: $schema=https://aka.ms/winget-manifest.%s.1.12.0.schema.json\n\n'
     base = 'PackageIdentifier: %s\nPackageVersion: %s\n' % (WINGET_ID, version)
-    tail = 'ManifestVersion: 1.10.0\n'
+    tail = 'ManifestVersion: 1.12.0\n'
     d = 'packaging/winget/'
     write(d + WINGET_ID + '.yaml', head % 'version' + base + 'DefaultLocale: en-US\nManifestType: version\n' + tail)
     write(d + WINGET_ID + '.installer.yaml', head % 'installer' + base + '''InstallerType: zip

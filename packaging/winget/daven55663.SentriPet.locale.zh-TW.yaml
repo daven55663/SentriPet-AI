@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.10.0.schema.json
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.12.0.schema.json
 
 PackageIdentifier: daven55663.SentriPet
 PackageVersion: 2.1.0
@@ -9,4 +9,4 @@ Description: |-
   只讀取這些工具存在本機的用量數字（不讀取登入憑證）；額度快用完時提醒，每週額度快重置卻還剩很多時催你用掉。
   8 種造型，支援繁體中文、简体中文、English、日本語、한국어。
 ManifestType: locale
-ManifestVersion: 1.10.0
+ManifestVersion: 1.12.0
