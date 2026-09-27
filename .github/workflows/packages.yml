@@ -59,6 +59,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: Tap this repository and check the cask
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # brew audit asks the GitHub API (anonymous calls hit the rate limit)
         run: |
           brew tap daven55663/sentripet "$GITHUB_WORKSPACE"
           brew style --cask daven55663/sentripet/sentripet
