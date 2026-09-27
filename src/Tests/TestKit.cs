@@ -107,7 +107,7 @@ namespace SentriPet
             exe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
             argsPrefix = "";
             if (Path.GetFileNameWithoutExtension(exe).ToLowerInvariant() == "dotnet")
-                argsPrefix = "\"" + System.Reflection.Assembly.GetEntryAssembly().Location + "\" ";
+                argsPrefix = "\"" + Environment.GetCommandLineArgs()[0] + "\" ";   // the app's .dll when run through "dotnet"
         }
 
         /// <summary>Waits for a condition (polling), for things that run on worker threads.</summary>
@@ -139,8 +139,8 @@ namespace SentriPet
     /// <summary>A provider whose detection and data are supplied by the test.</summary>
     class StubProvider : Provider
     {
-        public Func<Detection> OnDetect;
-        public Func<bool, AppSettings, Snapshot> OnFetch;
+        public Func<Detection> OnDetect = null;
+        public Func<bool, AppSettings, Snapshot> OnFetch = null;
         public int Fetches;
 
         public StubProvider(string id, string name)

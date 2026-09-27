@@ -511,12 +511,7 @@ namespace SentriPet
         {
             try
             {
-#if NET
                 using (var p = Process.GetProcessById(pid)) p.Kill(true);
-#else
-                var psi = new ProcessStartInfo("taskkill", "/PID " + pid + " /T /F") { CreateNoWindow = true, UseShellExecute = false };
-                using (var k = Process.Start(psi)) k.WaitForExit(3000);
-#endif
             }
             catch { }
         }

@@ -1,30 +1,44 @@
 # SentriPet
 
-Windows desktop widget (C# 5 / WPF on .NET Framework 4.8) that shows AI plan usage (Claude, Codex, Copilot, Ollama, JSON plugins) as animated themes. GitHub: https://github.com/daven55663/SentriPet-AI. User-facing docs are in `README.md` (Traditional Chinese — reply to the user in Traditional Chinese).
+Desktop widget that shows AI plan usage (Claude, Codex, Copilot, Ollama, JSON plugins) as animated themes, on Windows, macOS and Linux. C# on .NET 10 with Avalonia 12. GitHub: https://github.com/daven55663/SentriPet-AI. User-facing docs are in `README.md` (Traditional Chinese — reply to the user in Traditional Chinese, including progress updates). The Windows-only WPF version (≤ 1.4) was retired in 2.0; it lives in the tag `v1.4.0`.
 
-## Build / install
+## Layout
 
-- `build.cmd` → `bin\SentriPet.exe`, compiled with the csc that ships with Windows (`%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe`). C# 5 only: no `$""`, `?.`, `=>` members, `nameof`, auto-property initializers, `out var`.
-- Run scripts by absolute path (`cmd /c "<repo>\build.cmd"`); this environment does not search the current directory for scripts.
-- `install.cmd` copies to `%LOCALAPPDATA%\Programs\SentriPet` and starts the app through `explorer.exe`.
+- `src/Core` — usage model, settings, reminders (`Trackers`), lines the pets say, translations (`I18n.cs`), `AppPaths` per OS, `Probe`. No UI code (colours are `Rgba`).
+- `src/Providers` — one class per AI (detection + `Fetch`), `CustomProvider` for JSON plugins; `ClaudeCodeUsage` reads Claude Code transcript token counts to extrapolate between the desktop app's ~15-minute usage samples.
+- `src/Lang/*.json` — translations; `src/Tests` — core checks (run by `xplat/SentriPet.Tests`).
+- `xplat/SentriPet.Desktop` (assembly `SentriPet`) — the app: `PetWindow` (transparent widget; hover is polled against provider bounding boxes), `DetailWindow.cs` (hover card, speech bubble, placement), `SettingsWindow`, `DesktopController` (menus, tray, reminders), `Themes/` (8 themes, provider elements tagged `Tag = "pv:{id}"`), `Integration.cs` (everything that differs per OS: autostart, notifications, click-through, full screen, single instance, Start menu shortcut, global cursor), `TrayArt`, `DesktopTests` (`--selftest`).
+
+## Build / run / install
+
+- .NET 10 SDK: `"C:\Program Files\dotnet\dotnet.exe"` (not on the tool shell's PATH). Set `DOTNET_CLI_TELEMETRY_OPTOUT=1`.
+- `dotnet build SentriPet.slnx -c Release`; the app is `xplat/SentriPet.Desktop/bin/Release/net10.0/SentriPet.exe`.
+- `install.cmd` publishes a single-file build to `%LOCALAPPDATA%\Programs\SentriPet` and starts it through `explorer.exe`; `uninstall.cmd` removes it. Run scripts by absolute path (`cmd /c "<repo>\install.cmd"`).
+- `xplat/package.sh <win-x64|osx-arm64|osx-x64|linux-x64>` builds a self-contained package into `dist/`.
 
 ## Checking changes without touching the user's mouse
 
-All of these run with a separate dev profile automatically:
+All of these use a separate dev profile:
 
-- `bin\SentriPet.exe --snapshot <dir> --mock [--theme id] [--frames N]` renders every theme to PNG (mock set `c` = quota about to expire unused at levels 1–3; `--frames` adds N frames 0.25 s apart to check animations).
-- `--snapshot-ui <dir>` renders the menu, settings page and hover card.
-- `--selftest <file>` runs every automated check (~400, a few seconds; exit code = failures): core logic, each provider against sample files and local fake servers (`src/Tests`), the service, all themes and the hover card. Run it before every push; CI (`.github/workflows/ci.yml`) runs it plus `--probe`, `--snapshot --mock` and `--snapshot-ui` on every push and uploads the report, screenshots and exe.
-- `--probe <file>` prints detection + live usage (incl. the Claude estimate calibration) for every provider.
-- `--dev --show-detail <id>` runs a separate profile and forces one hover card open for 45 s.
+- `SentriPet.exe --selftest <file>` — the app's checks (themes, faces, card and placement, bubble, settings page, languages, tray icon, integration); exit code = failures. `xplat/SentriPet.Tests/bin/Release/net10.0/SentriPet.Tests.exe <file>` — the core checks. Run both before every push.
+- `SentriPet.exe --snapshot <dir> [--theme id] [--frames N] [--lang xx]` renders every theme with sample data (sets a/b/c; c = quota about to expire unused at levels 1–3), the hover cards, the speech bubble and the settings page to PNG, headless.
+- `SentriPet.exe --dev --smoke-test <file>` runs the real app for 15 s and reports window, frames, theme, tray and logged errors (a window appears on screen).
+- `--probe <file>` prints detection + live usage (incl. the Claude estimate calibration) for every provider. `--dev --show-detail <id>` forces one hover card open for 45 s. `--lang <code>` forces a language.
 - The desktop app's `get_usage` tool (ccd_session_mgmt) returns the official live Claude numbers — use it to check the Claude estimate.
+- CI (`.github/workflows/ci.yml`) runs the core tests, `--selftest`, `--probe`, `--smoke-test` (xvfb on Linux) and `--snapshot` on Windows, macOS and Linux, and builds the packages. Pushing a `v*` tag runs `release.yml` (draft → packages self-tested → published); ask the user before tagging a release.
 
 ## Languages (i18n)
 
 - The Traditional Chinese text in the code is the translation key: wrap user-facing text in `L.T("…")`, sentences with values in `L.F("…{0}…", x)` (never build sentences by concatenation), and texts stored in tables in `L.N("…")` (translated later with `L.T`). `Lines` uses named placeholders (`{name}`, `{pct}`…).
-- Translations live in `src/Lang/{zh-CN,en,ja,ko}.json`, embedded by `build.cmd` and `SentriPet.Core.csproj` as `SentriPet.Lang.<code>.json`. The self-test fails when any CJK string literal in `src`/`xplat` (tests excluded) has no entry in every file, or placeholders differ. Lines that must not be translated (regex, font names, language names) carry `// i18n-ignore`.
-- Korean: WPF and Avalonia break Korean between any two syllables, so `L.KeepWords` puts U+2060 WORD JOINER between a syllable and any non-space neighbour (applied to the ko table, `L.F` and `Lines`). Text glued together outside `L.T`/`L.F` must go through `L.Finish(...)` before it is shown; the self-test checks every Korean text on screen.
-- `--lang <code>` forces a language (diagnostic modes default to zh-TW); `--snapshot-ui <dir> --switch-lang en` exercises the runtime switch. Check layout in each language with `--snapshot <dir> --mock --lang <code>` — Japanese/Korean phrases often need to be shorter than the Chinese ones to fit the pet plates.
+- Translations live in `src/Lang/{zh-CN,en,ja,ko}.json`, embedded by `SentriPet.Core.csproj` as `SentriPet.Lang.<code>.json`. The core tests fail when any CJK string literal in `src`/`xplat` (test files excluded) has no entry in every file, or placeholders differ. Lines that must not be translated (regex, font names, language names) carry `// i18n-ignore`.
+- Korean: Avalonia breaks Korean between any two syllables, so `L.KeepWords` puts U+2060 WORD JOINER between a syllable and any non-space neighbour (applied to the ko table, `L.F` and `Lines`). Text glued together outside `L.T`/`L.F` must go through `L.Finish(...)`; the self-test checks every Korean text on screen.
+- Check layout per language with `--snapshot <dir> --lang <code>` — Japanese/Korean phrases often need to be shorter than the Chinese ones to fit the pet plates.
+
+## Platform notes
+
+- Windows draws on the CPU by default (`--gpu` for the GPU): about 110 MB instead of 250 MB. Microsoft JhengHei draws ≈ badly through Skia, so Windows shows `~` for estimates (`G.Approx`).
+- macOS: brush-style CJK fonts (Kaiti, BiauKai, Klee…) are downloaded on demand and stall text layout — never list them on a Mac. Transform origins: Avalonia rotates/scales around the element centre by default (WPF used the top-left); use `G.At(x, y)`.
+- Templated controls (switches, sliders) only get their look inside a window; headless snapshots of the settings page show a real (headless) window first.
 
 ## Claude desktop (MSIX) virtualization
 
@@ -33,18 +47,4 @@ Processes started from the Claude desktop app's tools inherit its package file v
 - read the real settings/logs via `\\localhost\C$\Users\%USERNAME%\AppData\Roaming\SentriPet\...`;
 - don't create files under AppData from the tool shell.
 
-## Cross-platform version (in progress — see docs/DEVLOG.md, issue #12)
-
-- `src/Core` and `src/Providers` are shared by the WPF build and the .NET 10 projects in `xplat/` (linked source files). Keep them free of WPF/WinForms/Win32 (use `Rgba`, `Os`, `AppPaths`) and in C# 5 syntax; use `#if NET` for .NET-10-only APIs.
-- .NET 10 SDK: `"C:\Program Files\dotnet\dotnet.exe"` (not on the tool shell's PATH). Set `DOTNET_CLI_TELEMETRY_OPTOUT=1`.
-- `dotnet build SentriPet.slnx -c Release`, then `xplat/SentriPet.Tests/bin/Release/net10.0/SentriPet.Tests.exe <report>` runs the core checks (exit code = failures). CI runs them on Windows, macOS and Linux.
-- `xplat/SentriPet.Desktop/bin/Release/net10.0/SentriPet.exe --selftest <file>` runs the Avalonia checks (themes, card, bubble, settings page, languages, `Integration`: autostart files, notifications, single instance); CI runs it on all three systems. `Integration.cs` holds everything that differs per OS (autostart, notifications, click-through, full-screen, single instance, opening files).
-- `xplat/SentriPet.Desktop` is the Avalonia 12 app (assembly `SentriPet`); `xplat/SentriPet.Desktop/Themes` are ports of `src/Themes` (same structure; `IsVisible` instead of `Visibility`, `RenderTransformOrigin` instead of transform centres, `Rect?` bounds). `bin/Release/net10.0/SentriPet.exe --snapshot <dir> [--frames N]` renders the themes headlessly; `--dev` runs it with a separate profile (stop it afterwards).
-- Record progress in `docs/DEVLOG.md` (newest first) and on issue #12.
-
-## Layout
-
-- `src/Providers` — one class per AI (detection + `Fetch`), `CustomProvider` for JSON plugins; `ClaudeCodeUsage` reads Claude Code transcript token counts to extrapolate between the desktop app's ~15-minute usage samples.
-- `src/Themes` — `Theme` base + 8 themes; provider elements are tagged `Tag = "pv:{id}"` for hover/click.
-- `src/UI/PetWindow.cs` — transparent widget; hover is polled against provider bounding boxes (not mouse events).
-- `src/UI/DetailWindow.cs` — hover card: owned, click-through window placed outside the widget content.
+Record progress in `docs/DEVLOG.md`.

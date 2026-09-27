@@ -101,6 +101,11 @@ namespace SentriPet
             var pos = window.Position;
             check("widget window is shown", window.IsVisible, null);
             check("widget is on a screen", screens.Any(s => s.Bounds.Contains(pos)), pos + " in " + string.Join(", ", screens.Select(s => s.Bounds.ToString())));
+            if (window.PlacedInDefaultCorner)
+            {
+                var wa = (window.Screens.ScreenFromWindow(window) ?? screens.FirstOrDefault()).WorkingArea;
+                check("first start: bottom-right corner", pos.X > wa.X + wa.Width / 2 && pos.Y > wa.Y + wa.Height / 2, pos + " in work area " + wa);
+            }
             check("animation frames drawn", window.Frames > 30, window.Frames + " frames");
             check("theme attached", window.CurrentTheme != null && window.CurrentTheme.Root != null, window.CurrentTheme != null ? window.CurrentTheme.Id : "none");
             check("tray / menu-bar icon", tray != null || !Os.Linux, tray != null ? "created" : "not available on this desktop");
@@ -285,6 +290,14 @@ namespace SentriPet
                 mi.ToggleType = MenuItemToggleType.Radio;
                 themeItems.Add(mi);
             }
+            themeItems.Add(new Separator());
+            themeItems.Add(Toggle(L.T("每天隨機換一個"), Settings.DailyRandomTheme, () =>
+            {
+                Settings.DailyRandomTheme = !Settings.DailyRandomTheme;
+                Settings.RandomThemeDate = null;
+                Settings.Save();
+                if (Settings.DailyRandomTheme) PickDailyTheme(true);
+            }));
             themes.ItemsSource = themeItems;
             items.Add(themes);
 

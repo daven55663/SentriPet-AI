@@ -60,34 +60,9 @@ jobs:
           files=(dist/SentriPet-*.zip dist/SentriPet-*.tar.gz)
           gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
 
-  wpf:
-    name: Windows app (WPF)
-    needs: draft
-    runs-on: windows-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - name: Build with the C# compiler that ships with Windows
-        shell: cmd
-        run: call build.cmd
-      - name: Self-test
-        shell: pwsh
-        run: |
-          $p = Start-Process -FilePath bin\SentriPet.exe -ArgumentList '--selftest', 'test-report.txt' -Wait -PassThru
-          Get-Content test-report.txt -Encoding utf8 | Select-Object -Last 1
-          if ($p.ExitCode -ne 0) { Write-Error "$($p.ExitCode) check(s) failed"; exit 1 }
-      - name: Zip and upload to the release
-        shell: pwsh
-        run: |
-          $ver = $env:GITHUB_REF_NAME.TrimStart('v')
-          $name = "SentriPet-$ver-windows-wpf.zip"
-          Copy-Item LICENSE bin\LICENSE.txt
-          Compress-Archive -Path bin\SentriPet.exe, bin\SentriPet.exe.config, bin\examples, bin\LICENSE.txt -DestinationPath $name
-          gh release upload $env:GITHUB_REF_NAME $name --clobber
-
   publish:
     name: Publish the release
-    needs: [package, wpf]
+    needs: package
     runs-on: ubuntu-latest
     steps:
       - name: Make the release public

@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- shared with the Windows self-test; UiTests.cs and SelfTest.cs need WPF and stay there -->
+    <!-- the core checks live in src/Tests (the desk pet's own checks are in SentriPet.Desktop) -->
     <Compile Include="..\..\src\Tests\TestKit.cs;..\..\src\Tests\CoreSuite.cs;..\..\src\Tests\CoreTests.cs;..\..\src\Tests\ClaudeCodexTests.cs;..\..\src\Tests\ProviderTests.cs;..\..\src\Tests\I18nTests.cs" LinkBase="Shared" />
   </ItemGroup>
 </Project>

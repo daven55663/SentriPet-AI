@@ -6,8 +6,8 @@ using System.Linq;
 namespace SentriPet
 {
     /// <summary>
-    /// Every check that needs no UI. The Windows self-test runs these plus the WPF widget checks;
-    /// xplat/SentriPet.Tests runs them on Windows, macOS and Linux.
+    /// Every check that needs no UI; xplat/SentriPet.Tests runs them on Windows, macOS and Linux
+    /// (the desk pet's own checks are in xplat/SentriPet.Desktop/DesktopTests.cs).
     /// </summary>
     static class CoreSuite
     {

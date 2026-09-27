@@ -204,7 +204,7 @@ namespace SentriPet
             var size = speech.MeasurePx(scaling);
             var content = ContentScreenRect();
             var provider = (speech.ProviderId != null ? ProviderScreenRect(speech.ProviderId) : null) ?? content;
-            var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+            var screen = Screens.ScreenFromWindow(this) ?? MainScreen;
             if (screen == null) return;
             var wa = screen.WorkingArea;
             double gap = 4 - SpeechWindow.Pad * scaling;
@@ -400,7 +400,7 @@ namespace SentriPet
             var size = card.MeasurePx(scaling);
             var content = ContentScreenRect();
             var provider = ProviderScreenRect(shownId) ?? content;
-            var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+            var screen = Screens.ScreenFromWindow(this) ?? MainScreen;
             if (screen == null) return;
             var wa = screen.WorkingArea;
             double gap = 6 - DetailCardView.Margin * scaling;   // 6px visible gap; the window margin is transparent
@@ -503,6 +503,12 @@ namespace SentriPet
             h = (int)Math.Round(Bounds.Height * s);
         }
 
+        /// <summary>No saved position was usable, so the widget went to the bottom-right corner (the smoke test checks this).</summary>
+        public bool PlacedInDefaultCorner { get; private set; }
+
+        /// <summary>The primary screen, or the first one when the system names none (some X11 setups, virtual displays).</summary>
+        Screen MainScreen { get { return Screens.Primary ?? Screens.All.FirstOrDefault(); } }
+
         void PlaceInitially()
         {
             bool ok = false;
@@ -511,7 +517,7 @@ namespace SentriPet
                 var p = new PixelPoint((int)settings.X.Value + (AnchorRight ? -20 : 20), (int)settings.Y.Value + (AnchorBottom ? -20 : 20));
                 ok = Screens.All.Any(s => s.WorkingArea.Contains(p));
             }
-            if (!ok && Screens.Primary != null) ResetToCorner(Screens.Primary, "br");
+            if (!ok && MainScreen != null) { ResetToCorner(MainScreen, "br"); PlacedInDefaultCorner = true; }
             positioned = true;
             PlaceAtAnchor();
         }
@@ -538,7 +544,7 @@ namespace SentriPet
         {
             int w, h;
             PixelSize(out w, out h);
-            var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+            var screen = Screens.ScreenFromWindow(this) ?? MainScreen;
             if (screen == null) return;
             var wa = screen.WorkingArea;
             int x = Position.X, y = Position.Y;

@@ -17,10 +17,10 @@ AI-Powered Real-Time Monitoring Desktop Companion
 - **8 種造型**，依心情切換，也可以設定每天隨機換
 - **會提醒**：用量越過門檻時提醒、額度重置時慶祝；每週額度快重置卻還剩很多時，桌寵會著急地催你用掉
 - **多國語言**：繁體中文、简体中文、English、日本語、한국어，預設跟隨系統語言
-- 可以拖到任何一個螢幕；開機自動啟動；看影片、玩遊戲的全螢幕畫面時自動躲起來（Windows）
+- 可以拖到任何一個螢幕；開機自動啟動；看影片、玩遊戲的全螢幕畫面時自動躲起來
 - 可用 JSON 外掛接上任何 AI 服務
 - **只在本機讀取**用量資料，不讀取、也不傳送任何登入憑證
-- 輕量：約 90–110 MB 記憶體，整體 CPU 不到 1%
+- 輕量：約 110 MB 記憶體，整體 CPU 不到 1%
 
 ## 畫面一覽
 
@@ -53,19 +53,21 @@ AI-Powered Real-Time Monitoring Desktop Companion
 
 | 系統 | 檔案 | 需求 |
 |---|---|---|
-| Windows（推薦） | `SentriPet-<版本>-windows-wpf.zip` | Windows 10／11，不需要另外安裝任何東西 |
-| Windows（跨平台版） | `SentriPet-<版本>-win-x64.zip` | Windows 10／11 |
+| Windows | `SentriPet-<版本>-win-x64.zip` | Windows 10／11 |
 | macOS Apple 晶片（M1～M4） | `SentriPet-<版本>-osx-arm64.zip` | macOS 12 以上 |
 | macOS Intel | `SentriPet-<版本>-osx-x64.zip` | macOS 12 以上 |
 | Linux | `SentriPet-<版本>-linux-x64.tar.gz` | x64、X11 或 XWayland 桌面 |
 
+每個檔案都已經包含執行需要的一切，不需要另外安裝 .NET。
+（1.x 版的 Windows 專用版本（WPF）仍可在 [v1.4.0](https://github.com/daven55663/SentriPet-AI/releases/tag/v1.4.0) 下載，但不再更新。）
+
 ### Windows
 
-1. 下載 `SentriPet-<版本>-windows-wpf.zip`，解壓縮到一個固定的資料夾（例如 `%LOCALAPPDATA%\Programs\SentriPet`）。
+1. 下載 `SentriPet-<版本>-win-x64.zip`，解壓縮到一個固定的資料夾（例如 `%LOCALAPPDATA%\Programs\SentriPet`）。
 2. 執行 `SentriPet.exe`。如果出現「Windows 已保護您的電腦」，按「其他資訊」→「仍要執行」（程式沒有數位簽章）。
-3. 桌寵出現在螢幕右下角，系統匣也會多一個果凍圖示；之後開機會自動啟動（右鍵選單可以關）。
+3. 桌寵出現在螢幕右下角，系統匣也會多一個果凍圖示；開始選單會多一個 SentriPet，之後開機會自動啟動（右鍵選單可以關）。
 
-**從原始碼安裝**（會用 Windows 內建的 C# 編譯器編譯，不需要 Visual Studio）：
+**從原始碼安裝**（需要 [.NET 10 SDK](https://dotnet.microsoft.com/download)）：
 
 ```
 git clone https://github.com/daven55663/SentriPet-AI.git
@@ -73,7 +75,8 @@ cd SentriPet-AI
 install.cmd
 ```
 
-`install.cmd` 會安裝到 `%LOCALAPPDATA%\Programs\SentriPet` 並啟動；移除請執行 `uninstall.cmd`。
+`install.cmd` 會編譯、安裝到 `%LOCALAPPDATA%\Programs\SentriPet` 並啟動；移除請執行 `uninstall.cmd`。
+從 1.x 版升級時設定會保留，程式直接換成新版。
 
 ### macOS
 
@@ -127,7 +130,7 @@ SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一�
 | 滑鼠停在上面 | 顯示詳細用量、重置時間、資料來源 |
 | 右鍵 | 選單：換造型、今天心情、語言、大小、透明度、移到螢幕、滑鼠穿透…… |
 | 雙擊 | 開啟設定 |
-| 系統匣圖示 | 左鍵顯示／隱藏，右鍵選單（滑鼠穿透時從這裡關掉）。Windows 圖示裡的果凍高度 = 最低的剩餘額度 |
+| 系統匣／選單列圖示 | 左鍵顯示／隱藏，右鍵選單（滑鼠穿透時從這裡關掉）。圖示裡的果凍高度 = 最低的剩餘額度，AI 工作中會多一個藍點 |
 
 ### 設定頁
 
@@ -144,7 +147,7 @@ SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一�
 - **大數字**固定顯示最短的額度（Claude、Codex 是 5 小時），不會在 5 小時和每週之間跳來跳去；每週額度看下面的小條。
   桌寵的表情跟著最吃緊的那個額度：額度多時開心、少時冒汗、用完就睡覺。
 - 下面那行是重置倒數，會標明是哪個額度（`5h 2時11分後重置`）；5 小時還沒開始計時時，改顯示每週的重置時間。
-- 數字前面有 **≈**（Windows 跨平台版顯示 **~**）表示是推算值：Claude 桌面版兩次紀錄之間，用 Claude Code 的 token 用量即時推算。
+- 數字前面有 **≈**（Windows 上顯示 **~**）表示是推算值：Claude 桌面版兩次紀錄之間，用 Claude Code 的 token 用量即時推算。
 - 資料舊了（例如 Copilot CLI 很久沒用）會標「舊資料」。
 
 ### 「快用掉」提醒
@@ -189,7 +192,8 @@ Claude 桌面版的紀錄裡沒有重置時間，是用歷史紀錄推算的。�
 右鍵選單開「滑鼠穿透」，點擊會直接穿過桌寵；要關掉請在系統匣圖示按右鍵。也可以調小一點或移到別的螢幕。
 
 **全螢幕時桌寵不見了**
-這是「全螢幕時自動躲起來」，離開全螢幕就會回來；不想要可以在 設定 → 外觀 關掉。
+這是「全螢幕時自動躲起來」（Windows、Linux），離開全螢幕就會回來；不想要可以在 設定 → 外觀 關掉。
+macOS 的全螢幕 App 會在自己的桌面空間裡，桌寵本來就不會出現在那裡。
 
 **不小心藏起來了**
 點系統匣圖示，或再開一次程式（已經在執行時會把桌寵叫回來）。
@@ -215,32 +219,44 @@ Claude 桌面版的紀錄裡沒有重置時間，是用歷史紀錄推算的。�
 
 ## 開發
 
-有兩個版本，共用同一套核心（`src/Core`、`src/Providers`）與翻譯：
+SentriPet 用 C#（.NET 10）與 [Avalonia](https://avaloniaui.net/) 寫成，一份程式碼在 Windows、macOS、Linux 上執行。
+2.0 以前的 Windows 專用版本（WPF）在 git 標籤 `v1.4.0`。
 
-| | Windows 版（WPF） | 跨平台版（Avalonia） |
-|---|---|---|
-| 原始碼 | `src/` | `xplat/` |
-| 編譯 | `build.cmd`（Windows 內建的 C# 5 編譯器，不需要 SDK） | `dotnet build SentriPet.slnx -c Release`（.NET 10 SDK） |
-| 執行 | `bin\SentriPet.exe` | `dotnet run -c Release --project xplat/SentriPet.Desktop` |
-| 打包 | `install.cmd`／`uninstall.cmd` | `xplat/package.sh <win-x64\|osx-arm64\|osx-x64\|linux-x64>` |
+```
+src/Core、src/Providers   用量模型、各 AI 的資料來源、提醒、翻譯（不含任何畫面程式）
+src/Lang                   翻譯檔
+src/Tests                  核心測試
+xplat/SentriPet.Desktop    桌寵本體：8 種造型、詳情卡、設定頁、系統匣、各系統整合（Integration.cs）
+xplat/SentriPet.Tests      核心測試的執行程式
+```
 
-- 新增造型：在 `src/Themes`（與 `xplat/SentriPet.Desktop/Themes`）新增一個繼承 `Theme` 的類別，並加到 `ThemeCatalog.All`。
+需要 [.NET 10 SDK](https://dotnet.microsoft.com/download)：
+
+```
+dotnet build SentriPet.slnx -c Release
+dotnet run -c Release --project xplat/SentriPet.Desktop            執行
+dotnet run -c Release --project xplat/SentriPet.Desktop -- --dev   獨立的設定檔，不碰開機啟動
+xplat/package.sh win-x64                                           打包（osx-arm64、osx-x64、linux-x64 也可以）
+```
+
+- 新增造型：在 `xplat/SentriPet.Desktop/Themes` 新增一個繼承 `Theme` 的類別，並加到 `ThemeCatalog.All`。
 - 新增內建 AI：在 `src/Providers` 新增一個繼承 `Provider` 的類別，並加到 `ProviderRegistry`。
-- `--dev`：獨立的設定檔，不碰開機啟動。`--lang en`：指定語言（`zh-TW`、`zh-CN`、`en`、`ja`、`ko`）。
-- `--snapshot 資料夾 --mock`：用範例資料把所有造型畫成 PNG；`--snapshot-ui 資料夾 --mock`：畫出選單、設定頁與詳情卡（Windows 版）。
-- `--probe 檔案`：輸出偵測與用量報告；`--dev --show-detail claude`：強制顯示某隻的詳情卡 45 秒。
+- `--lang en`：指定語言（`zh-TW`、`zh-CN`、`en`、`ja`、`ko`）；`--dev --show-detail claude`：強制顯示某隻的詳情卡 45 秒。
+- `--snapshot 資料夾`：用範例資料把所有造型、詳情卡、泡泡、設定頁畫成 PNG（不需要螢幕）。
+- `--probe 檔案`：輸出偵測與用量報告。
 
 ### 自動測試、CI 與發佈
 
 | 測試 | 內容 | 數量 |
 |---|---|---|
-| `bin\SentriPet.exe --selftest 報告.txt` | 核心、每個資料來源（範例檔與本機假伺服器，不碰真實資料）、8 種造型、詳情卡、泡泡、翻譯 | 410 項 |
-| `xplat/SentriPet.Tests` | 核心與資料來源，在 Windows、macOS、Linux 上跑 | 354 項 |
-| `SentriPet --selftest 報告.txt`（跨平台版） | 8 種造型、設定頁、語言、開機啟動、通知、單一執行 | 37 項 |
+| `xplat/SentriPet.Tests` | 核心、每個資料來源（範例檔與本機假伺服器，不碰真實資料）、提醒、翻譯 | 354 項 |
+| `SentriPet --selftest 報告.txt` | 8 種造型、果凍的表情、詳情卡與擺放位置、泡泡、設定頁、語言、系統匣圖示、開機啟動、通知、單一執行 | 70 項 |
+| `SentriPet --dev --smoke-test 報告.txt` | 真的開啟程式 15 秒：視窗有出來、在螢幕內、有在動畫、系統匣、沒有錯誤 | 6 項 |
 
-每次推送，[CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) 會在三個系統上編譯、跑全部測試、畫出所有造型的截圖，
-並打包各系統的安裝檔（在該次執行的 Artifacts）。推送 `v*` 標籤時，[Release](.github/workflows/release.yml) 流程會在各系統打包、
-讓每個安裝檔先跑一次自我測試，全部通過才發佈。開發紀錄見 [docs/DEVLOG.md](docs/DEVLOG.md)。
+每次推送，[CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) 會在 Windows、macOS、Linux 上編譯、跑全部測試
+（Linux 用虛擬螢幕真的開一次程式）、畫出所有造型的截圖，並打包各系統的安裝檔（在該次執行的 Artifacts）。
+推送 `v*` 標籤時，[Release](.github/workflows/release.yml) 流程會在各系統打包、讓每個安裝檔先跑一次自我測試，全部通過才發佈。
+開發紀錄見 [docs/DEVLOG.md](docs/DEVLOG.md)。
 
 ## 檔案位置
 
@@ -250,6 +266,7 @@ Claude 桌面版的紀錄裡沒有重置時間，是用歷史紀錄推算的。�
 | 設定與記錄檔 | `%APPDATA%\SentriPet\` | `~/Library/Application Support/SentriPet/` | `~/.config/SentriPet/` |
 | 外掛 | `%APPDATA%\SentriPet\providers\` | `~/Library/Application Support/SentriPet/providers/` | `~/.config/SentriPet/providers/` |
 | 開機啟動 | 登錄檔 `HKCU\…\Run` 的 `SentriPet` | `~/Library/LaunchAgents/com.sentripet.app.plist` | `~/.config/autostart/sentripet.desktop` |
+| 選單捷徑 | 開始選單的 `SentriPet` | — | `~/.local/share/applications/sentripet.desktop` |
 
 設定檔是 `settings.json`，記錄檔是 `logs/app.log`。1.0 版叫「AI 用量桌寵」，資料在 `%APPDATA%\AIUsagePet`；升級時會自動把設定搬過來。
 

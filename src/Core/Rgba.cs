@@ -5,8 +5,8 @@ using System.Globalization;
 namespace SentriPet
 {
     /// <summary>
-    /// A colour that does not belong to any UI framework, so the core can be shared by the WPF and the Avalonia
-    /// builds; each UI converts it to its own colour type.
+    /// A colour that does not belong to any UI framework, so the core (data, reminders, lines) stays free of UI code;
+    /// the Avalonia layer converts it to its own colour type.
     /// </summary>
     struct Rgba : IEquatable<Rgba>
     {

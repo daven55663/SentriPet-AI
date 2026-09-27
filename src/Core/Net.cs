@@ -120,15 +120,11 @@ namespace SentriPet
             return outSb.ToString();
         }
 
-        /// <summary>Program and arguments, passed exactly (ArgumentList on .NET 10, Windows quoting on .NET Framework).</summary>
+        /// <summary>Program and arguments, passed exactly.</summary>
         static void SetArgs(ProcessStartInfo psi, string file, IList<string> args)
         {
             psi.FileName = file;
-#if NET
             foreach (var a in args) psi.ArgumentList.Add(a);
-#else
-            psi.Arguments = JoinQuoted(args);
-#endif
         }
 
         static string JoinQuoted(IList<string> args)
