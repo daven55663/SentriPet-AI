@@ -80,3 +80,34 @@ jobs:
           [ $code -eq 0 ] || { cat brew-test.txt; exit 1; }
           brew uninstall --cask sentripet
           [ ! -e /Applications/SentriPet.app ]
+
+  winget:
+    name: winget (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate the manifests and install from them
+        shell: pwsh
+        run: |
+          winget --version
+          winget validate --manifest packaging/winget
+          if ($LASTEXITCODE) { exit 1 }
+          winget settings --enable LocalManifestFiles
+          winget install --manifest packaging/winget --disable-interactivity
+          if ($LASTEXITCODE) { exit 1 }
+      - name: Self-test through the command alias
+        shell: pwsh
+        run: |
+          $alias = "$env:LOCALAPPDATA\Microsoft\WinGet\Links\sentripet.exe"
+          Get-Item $alias | Format-List FullName, LinkType, Target
+          $p = Start-Process $alias -ArgumentList '--selftest', "$env:GITHUB_WORKSPACE\winget-test.txt" -Wait -PassThru
+          Get-Content winget-test.txt -Tail 1
+          "### winget: $(Get-Content winget-test.txt -Tail 1)" >> $env:GITHUB_STEP_SUMMARY
+          if ($p.ExitCode -ne 0) { Get-Content winget-test.txt; exit 1 }
+      - name: Uninstall
+        shell: pwsh
+        run: |
+          winget uninstall --id daven55663.SentriPet --disable-interactivity
+          if ($LASTEXITCODE) { exit 1 }
+          if (Test-Path "$env:LOCALAPPDATA\Microsoft\WinGet\Links\sentripet.exe") { Write-Error "the command alias is still there"; exit 1 }
