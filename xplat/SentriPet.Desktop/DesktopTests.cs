@@ -506,6 +506,10 @@ namespace SentriPet
                     t.Check("狀態列指令：讀得到輸入、印出剩餘額度", exited && p.ExitCode == 0 && output.Contains("5h") && output.Contains("75%"), output.Trim());
                     t.Check("狀態列指令：夠快（Claude Code 每次回覆都會執行）", sw.ElapsedMilliseconds < 5000, sw.ElapsedMilliseconds + " ms");
                 }
+                // the dev-profile file it wrote next to Claude's settings
+                string devFile = Path.Combine(AppPaths.Home, ".claude", "sentripet-status-dev.json");
+                t.Check("狀態列指令：開發模式寫到另一個檔案（不碰正式的數字）", File.Exists(devFile));
+                try { File.Delete(devFile); } catch { }
             });
             t.Check("全螢幕偵測：Windows 與 Linux（X11）", Integration.CanDetectFullscreen == (Os.Windows || Os.Linux));
             t.Run("tray icon", () =>

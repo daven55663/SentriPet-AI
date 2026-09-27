@@ -34,7 +34,14 @@ namespace SentriPet
         /// <summary>Test hooks: the bridge file and Claude's settings.json.</summary>
         internal static string FileOverride, SettingsOverride;
 
-        public static string DataFile { get { return FileOverride ?? Path.Combine(AppPaths.DataDir, "claude-code-status.json"); } }
+        /// <summary>
+        /// Where the status line leaves the numbers: next to Claude's own settings in the home folder, not under AppData —
+        /// processes started from the Claude desktop app (MSIX) get new AppData files redirected to a private copy.
+        /// </summary>
+        public static string DataFile
+        {
+            get { return FileOverride ?? Path.Combine(AppPaths.Home, ".claude", AppPaths.Dev ? "sentripet-status-dev.json" : "sentripet-status.json"); }
+        }
         public static string ClaudeSettingsFile { get { return SettingsOverride ?? Path.Combine(AppPaths.Home, ".claude", "settings.json"); } }
 
         // ------------------------------------------------------------------ the status-line command

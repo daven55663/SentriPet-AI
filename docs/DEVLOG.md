@@ -183,7 +183,8 @@ xplat/                新的跨平台版（.NET 10）
 - 2026-09-27：**#9 Claude Code 狀態列橋接**（Linux 讀得到 Claude 用量、各系統的重置時間改用官方的）。
   - 查 Claude Code 文件確認：狀態列指令在每次回覆後收到 JSON，其中 `rate_limits.five_hour`／`seven_day` 有 `used_percentage`（0–100）
     與 `resets_at`（Unix 秒）；只有 Pro／Max 訂閱、而且第一次回覆之後才有。Windows 上透過 Git Bash（沒有就用 PowerShell）執行。
-  - `SentriPet --statusline`：讀輸入、把官方數字存到資料夾的 `claude-code-status.json`，再代為執行使用者原本的狀態列指令
+  - `SentriPet --statusline`：讀輸入、把官方數字存到 `~/.claude/sentripet-status.json`（放家目錄而不是 AppData：從 Claude 桌面 App
+    啟動的程式在 AppData 新建的檔案會被 MSIX 轉到私人位置），再代為執行使用者原本的狀態列指令
     （用同樣的 shell、同樣的輸入），畫面照常；沒有原本的狀態列就顯示「5h 剩 76% · 週 剩 59%」。實測一次 0.1 秒。
   - 設定頁「連接 Claude Code 狀態列」：修改 `~/.claude/settings.json`（先備份一次原檔、保留其他設定與狀態列的 padding 等選項），
     關掉時原封不動還原；程式搬家時自動更新路徑，使用者自己在 Claude 拿掉時開關也跟著關。只有使用者自己按才會修改。

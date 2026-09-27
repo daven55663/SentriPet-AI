@@ -49,6 +49,23 @@ namespace SentriPet
             Integration.SetAutostart(Settings.AutoStart);
             Integration.EnsureStartMenuShortcut();
             if (!AppPaths.Dev) ClaudeStatusLine.Repair(Settings, Environment.ProcessPath);
+            // --connect-claude-statusline / --disconnect-claude-statusline: the settings switch, for scripts and helpers
+            try
+            {
+                if (Array.IndexOf(Environment.GetCommandLineArgs(), "--connect-claude-statusline") >= 0)
+                {
+                    ClaudeStatusLine.Connect(Settings, Environment.ProcessPath);
+                    Settings.Save();
+                    Log.Info("status line bridge connected: " + ClaudeStatusLine.CommandFor(Environment.ProcessPath));
+                }
+                else if (Array.IndexOf(Environment.GetCommandLineArgs(), "--disconnect-claude-statusline") >= 0)
+                {
+                    ClaudeStatusLine.Disconnect(Settings);
+                    Settings.Save();
+                    Log.Info("status line bridge disconnected");
+                }
+            }
+            catch (Exception ex) { Log.Error("status line bridge", ex); }
             Service = new UsageService(Settings);
             Service.Changed += () => Dispatcher.UIThread.Post(RefreshViews);
 
