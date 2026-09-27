@@ -21,6 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- the checks behind the self-test mode use the same small test kit as the other self-tests -->
+    <Compile Include="..\..\src\Tests\TestKit.cs" Link="Shared\TestKit.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaResource Include="..\..\assets\app.ico" Link="Assets\app.ico" />
   </ItemGroup>
 </Project>

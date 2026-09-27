@@ -72,6 +72,7 @@ namespace SentriPet
                 PlaceInitially();
                 lastFrame = DateTime.UtcNow;
                 frame.Start();
+                if (settings.ClickThrough) Integration.SetClickThrough(this, true);
             };
             Closed += (s, e) => { frame.Stop(); if (card != null) card.Close(); };
             SizeChanged += (s, e) => { if (positioned && !dragging) PlaceAtAnchor(); };
@@ -102,6 +103,28 @@ namespace SentriPet
             Opacity = settings.Opacity;
             Topmost = settings.AlwaysOnTop;
             frame.Interval = TimeSpan.FromMilliseconds(settings.LowPower ? 250 : 33);
+            if (IsVisible) Integration.SetClickThrough(this, settings.ClickThrough);
+        }
+
+        bool fullscreenHidden;
+
+        /// <summary>Hidden by the user (menu, tray); the widget also steps aside while another app is full screen.</summary>
+        public bool UserHidden { get; set; }
+
+        public void UpdateVisibility()
+        {
+            bool want = !UserHidden && !fullscreenHidden;
+            if (want && !IsVisible)
+            {
+                Show();
+                if (settings.ClickThrough) Integration.SetClickThrough(this, true);
+            }
+            else if (!want && IsVisible)
+            {
+                HideDetail();
+                HideSpeech();
+                Hide();
+            }
         }
 
         public void SaveSettings() { settings.Save(); }
@@ -195,8 +218,14 @@ namespace SentriPet
         }
 
         /// <summary>Called once a second: keep the card's numbers current and follow the widget.</summary>
-        public void Periodic()
+        public void Periodic(bool menuOpen)
         {
+            bool fs = settings.HideOnFullscreen && Integration.ForegroundIsFullscreen(this);
+            if (fs != fullscreenHidden)
+            {
+                fullscreenHidden = fs;
+                UpdateVisibility();
+            }
             if (shownId == null) return;
             var v = ctl.Views.FirstOrDefault(x => x.Id == shownId);
             if (v == null) { HideDetail(); return; }
@@ -377,6 +406,13 @@ namespace SentriPet
                 return;
             }
             if (!point.Properties.IsLeftButtonPressed) return;
+            if (e.ClickCount >= 2)
+            {
+                pressed = false;
+                ctl.OpenSettings();
+                e.Handled = true;
+                return;
+            }
             HideDetail();
             hoverId = null;
             pressed = true;

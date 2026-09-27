@@ -28,6 +28,20 @@ namespace SentriPet
             public void SaveSettings() { }
         }
 
+        /// <summary>The settings page without a running app: sample data, a service that is never started.</summary>
+        class SnapshotSettingsHost : ISettingsHost
+        {
+            readonly AppSettings settings = new AppSettings();
+            UsageService service;
+            public AppSettings Settings { get { return settings; } }
+            public UsageService Service { get { return service ?? (service = new UsageService(settings)); } }
+            public List<ProviderView> Views { get { return MockData.A(); } }
+            public void ApplyWidgetSettings() { }
+            public void ChangeTheme(string id) { }
+            public void ChangeLanguage(string code) { }
+            public void RefreshViews() { }
+        }
+
         public static int Run(string[] args)
         {
             string outDir = args.Length > 1 ? args[1] : Path.Combine(Path.GetTempPath(), "sentripet-shots");
@@ -96,6 +110,31 @@ namespace SentriPet
                     File.WriteAllText(Path.Combine(outDir, "detail_" + set.Key + "_error.txt"), ex.ToString());
                 }
             }
+            // the settings page (with a stand-in for the app)
+            if (only == null)
+            {
+                try
+                {
+                    // templated controls (switches, sliders, buttons) get their look only inside a window
+                    var win = new SettingsWindow(new SnapshotSettingsHost()) { Width = 700, Height = 900 };
+                    win.Show();
+                    win.RenderPreviews();
+                    for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
+                    var page = win.Page;
+                    var size = page.Bounds.Size;
+                    using (var rtb = new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height)), new Vector(96, 96)))
+                    {
+                        rtb.Render(page);
+                        rtb.Save(Path.Combine(outDir, "settings.png"));
+                    }
+                    win.Close();
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "settings_error.txt"), ex.ToString());
+                }
+            }
             // the floating speech bubble (themes without speech of their own)
             if (only == null)
             {
@@ -122,6 +161,23 @@ namespace SentriPet
         {
             int i = Array.IndexOf(args, name);
             return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+        }
+
+        /// <summary>Lays out and renders a control to a bitmap (the settings page's theme previews).</summary>
+        public static Bitmap RenderToBitmap(Control element, double scale)
+        {
+            DetachFromParent(element);
+            var host = new Panel();
+            RenderOptions.SetTextRenderingMode(host, TextRenderingMode.Antialias);
+            host.Children.Add(element);
+            host.Measure(Size.Infinity);
+            host.Arrange(new Rect(host.DesiredSize));
+            var size = host.DesiredSize;
+            var pixels = new PixelSize(Math.Max(1, (int)Math.Ceiling(size.Width * scale)), Math.Max(1, (int)Math.Ceiling(size.Height * scale)));
+            var rtb = new RenderTargetBitmap(pixels, new Vector(96 * scale, 96 * scale));
+            rtb.Render(host);
+            host.Children.Clear();
+            return rtb;
         }
 
         /// <summary>Lays out and renders a control to a PNG (optionally on a sample wallpaper).</summary>

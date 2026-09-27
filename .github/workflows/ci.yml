@@ -50,6 +50,17 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get install -y --no-install-recommends fonts-noto-cjk > /dev/null
 
+      - name: Desk pet self-test (Avalonia, off-screen)
+        shell: bash
+        run: |
+          set +e
+          dotnet run --no-build -c Release --project xplat/SentriPet.Desktop -- --selftest desktop-report.txt
+          code=$?
+          cat desktop-report.txt
+          echo "### Desk pet self-test on ${{ runner.os }}: $(tail -n 1 desktop-report.txt)" >> "$GITHUB_STEP_SUMMARY"
+          grep '^FAIL ' desktop-report.txt | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
+          exit $code
+
       - name: Render the desk pet off-screen (Avalonia, no display needed)
         shell: bash
         run: |
@@ -70,6 +81,7 @@ jobs:
           name: core-${{ runner.os }}
           path: |
             core-report.txt
+            desktop-report.txt
             pet-shots/
           if-no-files-found: warn
 

@@ -10,8 +10,11 @@ using Avalonia.Threading;
 namespace SentriPet
 {
     /// <summary>Wires the data service, the widget, the tray icon and the menus together (Avalonia version).</summary>
-    class DesktopController
+    class DesktopController : ISettingsHost
     {
+        /// <summary>The running controller (the single-instance pipe asks it to show the widget).</summary>
+        public static DesktopController Instance { get; private set; }
+        SettingsWindow settingsWindow;
         readonly Application app;
         readonly IClassicDesktopStyleApplicationLifetime desktop;
         readonly AlertTracker alerts = new AlertTracker();
@@ -34,6 +37,7 @@ namespace SentriPet
         {
             this.app = app;
             this.desktop = desktop;
+            Instance = this;
         }
 
         public void Start()
@@ -41,6 +45,8 @@ namespace SentriPet
             Settings = AppSettings.Load();
             Program.UseLanguage(Program.LanguageOverride ?? Settings.Language);
             Log.Info("language " + L.Current);
+            if (Settings.DailyRandomTheme) PickDailyTheme(false);
+            Integration.SetAutostart(Settings.AutoStart);
             Service = new UsageService(Settings);
             Service.Changed += () => Dispatcher.UIThread.Post(RefreshViews);
 
@@ -52,10 +58,47 @@ namespace SentriPet
             int sd = Array.IndexOf(args, "--show-detail");
             if (sd >= 0 && sd + 1 < args.Length) window.ForceDetail(args[sd + 1], 45);
             CreateTray();
-            Service.Start();
+            if (Array.IndexOf(args, "--autostart") >= 0)
+            {
+                // give the desktop a moment to settle after sign-in
+                var delay = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
+                delay.Tick += (s, e) => { delay.Stop(); Service.Start(); };
+                delay.Start();
+            }
+            else Service.Start();
 
-            second = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (s, e) => { RefreshViews(); window.Periodic(); });
+            second = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (s, e) =>
+            {
+                RefreshViews();
+                window.Periodic(menuOpen);
+                if (Settings.DailyRandomTheme) PickDailyTheme(true);
+            });
             second.Start();
+        }
+
+        /// <summary>A second copy was started: bring the widget back.</summary>
+        public void ShowFromOtherCopy()
+        {
+            window.UserHidden = false;
+            window.UpdateVisibility();
+            window.Say(null, L.T("我在這裡！"));
+        }
+
+        void PickDailyTheme(bool apply)
+        {
+            string today = DateTime.Now.ToString("yyyy-MM-dd");
+            if (Settings.RandomThemeDate == today) return;
+            var choices = ThemeCatalog.All.Where(t => t.Id != Settings.Theme).ToList();
+            var pick = choices[rng.Next(choices.Count)];
+            Settings.RandomThemeDate = today;
+            Settings.Theme = pick.Id;
+            Settings.Save();
+            if (apply && window != null)
+            {
+                window.SetTheme(pick.Create());
+                window.Say(null, L.F("新的一天，今天換成「{0}」！", pick.Name));
+                if (settingsWindow != null) settingsWindow.OnThemeChanged();
+            }
         }
 
         public void RefreshViews()
@@ -95,13 +138,17 @@ namespace SentriPet
 
         void Alert(ProviderView v, Meter m, int level)
         {
-            window.Say(v.Id, level >= 2 ? Lines.Critical(v, m) : Lines.Warn(v, m));
+            string text = level >= 2 ? Lines.Critical(v, m) : Lines.Warn(v, m);
+            window.Say(v.Id, text);
+            if (Settings.Notifications) Integration.Notify(AppInfo.Name, text);
         }
 
         void CelebrateReset(ProviderView v, Meter m, double previousUsed)
         {
+            string text = Lines.Reset(v, m);
             if (window.CurrentTheme != null) window.CurrentTheme.Celebrate(v.Id);
-            window.Say(v.Id, Lines.Reset(v, m));
+            window.Say(v.Id, text);
+            if (Settings.Notifications && previousUsed >= 50) Integration.Notify(AppInfo.Name, text);
         }
 
         void CheckUseIt()
@@ -112,6 +159,7 @@ namespace SentriPet
                 {
                     Log.Info("use-it " + e.View.Id + "|" + e.View.UseIt.Key + " level " + e.View.UseItLevel + ": " + e.Text);
                     Settings.Save();
+                    if (Settings.Notifications) Integration.Notify(AppInfo.Name + " · " + L.T("額度快過期了"), e.Text);
                 }
                 window.Say(e.View.Id, e.Text);
             }
@@ -152,6 +200,14 @@ namespace SentriPet
             var m = new NativeMenu();
             m.Add(Native(L.T("顯示／隱藏桌寵"), ToggleWidget));
             m.Add(Native(L.T("立即更新"), () => Service.RefreshNow(null)));
+            if (Integration.CanClickThrough)
+            {
+                // the only way back when the widget lets clicks through
+                var ct = new NativeMenuItem(L.T("滑鼠穿透（不擋點擊）")) { ToggleType = MenuItemToggleType.CheckBox, IsChecked = Settings.ClickThrough };
+                ct.Click += (s, e) => { Settings.ClickThrough = !Settings.ClickThrough; ApplyWidgetSettings(); tray.Menu = BuildTrayMenu(); };
+                m.Add(ct);
+            }
+            m.Add(Native(L.T("設定…"), OpenSettings));
             m.Add(new NativeMenuItemSeparator());
             m.Add(Native(L.T("結束"), Quit));
             return m;
@@ -233,9 +289,20 @@ namespace SentriPet
             lang.ItemsSource = langs;
             items.Add(lang);
             items.Add(Toggle(L.T("永遠在最上層"), Settings.AlwaysOnTop, () => { Settings.AlwaysOnTop = !Settings.AlwaysOnTop; window.ApplySettings(); Settings.Save(); }));
+            if (Integration.CanClickThrough)
+                items.Add(Toggle(L.T("滑鼠穿透（不擋點擊）"), Settings.ClickThrough, () =>
+                {
+                    Settings.ClickThrough = !Settings.ClickThrough;
+                    ApplyWidgetSettings();
+                    if (tray != null) tray.Menu = BuildTrayMenu();
+                    if (Settings.ClickThrough && Settings.Notifications) Integration.Notify(AppInfo.Name, L.T("已開啟滑鼠穿透：桌寵不會擋住點擊。要關閉請在右下角系統匣圖示按右鍵。"));
+                }));
             items.Add(Toggle(L.T("會說話"), Settings.Chatty, () => { Settings.Chatty = !Settings.Chatty; Settings.Save(); }));
+            items.Add(Toggle(L.T("額度提醒通知"), Settings.Notifications, () => { Settings.Notifications = !Settings.Notifications; Settings.Save(); }));
             items.Add(Toggle(L.T("催我用完週額度（重置前提醒）"), Settings.UseItReminder, () => { Settings.UseItReminder = !Settings.UseItReminder; Settings.Save(); RefreshViews(); }));
             items.Add(new Separator());
+            items.Add(Item(L.T("設定…"), OpenSettings));
+            items.Add(Toggle(L.T("開機自動啟動"), Settings.AutoStart, () => { Settings.AutoStart = !Settings.AutoStart; Integration.SetAutostart(Settings.AutoStart); Settings.Save(); }));
             items.Add(Item(L.T("先藏起來（點系統匣叫回）"), ToggleWidget));
             items.Add(Item(L.T("結束"), Quit));
             menu.ItemsSource = items;
@@ -271,6 +338,25 @@ namespace SentriPet
             Settings.Save();
             window.SetTheme(ThemeCatalog.Get(id).Create());
             RefreshViews();
+            if (settingsWindow != null) settingsWindow.OnThemeChanged();
+        }
+
+        public void ApplyWidgetSettings()
+        {
+            window.ApplySettings();
+            Settings.Save();
+        }
+
+        public void OpenSettings()
+        {
+            if (settingsWindow == null)
+            {
+                settingsWindow = new SettingsWindow(this);
+                settingsWindow.Closed += (s, e) => settingsWindow = null;
+                settingsWindow.Show();
+            }
+            if (settingsWindow.WindowState == WindowState.Minimized) settingsWindow.WindowState = WindowState.Normal;
+            settingsWindow.Activate();
         }
 
         MenuItem LanguageItem(string code, string label)
@@ -291,19 +377,32 @@ namespace SentriPet
             Service.RefreshNow(null);   // provider texts (labels, notes, errors) are made in the new language
             RefreshViews();
             if (tray != null) tray.Menu = BuildTrayMenu();
+            if (settingsWindow != null)
+            {
+                var old = settingsWindow;
+                var pos = old.Position;
+                double height = old.Height;
+                settingsWindow = null;
+                old.Close();
+                OpenSettings();
+                settingsWindow.WindowStartupLocation = WindowStartupLocation.Manual;
+                settingsWindow.Position = pos;
+                settingsWindow.Height = height;
+            }
             window.Say(null, L.T("好的！之後就用這個語言跟你聊天 ✦"));
         }
 
         public void ToggleWidget()
         {
-            if (window.IsVisible) window.Hide();
-            else window.Show();
+            window.UserHidden = window.IsVisible;
+            window.UpdateVisibility();
         }
 
         public void Quit()
         {
             try { Settings.Save(); } catch { }
             try { if (tray != null) tray.Dispose(); } catch { }
+            try { if (settingsWindow != null) settingsWindow.Close(); } catch { }
             try { Service.Dispose(); } catch { }
             desktop.Shutdown();
         }

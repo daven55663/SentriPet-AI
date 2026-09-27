@@ -29,6 +29,12 @@ namespace SentriPet
             // --lang <code>: force a language (snapshots default to the source language, Traditional Chinese)
             int li = Array.IndexOf(args, "--lang");
             if (li >= 0 && li + 1 < args.Length) LanguageOverride = args[li + 1];
+            if (mode == "--selftest")
+            {
+                AppPaths.UseDevProfile();
+                UseLanguage(L.Source);
+                return DesktopTests.Run(args.Length > 1 ? args[1] : null);
+            }
             if (mode == "--snapshot")
             {
                 AppPaths.UseDevProfile();
@@ -36,6 +42,12 @@ namespace SentriPet
                 return Snapshots.Run(args);
             }
             if (Array.IndexOf(args, "--dev") >= 0) AppPaths.UseDevProfile();
+            // one copy per user: a second start asks the running one to show itself
+            if (!Integration.ClaimSingleInstance(() => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (DesktopController.Instance != null) DesktopController.Instance.ShowFromOtherCopy();
+                })))
+                return 0;
             AppPaths.EnsureDataDirs();
             Log.Info("start " + AppInfo.Version + " (" + Os.Name + ", Avalonia)" + (AppPaths.Dev ? " (dev)" : ""));
             return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnExplicitShutdown);

@@ -207,7 +207,7 @@ namespace SentriPet
             foreach (var f in files)
             {
                 string n = f.Replace('\\', '/');
-                if (n.Contains("/Tests/") || n.Contains("/obj/") || n.Contains("/bin/") || n.Contains("SentriPet.Tests")) continue;
+                if (n.Contains("/Tests/") || n.Contains("/obj/") || n.Contains("/bin/") || n.Contains("SentriPet.Tests") || n.EndsWith("Tests.cs")) continue;   // test names are not user-facing
                 foreach (var raw in File.ReadAllLines(f, Encoding.UTF8))
                 {
                     string line = raw.Trim();

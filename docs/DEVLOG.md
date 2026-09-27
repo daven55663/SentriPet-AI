@@ -63,7 +63,7 @@ xplat/                新的跨平台版（.NET 10）
 - [ ] **第 3 階段：Avalonia 桌寵骨架**
   透明、置頂、可拖曳到任何螢幕的視窗；系統匣圖示與右鍵選單；懸停詳情卡；
   先移植果凍桌寵造型；無頭（headless）截圖讓 CI 在三個系統上都畫得出畫面。
-- [ ] **第 4 階段：移植其餘 7 種造型、設定頁、泡泡**
+- [x] **第 4 階段：移植其餘 7 種造型、設定頁、泡泡**
 - [ ] **第 5 階段：各系統整合**
   開機啟動（Windows 登錄檔／macOS LaunchAgent／Linux `~/.config/autostart`）、
   通知、只允許一個執行中的程式、滑鼠穿透、全螢幕時躲起來。
@@ -133,6 +133,18 @@ xplat/                新的跨平台版（.NET 10）
   - 右鍵選單加上「換造型」「今天心情如何？」。
   - Windows 上的 Avalonia 版：文字改成灰階反鋸齒（透明視窗不適合次像素）；微軟正黑體的「≈」經 Skia 在小字時會糊成一塊，
     Windows 上改用「~」表示推算值（macOS／Linux 照樣用「≈」）。
+- 2026-09-27：**第 4 階段完成：設定頁**。Avalonia 版的設定頁和 WPF 版同樣的分區（造型（附即時預覽）、外觀、AI 服務、提醒、一般＋語言），
+  用 Fluent 的開關、滑桿、按鈕；雙擊桌寵或選單「設定…」打開，改了立刻生效、稍後自動存檔。
+- 2026-09-27：**第 5 階段：各系統整合**（`xplat/SentriPet.Desktop/Integration.cs`）。
+  - 開機啟動：Windows 登錄檔 Run、macOS `~/Library/LaunchAgents/com.sentripet.app.plist`（`.app` 用 `open` 開）、
+    Linux `~/.config/autostart/sentripet.desktop`；開發用設定檔（`--dev`）一律不動系統。
+  - 通知：Windows 用 PowerShell 顯示 toast（不必另外裝執行環境）、macOS 用 `osascript`（文字當參數傳，不拼進指令）、Linux 用 `notify-send`。
+  - 滑鼠穿透：Windows `WS_EX_TRANSPARENT`、macOS `NSWindow setIgnoresMouseEvents:`、X11（含 XWayland）用空的輸入區域；
+    系統匣選單也有開關（穿透時唯一關掉的地方）。
+  - 全螢幕時躲起來：Windows 沿用 WPF 版的判斷；macOS／Linux 沒有可靠的方法，設定頁不顯示這一項。
+  - 只允許一個在執行：具名 Mutex，第二個開的會透過本機 named pipe 請第一個跳出來再自己結束（實測通過）。
+  - 新增 `--selftest`：Avalonia 版自己的檢查（8 種造型、詳情卡、泡泡、設定頁、英文沒有中文、韓文斷行、開機啟動檔案格式、
+    通知指令、單一執行），37 項；CI 在三個系統上都跑。
 - 第 3 階段剩下的待辦：沒有對話框的造型用的浮動泡泡（等第 4 階段移植其他造型時一起做）、
   macOS／Linux 的全域游標（眼睛目前只在滑鼠經過桌寵時跟著看）、記憶體約 270 MB（WPF 版約 90 MB，
   之後試 ReadyToRun／裁剪／GC 設定）、實機試用（拖曳、系統匣在 macOS／Linux 上的表現）。
