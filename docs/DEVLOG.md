@@ -178,5 +178,7 @@ xplat/                新的跨平台版（.NET 10）
   共用核心拿掉 .NET Framework 的分支；`install.cmd` 改成用 .NET 10 SDK 發佈單一執行檔並安裝、`uninstall.cmd` 一併移除開始選單捷徑；
   CI 與 Release 流程拿掉 WPF 工作；README、CLAUDE.md 改寫；只有 WPF 版用到的 6 句翻譯移除。
   在這台電腦用新的 `install.cmd` 安裝 2.0.0：啟動正常、開始選單捷徑建立、記憶體約 128 MB。
+- 2026-09-27：**發佈 [v2.0.0](https://github.com/daven55663/SentriPet-AI/releases/tag/v2.0.0)**（使用者同意）：
+  win-x64 41 MB、osx-arm64 41 MB、osx-x64 43 MB、linux-x64 40 MB，四個安裝檔都先跑過自己的自我測試才發佈。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上讀不到 Claude 方案用量（#9）。
