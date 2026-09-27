@@ -33,6 +33,7 @@ namespace SentriPet
 
         // hover card
         DetailWindow card;
+        double macScale = 1;   // CoreGraphics points → Avalonia screen units (calibrated, see CursorScreen)
         SpeechWindow speech;   // floating bubble for themes without speech of their own
         string hoverId, shownId, forcedId;
         DateTime forcedUntil;
@@ -143,6 +144,21 @@ namespace SentriPet
             }
             var x11 = Integration.X11Cursor();
             if (x11 != null) return x11;
+            var mac = Integration.MacCursor();
+            if (mac != null)
+            {
+                if (pointer != null)
+                {
+                    // learn how CoreGraphics points map to Avalonia's screen units while the mouse is over the widget
+                    var local = this.PointToScreen(pointer.Value);
+                    double k = DesktopScaling;
+                    double asPoints = Math.Abs(local.X - mac.Value.X) + Math.Abs(local.Y - mac.Value.Y);
+                    double asPixels = Math.Abs(local.X - mac.Value.X * k) + Math.Abs(local.Y - mac.Value.Y * k);
+                    macScale = asPixels < asPoints ? k : 1;
+                    return local;
+                }
+                return new PixelPoint((int)Math.Round(mac.Value.X * macScale), (int)Math.Round(mac.Value.Y * macScale));
+            }
             if (pointer != null) return this.PointToScreen(pointer.Value);
             return null;
         }
@@ -202,8 +218,12 @@ namespace SentriPet
             if (speech != null && speech.IsVisible) speech.Hide();
         }
 
+        /// <summary>Animation frames drawn so far (the smoke test checks the widget is alive).</summary>
+        public int Frames { get; private set; }
+
         void OnFrame(object sender, EventArgs e)
         {
+            Frames++;
             var now = DateTime.UtcNow;
             double dt = Math.Max(0, Math.Min(0.25, (now - lastFrame).TotalSeconds));
             lastFrame = now;

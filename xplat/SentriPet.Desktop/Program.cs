@@ -29,6 +29,12 @@ namespace SentriPet
             // --lang <code>: force a language (snapshots default to the source language, Traditional Chinese)
             int li = Array.IndexOf(args, "--lang");
             if (li >= 0 && li + 1 < args.Length) LanguageOverride = args[li + 1];
+            if (mode == "--probe")
+            {
+                AppPaths.UseDevProfile();
+                UseLanguage(LanguageOverride ?? L.Source);
+                return Probe.Run(args.Length > 1 && !args[1].StartsWith("--") ? args[1] : null);
+            }
             if (mode == "--selftest")
             {
                 AppPaths.UseDevProfile();

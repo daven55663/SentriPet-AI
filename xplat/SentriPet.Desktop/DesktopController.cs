@@ -47,6 +47,7 @@ namespace SentriPet
             Log.Info("language " + L.Current);
             if (Settings.DailyRandomTheme) PickDailyTheme(false);
             Integration.SetAutostart(Settings.AutoStart);
+            Integration.EnsureStartMenuShortcut();
             Service = new UsageService(Settings);
             Service.Changed += () => Dispatcher.UIThread.Post(RefreshViews);
 
@@ -74,6 +75,40 @@ namespace SentriPet
                 if (Settings.DailyRandomTheme) PickDailyTheme(true);
             });
             second.Start();
+
+            // --smoke-test FILE: run for real for a while, then report whether it worked and quit (CI, on every system)
+            int st = Array.IndexOf(args, "--smoke-test");
+            if (st >= 0 && st + 1 < args.Length)
+            {
+                string report = args[st + 1];
+                var done = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+                done.Tick += (s, e) => { done.Stop(); SmokeReport(report); };
+                done.Start();
+            }
+        }
+
+        /// <summary>What a person would check after starting the program: the widget is on screen, animates, has a theme, no errors.</summary>
+        void SmokeReport(string file)
+        {
+            var lines = new List<string>();
+            int failed = 0;
+            Action<string, bool, string> check = (name, ok, detail) =>
+            {
+                if (!ok) failed++;
+                lines.Add((ok ? "PASS " : "FAIL ") + name + (detail != null ? "  — " + detail : ""));
+            };
+            var screens = window.Screens.All;
+            var pos = window.Position;
+            check("widget window is shown", window.IsVisible, null);
+            check("widget is on a screen", screens.Any(s => s.Bounds.Contains(pos)), pos + " in " + string.Join(", ", screens.Select(s => s.Bounds.ToString())));
+            check("animation frames drawn", window.Frames > 30, window.Frames + " frames");
+            check("theme attached", window.CurrentTheme != null && window.CurrentTheme.Root != null, window.CurrentTheme != null ? window.CurrentTheme.Id : "none");
+            check("tray / menu-bar icon", tray != null || !Os.Linux, tray != null ? "created" : "not available on this desktop");
+            check("no errors logged", Log.Errors == 0, Log.Errors + " error(s), see " + System.IO.Path.Combine(AppPaths.LogDir, "app.log"));
+            lines.Insert(0, AppInfo.Name + " " + AppInfo.Version + " smoke test on " + Os.Name + ": " + views.Count + " AI(s), language " + L.Current);
+            lines.Add(failed == 0 ? "ALL PASS" : failed + " FAILED");
+            try { System.IO.File.WriteAllLines(file, lines); } catch (Exception ex) { Log.Error("smoke report", ex); }
+            Quit(failed);
         }
 
         /// <summary>A second copy was started: bring the widget back.</summary>
@@ -188,10 +223,24 @@ namespace SentriPet
             }
         }
 
+        string traySig;
+
         void UpdateTray()
         {
             if (tray == null) return;
+            // the icon is a tiny jelly filled to the lowest remaining quota (blue dot: an AI is working)
+            var limited = views.Where(v => v.HasData && !v.Unlimited).ToList();
+            double min = limited.Count > 0 ? limited.Min(v => v.Remaining) : -1;
+            bool active = views.Any(v => v.Active);
+            string sig = (int)Math.Round(min) + (active ? "a" : "");
+            if (sig != traySig)
+            {
+                traySig = sig;
+                try { tray.Icon = new WindowIcon(TrayArt.Draw(min, active, 64)); }
+                catch (Exception ex) { Log.Warn("tray icon: " + ex.Message); }
+            }
             string tip = views.Count == 0 ? AppInfo.Name : string.Join(" · ", views.Select(v => v.Summary));
+            if (tip.Length > 120) tip = tip.Substring(0, 119) + "…";
             if (tray.ToolTipText != tip) tray.ToolTipText = tip;
         }
 
@@ -267,6 +316,16 @@ namespace SentriPet
             }
             size.ItemsSource = sizes;
             items.Add(size);
+
+            var opacity = new MenuItem { Header = L.T("透明度") };
+            var levels = new List<object>();
+            foreach (var o in new[] { 1.0, 0.9, 0.75, 0.6, 0.45 })
+            {
+                double oo = o;
+                levels.Add(Toggle(o >= 1 ? L.T("不透明") : Math.Round(o * 100) + "%", Math.Abs(Settings.Opacity - o) < 0.01, () => { Settings.Opacity = oo; ApplyWidgetSettings(); }));
+            }
+            opacity.ItemsSource = levels;
+            items.Add(opacity);
 
             var screens = window.Screens.All.OrderBy(s => s.Bounds.X).ThenBy(s => s.Bounds.Y).ToList();
             if (screens.Count > 1)
@@ -398,13 +457,15 @@ namespace SentriPet
             window.UpdateVisibility();
         }
 
-        public void Quit()
+        public void Quit() { Quit(0); }
+
+        public void Quit(int exitCode)
         {
             try { Settings.Save(); } catch { }
             try { if (tray != null) tray.Dispose(); } catch { }
             try { if (settingsWindow != null) settingsWindow.Close(); } catch { }
             try { Service.Dispose(); } catch { }
-            desktop.Shutdown();
+            desktop.Shutdown(exitCode);
         }
     }
 }

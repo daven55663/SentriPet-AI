@@ -268,10 +268,14 @@ namespace SentriPet
     {
         static readonly object gate = new object();
 
+        /// <summary>Errors written since the program started.</summary>
+        public static int Errors;
+
         public static void Info(string msg) { Write("INFO", msg); }
         public static void Warn(string msg) { Write("WARN", msg); }
         public static void Error(string msg, Exception ex)
         {
+            System.Threading.Interlocked.Increment(ref Errors);
             Write("ERROR", msg + (ex != null ? " :: " + ex.GetType().Name + ": " + ex.Message + "\n" + ex.StackTrace : ""));
         }
 

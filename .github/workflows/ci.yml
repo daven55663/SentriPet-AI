@@ -61,6 +61,32 @@ jobs:
           grep '^FAIL ' desktop-report.txt | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
           exit $code
 
+      - name: Probe on a clean machine (no AI tools installed)
+        shell: bash
+        run: |
+          dotnet run --no-build -c Release --project xplat/SentriPet.Desktop -- --probe probe.txt
+          cat probe.txt
+
+      - name: Start the desk pet for real (smoke test, 15 s on the runner's desktop)
+        shell: bash
+        run: |
+          set +e
+          run=""
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get install -y --no-install-recommends xvfb > /dev/null
+            run="xvfb-run -a"
+          fi
+          $run dotnet run --no-build -c Release --project xplat/SentriPet.Desktop -- --dev --smoke-test smoke-report.txt
+          code=$?
+          cat smoke-report.txt
+          echo "### Smoke test on ${{ runner.os }}: $(tail -n 1 smoke-report.txt 2>/dev/null)" >> "$GITHUB_STEP_SUMMARY"
+          if [ $code -ne 0 ]; then
+            for log in "$APPDATA/SentriPet-dev/logs/app.log" "$HOME/.config/SentriPet-dev/logs/app.log" "$HOME/Library/Application Support/SentriPet-dev/logs/app.log"; do
+              [ -f "$log" ] && { echo "== $log"; tail -n 40 "$log"; }
+            done
+          fi
+          exit $code
+
       - name: Render the desk pet off-screen (Avalonia, no display needed)
         shell: bash
         run: |
@@ -82,6 +108,8 @@ jobs:
           path: |
             core-report.txt
             desktop-report.txt
+            smoke-report.txt
+            probe.txt
             pet-shots/
           if-no-files-found: warn
 

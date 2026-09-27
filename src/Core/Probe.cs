@@ -12,7 +12,7 @@ namespace SentriPet
         {
             var sb = new StringBuilder();
             var settings = AppSettings.Load();
-            sb.AppendLine(App.DisplayName + " " + App.Version + " probe @ " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            sb.AppendLine(AppInfo.Name + " " + AppInfo.Version + " probe on " + Os.Name + " @ " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             foreach (var p in ProviderRegistry.CreateAll())
             {
                 sb.AppendLine();

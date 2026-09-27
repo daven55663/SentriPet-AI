@@ -5,6 +5,7 @@ using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
 
@@ -135,7 +136,7 @@ namespace SentriPet
                     "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null;" +
                     "$x = New-Object Windows.Data.Xml.Dom.XmlDocument; $x.LoadXml([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" +
                     Convert.ToBase64String(Encoding.UTF8.GetBytes(xml)) + "')));" +
-                    "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe').Show([Windows.UI.Notifications.ToastNotification]::new($x))";
+                    "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('" + ToastAppId + "').Show([Windows.UI.Notifications.ToastNotification]::new($x))";
                 exe = "powershell.exe";
                 args = new[] { "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script };
                 return true;
@@ -151,6 +152,36 @@ namespace SentriPet
             exe = ns;
             args = new[] { "--app-name=" + AppInfo.Name, title, text };
             return true;
+        }
+
+        /// <summary>
+        /// Windows shows a toast under the name and icon of a Start menu shortcut that carries the same AppUserModelID;
+        /// without the shortcut (dev profile) the toast goes out as PowerShell's.
+        /// </summary>
+        static string ToastAppId
+        {
+            get { return File.Exists(StartMenuShortcut) ? AppUserModelId : @"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe"; }
+        }
+
+        public const string AppUserModelId = "SentriPet.App";
+
+        public static string StartMenuShortcut
+        {
+            get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), AppInfo.Name + ".lnk"); }
+        }
+
+        /// <summary>Windows: a Start menu entry for SentriPet (also what toasts are shown under). Not in the dev profile.</summary>
+        public static void EnsureStartMenuShortcut()
+        {
+            if (!OperatingSystem.IsWindows() || AppPaths.Dev) return;
+            try
+            {
+                string target = ExePath;
+                if (File.Exists(StartMenuShortcut) && ShellLink.ReadTarget(StartMenuShortcut) == target && ShellLink.ReadAppId(StartMenuShortcut) == AppUserModelId) return;
+                ShellLink.Create(StartMenuShortcut, target, "", AppUserModelId, AppInfo.Name);
+                Log.Info("start menu shortcut -> " + target);
+            }
+            catch (Exception ex) { Log.Warn("start menu shortcut: " + ex.Message); }
         }
 
         static string SecurityElementEscape(string s)
@@ -188,19 +219,42 @@ namespace SentriPet
 
         // ------------------------------------------------------------------ full screen
 
-        /// <summary>Only Windows can tell reliably whether another app is full screen.</summary>
-        public static bool CanDetectFullscreen { get { return Os.Windows; } }
+        /// <summary>
+        /// Windows and X11 desktops can tell whether the active app is full screen. (A full-screen macOS app gets a
+        /// Space of its own where the widget is not shown anyway.)
+        /// </summary>
+        public static bool CanDetectFullscreen { get { return Os.Windows || Os.Linux; } }
+
+        static bool x11FullscreenFailed;
 
         public static bool ForegroundIsFullscreen(Window mine)
         {
-            if (!Os.Windows) return false;
             var h = mine.TryGetPlatformHandle();
-            return h != null && Win.ForegroundIsFullscreen(h.Handle);
+            if (h == null) return false;
+            if (Os.Windows) return Win.ForegroundIsFullscreen(h.Handle);
+            if (Os.Linux && h.HandleDescriptor == "XID" && !x11FullscreenFailed)
+            {
+                try
+                {
+                    var center = mine.Position + new PixelPoint((int)(mine.Bounds.Width * mine.DesktopScaling / 2), (int)(mine.Bounds.Height * mine.DesktopScaling / 2));
+                    return X11.ActiveWindowIsFullscreen(h.Handle, center.X, center.Y);
+                }
+                catch (Exception ex) { x11FullscreenFailed = true; Log.Warn("X11 full screen: " + ex.Message); }
+            }
+            return false;
         }
 
         // ------------------------------------------------------------------ mouse
 
-        static bool x11CursorFailed;
+        static bool x11CursorFailed, macCursorFailed;
+
+        /// <summary>The mouse position on macOS in global points (top-left origin), or null.</summary>
+        public static Point? MacCursor()
+        {
+            if (!Os.Mac || macCursorFailed) return null;
+            try { return Mac.CursorLocation(); }
+            catch (Exception ex) { macCursorFailed = true; Log.Warn("macOS cursor: " + ex.Message); return null; }
+        }
 
         /// <summary>The mouse position on an X11 desktop (also XWayland), in screen pixels; null elsewhere.</summary>
         public static Avalonia.PixelPoint? X11Cursor()
@@ -281,6 +335,120 @@ namespace SentriPet
 
         // ------------------------------------------------------------------ native bits
 
+        /// <summary>Windows shortcuts (.lnk) with an AppUserModelID, through the shell's COM objects.</summary>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+        internal static class ShellLink
+        {
+            [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+            class CShellLink { }
+
+            [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("000214F9-0000-0000-C000-000000000046")]
+            interface IShellLinkW
+            {
+                void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder file, int max, IntPtr findData, uint flags);
+                void GetIDList(out IntPtr pidl);
+                void SetIDList(IntPtr pidl);
+                void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder name, int max);
+                void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string name);
+                void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder dir, int max);
+                void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string dir);
+                void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder args, int max);
+                void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string args);
+                void GetHotkey(out short hotkey);
+                void SetHotkey(short hotkey);
+                void GetShowCmd(out int cmd);
+                void SetShowCmd(int cmd);
+                void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int max, out int index);
+                void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string path, int index);
+                void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path, uint reserved);
+                void Resolve(IntPtr hwnd, uint flags);
+                void SetPath([MarshalAs(UnmanagedType.LPWStr)] string file);
+            }
+
+            [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("0000010b-0000-0000-C000-000000000046")]
+            interface IPersistFile
+            {
+                void GetClassID(out Guid clsid);
+                [PreserveSig] int IsDirty();
+                void Load([MarshalAs(UnmanagedType.LPWStr)] string file, uint mode);
+                void Save([MarshalAs(UnmanagedType.LPWStr)] string file, [MarshalAs(UnmanagedType.Bool)] bool remember);
+                void SaveCompleted([MarshalAs(UnmanagedType.LPWStr)] string file);
+                void GetCurFile([MarshalAs(UnmanagedType.LPWStr)] out string file);
+            }
+
+            [StructLayout(LayoutKind.Sequential, Pack = 4)]
+            struct PropertyKey { public Guid FormatId; public int PropertyId; }
+
+            [StructLayout(LayoutKind.Sequential)]
+            struct PropVariant { public ushort Type; public ushort R1, R2, R3; public IntPtr Value; public IntPtr Value2; }
+
+            [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
+            interface IPropertyStore
+            {
+                void GetCount(out uint count);
+                void GetAt(uint index, out PropertyKey key);
+                void GetValue(ref PropertyKey key, out PropVariant value);
+                void SetValue(ref PropertyKey key, ref PropVariant value);
+                void Commit();
+            }
+
+            [DllImport("ole32.dll")] static extern int PropVariantClear(ref PropVariant pv);
+
+            // System.AppUserModel.ID
+            static PropertyKey AppIdKey { get { return new PropertyKey { FormatId = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), PropertyId = 5 }; } }
+            const ushort VT_LPWSTR = 31;
+
+            public static void Create(string lnk, string target, string args, string appId, string description)
+            {
+                var link = (IShellLinkW)new CShellLink();
+                link.SetPath(target);
+                link.SetArguments(args ?? "");
+                link.SetWorkingDirectory(Path.GetDirectoryName(target));
+                link.SetDescription(description ?? "");
+                link.SetIconLocation(target, 0);
+                var store = (IPropertyStore)link;
+                var key = AppIdKey;
+                var pv = new PropVariant { Type = VT_LPWSTR, Value = Marshal.StringToCoTaskMemUni(appId) };
+                try
+                {
+                    store.SetValue(ref key, ref pv);
+                    store.Commit();
+                }
+                finally { PropVariantClear(ref pv); }
+                Directory.CreateDirectory(Path.GetDirectoryName(lnk));
+                ((IPersistFile)link).Save(lnk, true);
+                Marshal.ReleaseComObject(link);
+            }
+
+            public static string ReadTarget(string lnk)
+            {
+                var link = (IShellLinkW)new CShellLink();
+                try
+                {
+                    ((IPersistFile)link).Load(lnk, 0);
+                    var sb = new StringBuilder(1024);
+                    link.GetPath(sb, sb.Capacity, IntPtr.Zero, 0);
+                    return sb.ToString();
+                }
+                finally { Marshal.ReleaseComObject(link); }
+            }
+
+            public static string ReadAppId(string lnk)
+            {
+                var link = (IShellLinkW)new CShellLink();
+                try
+                {
+                    ((IPersistFile)link).Load(lnk, 0);
+                    var key = AppIdKey;
+                    PropVariant pv;
+                    ((IPropertyStore)link).GetValue(ref key, out pv);
+                    try { return pv.Type == VT_LPWSTR ? Marshal.PtrToStringUni(pv.Value) : null; }
+                    finally { PropVariantClear(ref pv); }
+                }
+                finally { Marshal.ReleaseComObject(link); }
+            }
+        }
+
         static class Win
         {
             public const int GWL_EXSTYLE = -20, GWL_STYLE = -16, WS_EX_TRANSPARENT = 0x20, WS_EX_LAYERED = 0x80000, WS_CAPTION = 0x00C00000;
@@ -329,8 +497,22 @@ namespace SentriPet
 
         static class Mac
         {
+            const string CoreGraphics = "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics";
+            const string CoreFoundation = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
             [DllImport("/usr/lib/libobjc.A.dylib")] public static extern IntPtr sel_registerName(string name);
             [DllImport("/usr/lib/libobjc.A.dylib")] public static extern void objc_msgSend(IntPtr receiver, IntPtr selector, [MarshalAs(UnmanagedType.I1)] bool value);
+            [StructLayout(LayoutKind.Sequential)] struct CGPoint { public double X, Y; }
+            [DllImport(CoreGraphics)] static extern IntPtr CGEventCreate(IntPtr source);
+            [DllImport(CoreGraphics)] static extern CGPoint CGEventGetLocation(IntPtr ev);
+            [DllImport(CoreFoundation)] static extern void CFRelease(IntPtr obj);
+
+            public static Point CursorLocation()
+            {
+                IntPtr ev = CGEventCreate(IntPtr.Zero);
+                if (ev == IntPtr.Zero) throw new InvalidOperationException("CGEventCreate failed");
+                try { var p = CGEventGetLocation(ev); return new Point(p.X, p.Y); }
+                finally { CFRelease(ev); }
+            }
         }
 
         /// <summary>X11: an empty input shape lets clicks through to the windows below.</summary>
@@ -345,6 +527,51 @@ namespace SentriPet
             static extern bool XQueryPointer(IntPtr display, IntPtr window, out IntPtr root, out IntPtr child, out int rootX, out int rootY, out int winX, out int winY, out uint mask);
             const int ShapeInput = 2, ShapeSet = 0, Unsorted = 0;
             static IntPtr display;
+
+            [DllImport("libX11.so.6")] static extern IntPtr XInternAtom(IntPtr display, string name, bool onlyIfExists);
+            [DllImport("libX11.so.6")]
+            static extern int XGetWindowProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr offset, IntPtr length, bool delete, IntPtr reqType,
+                                                 out IntPtr actualType, out int actualFormat, out IntPtr nItems, out IntPtr bytesAfter, out IntPtr prop);
+            [DllImport("libX11.so.6")] static extern int XFree(IntPtr data);
+            [DllImport("libX11.so.6")]
+            static extern bool XTranslateCoordinates(IntPtr display, IntPtr src, IntPtr dest, int x, int y, out int destX, out int destY, out IntPtr child);
+            [DllImport("libX11.so.6")]
+            static extern int XGetGeometry(IntPtr display, IntPtr d, out IntPtr root, out int x, out int y, out uint w, out uint h, out uint border, out uint depth);
+
+            /// <summary>Items of a 32-bit window property (window ids, atoms); C long-sized in memory.</summary>
+            static long[] Property(IntPtr window, string name, int max)
+            {
+                IntPtr type, n, after, data;
+                int format;
+                if (XGetWindowProperty(display, window, XInternAtom(display, name, false), IntPtr.Zero, new IntPtr(max), false, IntPtr.Zero,
+                                       out type, out format, out n, out after, out data) != 0 || data == IntPtr.Zero) return new long[0];
+                try
+                {
+                    var items = new long[(int)n];
+                    for (int i = 0; i < items.Length; i++) items[i] = Marshal.ReadIntPtr(data, i * IntPtr.Size).ToInt64();
+                    return format == 32 ? items : new long[0];
+                }
+                finally { XFree(data); }
+            }
+
+            /// <summary>EWMH: is the active window (not ours) full screen and covering the point (x, y)?</summary>
+            public static bool ActiveWindowIsFullscreen(IntPtr mine, int x, int y)
+            {
+                if (display == IntPtr.Zero) display = XOpenDisplay(IntPtr.Zero);
+                if (display == IntPtr.Zero) return false;
+                IntPtr root = XDefaultRootWindow(display);
+                var active = Property(root, "_NET_ACTIVE_WINDOW", 1);
+                if (active.Length == 0 || active[0] == 0 || active[0] == mine.ToInt64()) return false;
+                var win = new IntPtr(active[0]);
+                long fullscreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", false).ToInt64();
+                if (!Property(win, "_NET_WM_STATE", 64).Contains(fullscreen)) return false;
+                IntPtr r, child;
+                int gx, gy, ax, ay;
+                uint w, h, b, d;
+                if (XGetGeometry(display, win, out r, out gx, out gy, out w, out h, out b, out d) == 0) return true;
+                if (!XTranslateCoordinates(display, win, root, 0, 0, out ax, out ay, out child)) return true;
+                return x >= ax && x < ax + w && y >= ay && y < ay + h;
+            }
 
             public static bool Pointer(out int x, out int y)
             {
