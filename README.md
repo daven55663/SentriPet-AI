@@ -1,29 +1,71 @@
 # SentriPet-AI
 
 [![CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/daven55663/SentriPet-AI)](https://github.com/daven55663/SentriPet-AI/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 AI-Powered Real-Time Monitoring Desktop Companion
 
-**SentriPet** 是放在 Windows 桌面上的 AI 用量監控桌寵。它會自動偵測電腦上的 AI 工具（Claude、Codex、Copilot…），
-即時顯示還剩多少額度、多久後重置，不用再一直點開設定 → 用量。
+**SentriPet** 是放在桌面上的 AI 用量監控桌寵。它會自動偵測電腦上的 AI 工具（Claude、Codex、Copilot…），
+即時顯示還剩多少額度、多久後重置，不用再一直點開「設定 → 用量」。支援 **Windows、macOS、Linux**。
 
-- 可以拖到任何一個螢幕，位置會記住；拔掉螢幕時會自動回到主螢幕
-- 開機自動啟動（右鍵選單或設定裡可以關）
-- 8 種造型，依心情切換，也可以設定每天隨機換
-- 用量越過門檻時提醒，額度重置時會慶祝一下
-- 每週額度快重置、卻還剩很多時，桌寵會拿鬧鐘催你趕快用掉（最後一天越催越勤）
-- 看影片、玩遊戲等全螢幕畫面時會自動躲起來
-- 多國語言：繁體中文、简体中文、English、日本語、한국어（預設跟隨系統語言，右鍵選單可以隨時換）
+<p align="center"><img src="docs/images/hero.png" alt="果凍桌寵：Claude、Codex、Copilot 三隻果凍，肚子裡的果凍就是剩下的額度" width="560"></p>
+
+## 特色
+
+- **一眼看到剩多少**：大數字是最短的額度（例如 5 小時），下面的小條是每週額度，還有重置倒數
+- **8 種造型**，依心情切換，也可以設定每天隨機換
+- **會提醒**：用量越過門檻時提醒、額度重置時慶祝；每週額度快重置卻還剩很多時，桌寵會著急地催你用掉
+- **多國語言**：繁體中文、简体中文、English、日本語、한국어，預設跟隨系統語言
+- 可以拖到任何一個螢幕；開機自動啟動；看影片、玩遊戲的全螢幕畫面時自動躲起來（Windows）
 - 可用 JSON 外掛接上任何 AI 服務
-- 輕量：原生 WPF 程式，約 90 MB 記憶體、整體 CPU 不到 1%（省電模式更低）
+- **只在本機讀取**用量資料，不讀取、也不傳送任何登入憑證
+- 輕量：約 90–110 MB 記憶體，整體 CPU 不到 1%
 
-> **macOS／Linux 版（跨平台版）**：用 Avalonia 重寫的版本，8 種造型、設定頁、提醒、系統匣、開機啟動都已完成，
-> 自動測試在 Windows、macOS、Linux 上都通過；還沒有在實機的 Mac／Linux 上長時間試用。見下方「跨平台版」與
-> [開發日誌](docs/DEVLOG.md)、[#12](https://github.com/daven55663/SentriPet-AI/issues/12)。
+## 畫面一覽
 
-## 安裝
+**8 種造型**（在桌寵上按右鍵 → 換造型）
 
-需求：Windows 10 / 11（內建的 .NET Framework 4.8 即可，不需要另外安裝任何東西）。
+<p align="center"><img src="docs/images/themes.png" alt="8 種造型：果凍桌寵、極簡玻璃、像素勇者、駭客終端、賽車儀表、魔法藥水、霓虹夜城、手寫便利貼"></p>
+
+**滑鼠停在上面**：每個額度剩多少、什麼時候重置、資料來源與更新時間。
+**額度快過期卻沒用完**：桌寵會著急（冒汗、鬧鐘、進度條閃爍），卡片上也會提醒。
+
+<p align="center">
+  <img src="docs/images/detail.png" alt="懸停詳情卡" width="400">
+  <img src="docs/images/use-it.png" alt="額度快過期時著急的果凍" width="420">
+</p>
+
+**右鍵選單與設定頁**（雙擊桌寵開啟設定）
+
+<p align="center">
+  <img src="docs/images/menu.png" alt="右鍵選單" width="300">
+  <img src="docs/images/settings.png" alt="設定頁" width="420">
+</p>
+
+**多國語言**（右鍵選單 → 語言 · Language）
+
+<p align="center"><img src="docs/images/languages.png" alt="英文、日文、韓文介面"></p>
+
+## 安裝手冊
+
+到 **[Releases](https://github.com/daven55663/SentriPet-AI/releases/latest)** 下載最新版：
+
+| 系統 | 檔案 | 需求 |
+|---|---|---|
+| Windows（推薦） | `SentriPet-<版本>-windows-wpf.zip` | Windows 10／11，不需要另外安裝任何東西 |
+| Windows（跨平台版） | `SentriPet-<版本>-win-x64.zip` | Windows 10／11 |
+| macOS Apple 晶片（M1～M4） | `SentriPet-<版本>-osx-arm64.zip` | macOS 12 以上 |
+| macOS Intel | `SentriPet-<版本>-osx-x64.zip` | macOS 12 以上 |
+| Linux | `SentriPet-<版本>-linux-x64.tar.gz` | x64、X11 或 XWayland 桌面 |
+
+### Windows
+
+1. 下載 `SentriPet-<版本>-windows-wpf.zip`，解壓縮到一個固定的資料夾（例如 `%LOCALAPPDATA%\Programs\SentriPet`）。
+2. 執行 `SentriPet.exe`。如果出現「Windows 已保護您的電腦」，按「其他資訊」→「仍要執行」（程式沒有數位簽章）。
+3. 桌寵出現在螢幕右下角，系統匣也會多一個果凍圖示；之後開機會自動啟動（右鍵選單可以關）。
+
+**從原始碼安裝**（會用 Windows 內建的 C# 編譯器編譯，不需要 Visual Studio）：
 
 ```
 git clone https://github.com/daven55663/SentriPet-AI.git
@@ -31,27 +73,84 @@ cd SentriPet-AI
 install.cmd
 ```
 
-`install.cmd` 會用 Windows 內建的 C# 編譯器編譯，安裝到 `%LOCALAPPDATA%\Programs\SentriPet` 並啟動，
-同時設定開機自動啟動。移除請執行 `uninstall.cmd`。
+`install.cmd` 會安裝到 `%LOCALAPPDATA%\Programs\SentriPet` 並啟動；移除請執行 `uninstall.cmd`。
 
-## 操作
+### macOS
+
+1. 下載對應晶片的 zip（Apple 晶片選 `osx-arm64`，Intel 選 `osx-x64`），解壓縮後把 `SentriPet.app` 拖到「應用程式」。
+2. **第一次開啟**：這個 App 沒有 Apple 開發者簽章，請在 `SentriPet.app` 上按右鍵 →「打開」→「打開」。
+   也可以在終端機執行：
+   ```
+   xattr -dr com.apple.quarantine /Applications/SentriPet.app
+   ```
+3. 桌寵出現在桌面上，選單列會有果凍圖示（不會出現在 Dock）。第一次跳通知時，macOS 可能會問要不要允許通知。
+4. 開機自動啟動用的是 `~/Library/LaunchAgents/com.sentripet.app.plist`，右鍵選單可以關。
+
+### Linux
+
+```
+tar xzf SentriPet-<版本>-linux-x64.tar.gz
+cd SentriPet-<版本>-linux-x64
+./install.sh
+```
+
+`install.sh` 會裝到 `~/.local/share/sentripet`、加進應用程式選單並啟動（不需要 root）。
+
+- 需要有合成器的桌面才會是透明背景（GNOME、KDE、Xfce 等大多都有）。
+- GNOME 要顯示系統匣圖示，需要「AppIndicator and KStatusNotifierItem Support」擴充；沒有系統匣時用桌寵的右鍵選單即可。
+- 通知用 `notify-send`（Debian／Ubuntu：`sudo apt install libnotify-bin`）。
+
+### 更新與移除
+
+- **更新**：下載新版覆蓋舊的檔案即可（Windows 先在右鍵選單按「結束」；Linux 重新執行 `install.sh`），設定會保留。
+- **移除**：右鍵選單取消「開機自動啟動」→「結束」，再刪掉程式與設定資料夾（位置見最下面的「檔案位置」）。
+  從原始碼安裝的 Windows 版執行 `uninstall.cmd` 即可。
+
+## 使用方式
+
+### 第一次開啟
+
+SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一隻桌寵，並打聲招呼。要讀到用量，需要：
+
+- **Claude**：開著 Claude 桌面版（它每 15 分鐘記錄一次用量；有用 Claude Code 時會在兩次之間即時推算）
+- **Codex**：裝了 Codex 桌面版、VS Code 擴充或 `codex` 指令，並用 ChatGPT 帳號登入
+- **Copilot**：用過一次 Copilot CLI（它會留下額度快取）
+
+沒有偵測到的 AI 可以在 設定 → AI 服務 看到原因，或寫一個[外掛](#接上其他-ai外掛)接上。
+
+### 操作
 
 | 動作 | 效果 |
 |---|---|
-| 拖曳 | 移動（靠近螢幕邊緣會吸附） |
-| 點一下 | 桌寵會跳起來回話 |
+| 拖曳 | 移動（靠近螢幕邊緣會吸附），位置會記住 |
+| 點一下 | 桌寵會回話 |
 | 滑鼠停在上面 | 顯示詳細用量、重置時間、資料來源 |
-| 右鍵 | 選單：換造型、今天心情、大小、透明度、移到螢幕…… |
+| 右鍵 | 選單：換造型、今天心情、語言、大小、透明度、移到螢幕、滑鼠穿透…… |
 | 雙擊 | 開啟設定 |
-| 系統匣圖示 | 左鍵顯示／隱藏，右鍵選單。圖示裡的果凍高度 = 最低的剩餘額度 |
+| 系統匣圖示 | 左鍵顯示／隱藏，右鍵選單（滑鼠穿透時從這裡關掉）。Windows 圖示裡的果凍高度 = 最低的剩餘額度 |
 
-## 大數字與「快用掉」提醒
+### 設定頁
 
-- 大數字固定顯示最短的額度（Claude、Codex 是 5 小時），不會在 5 小時和每週之間跳來跳去；每週額度看下面的小條。
-  桌寵的表情則跟著最吃緊的那個額度。
-- 下面那行重置時間會標明是哪個額度（`5h 2時11分後重置`）；5 小時還沒開始計時時，改顯示每週的重置時間。
-- 每週／每月額度快重置、卻還剩不少時，桌寵會著急地催你把它用掉，不然就浪費了。畫面上不多加文字：
-  快過期的那條進度條會閃，桌寵的表情會變；詳細說明在滑鼠停上去的卡片裡。
+| 分區 | 可以做什麼 |
+|---|---|
+| 造型 | 看 8 種造型的即時預覽並切換；每天隨機換一個 |
+| 外觀 | 大小、不透明度、永遠在最上層、全螢幕時躲起來、滑鼠穿透、會說話、省電模式 |
+| AI 服務 | 每個 AI 偵測到什麼、目前讀到的數字；開關個別 AI；Codex 即時查詢頻率；Claude 每週重置時間與即時推算 |
+| 提醒 | 額度提醒通知、「催我用完週額度」、提醒與緊急門檻 |
+| 一般 | 語言、開機自動啟動、開啟設定／記錄檔／程式資料夾 |
+
+### 看懂畫面
+
+- **大數字**固定顯示最短的額度（Claude、Codex 是 5 小時），不會在 5 小時和每週之間跳來跳去；每週額度看下面的小條。
+  桌寵的表情跟著最吃緊的那個額度：額度多時開心、少時冒汗、用完就睡覺。
+- 下面那行是重置倒數，會標明是哪個額度（`5h 2時11分後重置`）；5 小時還沒開始計時時，改顯示每週的重置時間。
+- 數字前面有 **≈**（Windows 跨平台版顯示 **~**）表示是推算值：Claude 桌面版兩次紀錄之間，用 Claude Code 的 token 用量即時推算。
+- 資料舊了（例如 Copilot CLI 很久沒用）會標「舊資料」。
+
+### 「快用掉」提醒
+
+每週／每月額度快重置、卻還剩不少時，桌寵會著急地催你把它用掉，不然就浪費了。畫面上不多加文字：
+快過期的那條進度條會閃，桌寵的表情會變；詳細說明在滑鼠停上去的卡片裡。
 
 | 距離重置 | 還剩 | 桌寵的反應 |
 |---|---|---|
@@ -59,108 +158,100 @@ install.cmd
 | 最後一天 | 10% 以上 | 進度條閃得更快，張大嘴冒汗，鬧鐘一響就嚇一跳，約每 25 分鐘說一次 |
 | 最後 6 小時 | 5% 以上 | 進度條快閃，慌張發抖、鬧鐘狂響，約每 12 分鐘說一次 |
 
-每升一級會跳一次 Windows 通知（重開機也不會重複跳）。AI 正在工作時不會打擾你（桌寵會開心地看你用）；
+每升一級會跳一次通知（重開機也不會重複跳）。AI 正在工作時不會打擾你（桌寵會開心地看你用）；
 5 小時額度用完時也先不催（反正用不了）。右鍵選單「催我用完週額度」或 設定 → 提醒 可以關掉。
 
-## 語言
+### 語言
 
-支援 **繁體中文、简体中文、English、日本語、한국어**。預設「自動」＝跟隨 Windows 的顯示語言
+支援 **繁體中文、简体中文、English、日本語、한국어**。預設「自動」＝跟隨系統的顯示語言
 （繁中地區用繁體、中國／新加坡用簡體、日文、韓文，其他語言用英文）。
 
 - 切換：右鍵選單 → **語言 · Language**，或 設定 → 一般 → 語言。立即生效，不用重開。
-- 選單、設定頁、詳情卡、桌寵說的話、造型名稱、通知都會換成該語言，字型也會跟著換
-  （Windows：微軟正黑體／微軟雅黑／Yu Gothic UI／Malgun Gothic／Segoe UI）。
+- 選單、設定頁、詳情卡、桌寵說的話、造型名稱、通知都會換成該語言，字型也會跟著換。
 - 設定 → Claude 每週重置時間 可以用任何一種語言填：`週四 23:00`、`周四 23:00`、`Thu 23:00`、`木曜日 23:00`、`목요일 23:00`。
 
 想新增或修正翻譯：程式裡的繁體中文就是原文，翻譯放在 `src/Lang/<語言>.json`（`"原文": "翻譯"`，
-`{0}`、`{name}` 這類記號要保留）。自我測試會檢查每一句都有翻譯、記號一致。
+`{0}`、`{name}` 這類記號要保留）。自動測試會檢查每一句都有翻譯、記號一致。
 
-## 造型
+## 常見問題
 
-| 造型 | 心情 | 特色 |
-|---|---|---|
-| 果凍桌寵 | 元氣滿滿 | 肚子裡的果凍 = 5 小時剩餘額度；眼睛跟著滑鼠，額度少會冒汗，用完會睡覺 |
-| 極簡玻璃 | 平靜專注 | 毛玻璃卡片＋進度圓環 |
-| 像素勇者 | 想打電動 | RPG 狀態列，HP/MP 就是額度，AI 工作時顯示「戰鬥中」 |
-| 駭客終端 | 進入心流 | 綠色磷光 CRT，點標題列可以換磷光顏色 |
-| 賽車儀表 | 全速前進 | 油表指針、七段顯示器倒數，AI 工作時遠光燈會亮 |
-| 魔法藥水 | 有點夢幻 | 每個額度一瓶藥水，5 小時是圓底燒瓶、每週是長瓶 |
-| 霓虹夜城 | 深夜模式 | 賽博龐克霓虹燈管，偶爾故障閃爍 |
-| 手寫便利貼 | 慢慢來 | 手寫字＋鉛筆斜線進度條 |
+**沒有偵測到 Claude／Claude 顯示「找不到用量紀錄」**
+開啟 Claude 桌面版就會開始記錄。Linux 沒有 Claude 桌面版，目前讀不到方案用量（[#9](https://github.com/daven55663/SentriPet-AI/issues/9)）。
+
+**Claude 的重置時間和官網差一點**
+Claude 桌面版的紀錄裡沒有重置時間，是用歷史紀錄推算的。到 設定 → AI 服務 → Claude 每週重置時間，
+照 Claude「設定 → 用量」頁面寫的時間填一次（例如 `週四 23:00`）就會準。
+
+**在 claude.ai 網頁或手機上聊天，數字沒有馬上變**
+那部分只能等 Claude 桌面版下一次更新紀錄（約 15 分鐘）。
+
+**桌寵擋到要點的東西**
+右鍵選單開「滑鼠穿透」，點擊會直接穿過桌寵；要關掉請在系統匣圖示按右鍵。也可以調小一點或移到別的螢幕。
+
+**全螢幕時桌寵不見了**
+這是「全螢幕時自動躲起來」，離開全螢幕就會回來；不想要可以在 設定 → 外觀 關掉。
+
+**不小心藏起來了**
+點系統匣圖示，或再開一次程式（已經在執行時會把桌寵叫回來）。
+
+**macOS 說「無法打開，因為無法確認開發者」**
+見上面 macOS 安裝第 2 步。
 
 ## 資料從哪裡來（全部在本機，不讀、不傳任何登入憑證）
 
 | AI | 來源 | 更新頻率 |
 |---|---|---|
-| Claude | Claude 桌面版自己記錄的 `plan-usage-history.json`（和「設定 → 用量」同一份數字），加上 Claude Code 本機對話紀錄裡的 token 數（只讀數字，不讀內容） | 桌面版約每 15 分鐘寫一次；兩次之間用 Claude Code 的 token 用量即時推算（數字前標「≈」，比例會用你自己的歷史紀錄自動校準，實測誤差約 1 個百分點）。重置時間檔案裡沒有，用對話紀錄與歷史推算；也可以在設定裡填「週四 23:00」校正每週重置時間。在 claude.ai 網頁或手機上聊天的用量推算不到，要等桌面版下次更新 |
+| Claude | Claude 桌面版自己記錄的 `plan-usage-history.json`（和「設定 → 用量」同一份數字），加上 Claude Code 本機對話紀錄裡的 token 數（只讀數字，不讀內容） | 桌面版約每 15 分鐘寫一次；兩次之間用 Claude Code 的 token 用量即時推算（比例會用你自己的歷史紀錄自動校準，實測誤差約 1 個百分點） |
 | Codex | 官方 `codex app-server` 的 `account/rateLimits/read`，加上 `~/.codex/sessions` 對話紀錄裡的 rate_limits | 預設每 5 分鐘即時查詢一次；用 Codex 時本機紀錄會即時更新 |
-| Copilot | Copilot CLI 的額度快取 `%LOCALAPPDATA%\copilot\copilot-user-cache.json` | 用 Copilot CLI 時才會更新 |
+| Copilot | Copilot CLI 的額度快取 | 用 Copilot CLI 時才會更新 |
 | Ollama | 本機 `http://127.0.0.1:11434`（沒有額度，只顯示載入中的模型） | 30 秒 |
 | 其他 | Gemini CLI、Cursor、Windsurf、LM Studio… 會被偵測到並列在設定裡；可以用外掛接上用量 | — |
 
 ## 接上其他 AI（外掛）
 
-在 `%APPDATA%\SentriPet\providers` 放一個 JSON 設定檔就能新增一隻桌寵，
+在設定資料夾的 `providers` 裡放一個 JSON 設定檔就能新增一隻桌寵，
 支援「執行一支程式印出 JSON」、「呼叫 HTTP API」、「讀取 JSON 檔」三種方式。
 說明與範例：[`examples/providers/README.md`](examples/providers/README.md)（設定 → AI 服務 → 開啟外掛資料夾，會自動複製範例過去）。
 
-## 跨平台版（macOS、Linux，也能在 Windows 上跑）
-
-到 [Releases](https://github.com/daven55663/SentriPet-AI/releases/latest) 下載不需要另外安裝 .NET 的版本
-（每次推送，GitHub Actions 也會在該次執行的 **Artifacts** 打包一份最新的）：
-
-| 系統 | 檔案 | 安裝 |
-|---|---|---|
-| Windows | `SentriPet-<版本>-win-x64.zip` | 解壓縮後執行 `SentriPet.exe` |
-| macOS（Apple 晶片／Intel） | `SentriPet-<版本>-osx-arm64.zip`／`osx-x64.zip` | 解壓縮，把 `SentriPet.app` 拖到「應用程式」。沒有 Apple 開發者簽章，第一次請按右鍵 →「打開」（或執行 `xattr -dr com.apple.quarantine /Applications/SentriPet.app`） |
-| Linux | `SentriPet-<版本>-linux-x64.tar.gz` | 解壓縮後執行 `./install.sh`（裝到 `~/.local/share/sentripet`、加進應用程式選單並啟動） |
-
-- 和 Windows 版共用同一份設定格式；設定放在 macOS 的 `~/Library/Application Support/SentriPet`、Linux 的 `~/.config/SentriPet`。
-- 開機啟動：macOS 用 LaunchAgent、Linux 用 `~/.config/autostart`；通知：macOS 通知中心、Linux `notify-send`。
-- 目前的差異：macOS／Linux 沒有「全螢幕時自動躲起來」；macOS 上桌寵的眼睛只在滑鼠經過時跟著看；
-  Claude 桌面版沒有 Linux 版，所以 Linux 上讀不到 Claude 的方案用量（#9）。
-- 從原始碼執行：安裝 .NET 10 SDK 後 `dotnet run -c Release --project xplat/SentriPet.Desktop`；
-  打包：`xplat/package.sh <win-x64|osx-arm64|osx-x64|linux-x64>`。
-
 ## 開發
 
-用的是 Windows 內建的 C# 5 編譯器（.NET Framework 4.8 + WPF），不需要 Visual Studio 或 .NET SDK。
+有兩個版本，共用同一套核心（`src/Core`、`src/Providers`）與翻譯：
 
-```
-build.cmd      編譯到 bin\SentriPet.exe
-install.cmd    編譯並安裝到 %LOCALAPPDATA%\Programs\SentriPet，然後重新啟動
-uninstall.cmd  關閉程式、移除開機啟動、刪除安裝資料夾
-```
+| | Windows 版（WPF） | 跨平台版（Avalonia） |
+|---|---|---|
+| 原始碼 | `src/` | `xplat/` |
+| 編譯 | `build.cmd`（Windows 內建的 C# 5 編譯器，不需要 SDK） | `dotnet build SentriPet.slnx -c Release`（.NET 10 SDK） |
+| 執行 | `bin\SentriPet.exe` | `dotnet run -c Release --project xplat/SentriPet.Desktop` |
+| 打包 | `install.cmd`／`uninstall.cmd` | `xplat/package.sh <win-x64\|osx-arm64\|osx-x64\|linux-x64>` |
 
-- 新增造型：在 `src\Themes` 新增一個繼承 `Theme` 的類別，並加到 `ThemeCatalog.All`。
-- 新增內建 AI：在 `src\Providers` 新增一個繼承 `Provider` 的類別，並加到 `ProviderRegistry`。
-- `SentriPet.exe --dev`：獨立設定檔、不碰開機啟動。
-- `--snapshot 資料夾 --mock`：把所有造型畫成 PNG；`--snapshot-ui 資料夾`：畫出選單、設定頁與詳情卡。
-- `--probe 檔案`：輸出偵測與用量報告。
-- `--dev --show-detail claude`：強制顯示某隻的詳情卡 45 秒。
+- 新增造型：在 `src/Themes`（與 `xplat/SentriPet.Desktop/Themes`）新增一個繼承 `Theme` 的類別，並加到 `ThemeCatalog.All`。
+- 新增內建 AI：在 `src/Providers` 新增一個繼承 `Provider` 的類別，並加到 `ProviderRegistry`。
+- `--dev`：獨立的設定檔，不碰開機啟動。`--lang en`：指定語言（`zh-TW`、`zh-CN`、`en`、`ja`、`ko`）。
+- `--snapshot 資料夾 --mock`：用範例資料把所有造型畫成 PNG；`--snapshot-ui 資料夾 --mock`：畫出選單、設定頁與詳情卡（Windows 版）。
+- `--probe 檔案`：輸出偵測與用量報告；`--dev --show-detail claude`：強制顯示某隻的詳情卡 45 秒。
 
-測試時可以加 `--lang en`（`zh-TW`、`zh-CN`、`en`、`ja`、`ko`）指定語言，例如
-`bin\SentriPet.exe --snapshot shots --mock --lang ja` 會畫出日文版的所有造型；
-`--snapshot-ui 資料夾 --switch-lang en` 會模擬執行中切換語言再畫一次選單、詳情卡與設定頁。
+### 自動測試、CI 與發佈
 
-### 自動測試與 CI
+| 測試 | 內容 | 數量 |
+|---|---|---|
+| `bin\SentriPet.exe --selftest 報告.txt` | 核心、每個資料來源（範例檔與本機假伺服器，不碰真實資料）、8 種造型、詳情卡、泡泡、翻譯 | 410 項 |
+| `xplat/SentriPet.Tests` | 核心與資料來源，在 Windows、macOS、Linux 上跑 | 354 項 |
+| `SentriPet --selftest 報告.txt`（跨平台版） | 8 種造型、設定頁、語言、開機啟動、通知、單一執行 | 37 項 |
 
-`SentriPet.exe --selftest 報告.txt` 會跑全部自動檢查（約 300 項、幾秒鐘），結束代碼 = 失敗的數量：
-
-- 格式化、JSON、大數字與重置時間的選擇、快用掉提醒的等級與時機、用量提醒、設定檔
-- 每個資料來源：Claude（對話紀錄、桌面版紀錄、即時推算）、Codex（本機紀錄、官方 app-server 協定）、Copilot、Ollama、外掛（檔案／指令／HTTP）——全部用範例檔和本機假伺服器，不碰你的真實資料
-- 背景更新服務、8 種造型、果凍的表情、詳情卡、泡泡、桌寵說的每句話、詳情卡擺放位置
-
-每次推送到 GitHub，[CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) 會在 Windows 上重新編譯、跑完整測試、在沒裝任何 AI 的乾淨電腦上跑偵測，並把所有造型、選單、設定頁畫成截圖；測試報告、截圖和編譯好的 `SentriPet.exe` 都可以在該次執行的 Artifacts 下載。
+每次推送，[CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) 會在三個系統上編譯、跑全部測試、畫出所有造型的截圖，
+並打包各系統的安裝檔（在該次執行的 Artifacts）。推送 `v*` 標籤時，[Release](.github/workflows/release.yml) 流程會在各系統打包、
+讓每個安裝檔先跑一次自我測試，全部通過才發佈。開發紀錄見 [docs/DEVLOG.md](docs/DEVLOG.md)。
 
 ## 檔案位置
 
-- 程式：`%LOCALAPPDATA%\Programs\SentriPet\`
-- 設定與記錄檔：`%APPDATA%\SentriPet\`（`settings.json`、`logs\app.log`）
-- 外掛：`%APPDATA%\SentriPet\providers\`
-- 開機啟動：`HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 裡的 `SentriPet`
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| 程式 | `%LOCALAPPDATA%\Programs\SentriPet\` | `/Applications/SentriPet.app` | `~/.local/share/sentripet/` |
+| 設定與記錄檔 | `%APPDATA%\SentriPet\` | `~/Library/Application Support/SentriPet/` | `~/.config/SentriPet/` |
+| 外掛 | `%APPDATA%\SentriPet\providers\` | `~/Library/Application Support/SentriPet/providers/` | `~/.config/SentriPet/providers/` |
+| 開機啟動 | 登錄檔 `HKCU\…\Run` 的 `SentriPet` | `~/Library/LaunchAgents/com.sentripet.app.plist` | `~/.config/autostart/sentripet.desktop` |
 
-1.0 版叫「AI 用量桌寵」，資料在 `%APPDATA%\AIUsagePet`；升級到 SentriPet 時會自動把設定搬過來。
+設定檔是 `settings.json`，記錄檔是 `logs/app.log`。1.0 版叫「AI 用量桌寵」，資料在 `%APPDATA%\AIUsagePet`；升級時會自動把設定搬過來。
 
 ## 授權
 

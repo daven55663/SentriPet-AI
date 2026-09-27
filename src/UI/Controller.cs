@@ -379,6 +379,7 @@ namespace SentriPet
                 if (detected && Service.Providers.All(p => !IsInstalled(p.Id) || Service.SnapshotFor(p.Id) != null)) break;
             }
             views = Service.BuildViews(Settings, false);
+            if (Environment.GetCommandLineArgs().Contains("--mock")) views = MockData.A();   // sample data (screenshots for the README)
             window = new PetWindow(this, Settings);
             window.SetTheme(ThemeCatalog.Get(Settings.Theme).Create());
 

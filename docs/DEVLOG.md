@@ -67,7 +67,7 @@ xplat/                新的跨平台版（.NET 10）
 - [x] **第 5 階段：各系統整合**
   開機啟動（Windows 登錄檔／macOS LaunchAgent／Linux `~/.config/autostart`）、
   通知、只允許一個執行中的程式、滑鼠穿透、全螢幕時躲起來。
-- [ ] **第 6 階段：打包發佈**（打包完成，每次推送都由 CI 產生；上傳到 GitHub Releases 等使用者同意）
+- [x] **第 6 階段：打包發佈**（[v1.4.0](https://github.com/daven55663/SentriPet-AI/releases/tag/v1.4.0)）
   Windows zip、macOS `.app`、Linux tar.gz／AppImage，放上 GitHub Releases（發佈前先跟使用者確認）。
 - [ ] **第 7 階段：切換**
   新版在 Windows 上功能追平後改成預設，WPF 版退役。
@@ -155,6 +155,9 @@ xplat/                新的跨平台版（.NET 10）
   Windows 上實測降到 **108 MB**、CPU 也少一半（0.56% → 0.26%）。GC 設定（非並行、ConserveMemory）沒有幫助。
 - 2026-09-27：Linux 上桌寵的眼睛改用 X11 的全域游標位置（整個螢幕都跟著看）；macOS 仍只在滑鼠經過時跟著看
   （座標換算要在實機確認）。版本升為 **1.4.0**。
+- 2026-09-27：**發佈 v1.4.0**（使用者同意）。新增 Release 流程：推送 `v*` 標籤 → 先建草稿 → 各系統打包並讓安裝檔跑自我測試
+  → 全部通過才公開。這次 5 個檔案（WPF、win-x64、osx-arm64、osx-x64、linux-x64）全部通過。
+  README 改版：安裝手冊（各系統步驟、第一次開啟、更新與移除）、使用方式、常見問題，並附上用範例資料畫的截圖（`docs/images`）。
 - 目前還沒做的：
   - 實機試用：拖曳、系統匣、通知、開機啟動、滑鼠穿透在真的 Mac／Linux 桌面上的表現（開發機只有 Windows，靠 CI 無頭測試）。
   - macOS 的全域游標（眼睛只在滑鼠經過時跟著看）；macOS／Linux 的「全螢幕時躲起來」。
