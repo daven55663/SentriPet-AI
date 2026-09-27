@@ -120,7 +120,8 @@ jobs:
       - name: Uninstall
         shell: pwsh
         run: |
-          # by the manifest: --id would query the sources (the msstore one wants its terms accepted first)
+          # every uninstall looks at all sources, and the msstore one wants its terms accepted first: drop it on this throwaway runner
+          winget source remove msstore
           winget uninstall --manifest packaging/winget --disable-interactivity
           if ($LASTEXITCODE) { exit 1 }
           if (Test-Path "$env:LOCALAPPDATA\Microsoft\WinGet\Links\sentripet.exe") { Write-Error "the command alias is still there"; exit 1 }
