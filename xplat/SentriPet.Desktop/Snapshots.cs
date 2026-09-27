@@ -136,6 +136,22 @@ namespace SentriPet
                     File.WriteAllText(Path.Combine(outDir, "settings_error.txt"), ex.ToString());
                 }
             }
+            // the right-click menu and its looks submenu
+            if (only == null)
+            {
+                try
+                {
+                    var ctl = DesktopController.ForSnapshot(new AppSettings { Theme = "pet" }, MockData.A());
+                    RenderMenu(ctl.BuildMenuItems(), Path.Combine(outDir, "menu.png"), scale);
+                    var looks = ctl.BuildMenuItems().OfType<MenuItem>().First(m => Equals(m.Header, L.T("換造型")));
+                    RenderMenu(((IEnumerable<object>)looks.ItemsSource).ToList(), Path.Combine(outDir, "menu_themes.png"), scale);
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "menu_error.txt"), ex.ToString());
+                }
+            }
             // the floating speech bubble (themes without speech of their own)
             if (only == null)
             {
@@ -156,6 +172,23 @@ namespace SentriPet
                 }
             }
             return failures;
+        }
+
+        /// <summary>A context menu drawn as it looks when open (inside a headless window, so it gets its theme).</summary>
+        static void RenderMenu(List<object> items, string file, double scale)
+        {
+            var menu = new ContextMenu { ItemsSource = items };
+            var win = new Window { Content = menu, SizeToContent = SizeToContent.WidthAndHeight, Background = Brushes.Transparent, FontFamily = G.Ui };
+            RenderOptions.SetTextRenderingMode(win, TextRenderingMode.Antialias);
+            win.Show();
+            for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
+            var size = menu.Bounds.Size;
+            using (var rtb = new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width * scale), (int)Math.Ceiling(size.Height * scale)), new Vector(96 * scale, 96 * scale)))
+            {
+                rtb.Render(menu);
+                rtb.Save(file);
+            }
+            win.Close();
         }
 
         static string Arg(string[] args, string name)

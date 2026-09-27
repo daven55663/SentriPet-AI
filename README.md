@@ -39,8 +39,8 @@ AI-Powered Real-Time Monitoring Desktop Companion
 **右鍵選單與設定頁**（雙擊桌寵開啟設定）
 
 <p align="center">
-  <img src="docs/images/menu.png" alt="右鍵選單" width="300">
-  <img src="docs/images/settings.png" alt="設定頁" width="420">
+  <img src="docs/images/menu.png" alt="右鍵選單與換造型" width="470">
+  <img src="docs/images/settings.png" alt="設定頁" width="350">
 </p>
 
 **多國語言**（右鍵選單 → 語言 · Language）
@@ -130,7 +130,7 @@ SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一�
 | 拖曳 | 移動（靠近螢幕邊緣會吸附），位置會記住 |
 | 點一下 | 桌寵會回話 |
 | 滑鼠停在上面 | 顯示詳細用量、重置時間、資料來源 |
-| 右鍵 | 選單：換造型、今天心情、語言、大小、透明度、移到螢幕、滑鼠穿透…… |
+| 右鍵 | 選單：換造型（每種造型旁邊標著心情，也可以交給命運隨機換）、語言、大小、透明度、移到螢幕、滑鼠穿透…… |
 | 雙擊 | 開啟設定 |
 | 系統匣／選單列圖示 | 左鍵顯示／隱藏，右鍵選單（滑鼠穿透時從這裡關掉）。圖示裡的果凍高度 = 最低的剩餘額度，AI 工作中會多一個藍點 |
 

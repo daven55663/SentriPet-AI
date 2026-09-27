@@ -277,21 +277,67 @@ namespace SentriPet
 
         public void ShowMenu(Control target)
         {
-            var menu = new ContextMenu();
+            var menu = new ContextMenu { ItemsSource = BuildMenuItems() };
+            menu.Opened += (s, e) => menuOpen = true;
+            menu.Closed += (s, e) => menuOpen = false;
+            menu.Open(target);
+        }
+
+        /// <summary>A controller for the off-screen snapshots and the self-test (no window, tray or service).</summary>
+        internal static DesktopController ForSnapshot(AppSettings settings, List<ProviderView> sample)
+        {
+            var c = new DesktopController(null, null);
+            c.Settings = settings;
+            c.views = sample;
+            return c;
+        }
+
+        /// <summary>A theme in the menu: its name, and its mood in grey on the right.</summary>
+        static Control ThemeHeader(ThemeInfo t)
+        {
+            var g = new Grid { MinWidth = 190 };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            g.Children.Add(new TextBlock { Text = t.Name });
+            var mood = new TextBlock { Text = t.Mood, Opacity = 0.55, Margin = new Thickness(24, 0, 0, 0) };
+            Grid.SetColumn(mood, 1);
+            g.Children.Add(mood);
+            return g;
+        }
+
+        /// <summary>The widget's right-click menu.</summary>
+        internal List<object> BuildMenuItems()
+        {
             var items = new List<object>();
-            string sum = views.Count == 0 ? L.T("正在偵測 AI…") : string.Join("  ·  ", views.Select(v => v.Summary));
-            items.Add(new MenuItem { Header = sum, IsEnabled = false });
+            // what each AI has left, one line each (one long line got cut off)
+            var summary = new StackPanel();
+            if (views.Count == 0) summary.Children.Add(new TextBlock { Text = L.T("正在偵測 AI…") });
+            foreach (var v in views) summary.Children.Add(new TextBlock { Text = v.Summary });
+            items.Add(new MenuItem { Header = summary, IsEnabled = false });
             items.Add(new Separator());
+            // one menu for the looks: each theme with its mood (the WPF version had a second, "mood" menu with the same themes)
             var themes = new MenuItem { Header = L.T("換造型") };
             var themeItems = new List<object>();
             foreach (var t in ThemeCatalog.All)
             {
                 var info = t;
-                var mi = Toggle(t.Name, Settings.Theme == t.Id, () => ChangeTheme(info.Id));
+                var mi = Toggle(info.Name, Settings.Theme == t.Id, () =>
+                {
+                    ChangeTheme(info.Id);
+                    window.Say(null, L.F("收到！今天是「{0}」模式 ✦", info.Mood));
+                });
+                mi.Header = ThemeHeader(info);
                 mi.ToggleType = MenuItemToggleType.Radio;
                 themeItems.Add(mi);
             }
             themeItems.Add(new Separator());
+            themeItems.Add(Item(L.T("交給命運吧（隨機）"), () =>
+            {
+                var choices = ThemeCatalog.All.Where(x => x.Id != Settings.Theme).ToList();
+                var pick = choices[rng.Next(choices.Count)];
+                ChangeTheme(pick.Id);
+                window.Say(null, L.F("命運選擇了「{0}」！", pick.Name));
+            }));
             themeItems.Add(Toggle(L.T("每天隨機換一個"), Settings.DailyRandomTheme, () =>
             {
                 Settings.DailyRandomTheme = !Settings.DailyRandomTheme;
@@ -301,24 +347,6 @@ namespace SentriPet
             }));
             themes.ItemsSource = themeItems;
             items.Add(themes);
-
-            var mood = new MenuItem { Header = L.T("今天心情如何？") };
-            var moodItems = new List<object>();
-            foreach (var t in ThemeCatalog.All)
-            {
-                var info = t;
-                moodItems.Add(Item(t.Mood, () => { ChangeTheme(info.Id); window.Say(null, L.F("收到！今天是「{0}」模式 ✦", info.Mood)); }));
-            }
-            moodItems.Add(new Separator());
-            moodItems.Add(Item(L.T("交給命運吧（隨機）"), () =>
-            {
-                var choices = ThemeCatalog.All.Where(x => x.Id != Settings.Theme).ToList();
-                var pick = choices[rng.Next(choices.Count)];
-                ChangeTheme(pick.Id);
-                window.Say(null, L.F("命運選擇了「{0}」！", pick.Name));
-            }));
-            mood.ItemsSource = moodItems;
-            items.Add(mood);
             items.Add(Item(L.T("立即更新"), () => { Service.RefreshNow(null); if (views.Count > 0) window.Say(views[0].Id, L.T("更新中…")); }));
 
             var size = new MenuItem { Header = L.T("大小") };
@@ -341,7 +369,7 @@ namespace SentriPet
             opacity.ItemsSource = levels;
             items.Add(opacity);
 
-            var screens = window.Screens.All.OrderBy(s => s.Bounds.X).ThenBy(s => s.Bounds.Y).ToList();
+            var screens = window != null ? window.Screens.All.OrderBy(s => s.Bounds.X).ThenBy(s => s.Bounds.Y).ToList() : new List<Screen>();
             if (screens.Count > 1)
             {
                 var move = new MenuItem { Header = L.T("移到螢幕") };
@@ -378,10 +406,7 @@ namespace SentriPet
             items.Add(Toggle(L.T("開機自動啟動"), Settings.AutoStart, () => { Settings.AutoStart = !Settings.AutoStart; Integration.SetAutostart(Settings.AutoStart); Settings.Save(); }));
             items.Add(Item(L.T("先藏起來（點系統匣叫回）"), ToggleWidget));
             items.Add(Item(L.T("結束"), Quit));
-            menu.ItemsSource = items;
-            menu.Opened += (s, e) => menuOpen = true;
-            menu.Closed += (s, e) => menuOpen = false;
-            menu.Open(target);
+            return items;
         }
 
         static MenuItem Item(string header, Action click)
@@ -390,7 +415,7 @@ namespace SentriPet
             mi.Click += (s, e) =>
             {
                 try { click(); }
-                catch (Exception ex) { Log.Error("menu " + header, ex); }
+                catch (Exception ex) { Log.Error("menu " + header, ex); }   // (the text given here, also when the header is replaced by a control)
             };
             return mi;
         }

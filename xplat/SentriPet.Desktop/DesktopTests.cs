@@ -314,6 +314,22 @@ namespace SentriPet
                 t.Check("浮動泡泡量得出大小、不超過最大寬度", size.Width > 60 && size.Width < 300 && size.Height > 30, size.ToString());
                 t.Check("泡泡在秒數到了之前不會消失", bubble.Until > DateTime.UtcNow.AddSeconds(3));
             });
+            Progress = "menu";
+            t.Run("menu", () =>
+            {
+                var ctl = DesktopController.ForSnapshot(new AppSettings { Theme = "glass" }, MockData.A());
+                var items = ctl.BuildMenuItems();
+                var subs = items.OfType<MenuItem>().Where(m => m.ItemsSource != null).ToList();
+                t.Equal("右鍵選單：只有一個換造型的子選單", 1, subs.Count(m => Equals(m.Header, L.T("換造型"))));
+                t.Check("右鍵選單：沒有重複的「今天心情如何？」", !items.OfType<MenuItem>().Any(m => Equals(m.Header, "今天心情如何？")));
+                var looks = ((IEnumerable<object>)subs.First(m => Equals(m.Header, L.T("換造型"))).ItemsSource).ToList();
+                var radios = looks.OfType<MenuItem>().Where(m => m.ToggleType == MenuItemToggleType.Radio).ToList();
+                t.Equal("換造型：8 種造型", 8, radios.Count);
+                t.Check("換造型：每一項都標出心情", radios.All(m => m.Header is Grid && ((Grid)m.Header).Children.OfType<TextBlock>().Count() == 2));
+                t.Equal("換造型：目前的造型打勾", 1, radios.Count(m => m.IsChecked));
+                t.Check("換造型：隨機與每天隨機換都在同一個選單", looks.OfType<MenuItem>().Any(m => Equals(m.Header, L.T("交給命運吧（隨機）"))) &&
+                                                               looks.OfType<MenuItem>().Any(m => Equals(m.Header, L.T("每天隨機換一個"))));
+            });
             Progress = "settings page";
             t.Run("settings", () =>
             {
