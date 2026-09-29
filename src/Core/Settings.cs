@@ -19,6 +19,9 @@ namespace SentriPet
         public bool LowPower;
         public bool TrayNumber;               // the tray icon shows the lowest remaining % (#21)
         public bool TrayOnly;                 // no pet on the desktop, only the tray icon (#21)
+        public bool ExportUsage;              // keep usage.json in the settings folder up to date (#22, see UsageExport)
+        public bool UsageServer;              // the local web page for OBS / scripts on 127.0.0.1 (#22)
+        public int UsagePort = SentriPet.UsageServer.DefaultPort;
         public bool HideOnFullscreen = true;  // step aside for full-screen videos / games
         public bool ClaudeEstimate = true;    // fill the gaps between desktop samples from Claude Code transcripts
         public bool Chatty = true;            // idle speech bubbles
@@ -74,6 +77,9 @@ namespace SentriPet
                 s.LowPower = Json.Bool(Json.Get(o, "lowPower")) ?? false;
                 s.TrayNumber = Json.Bool(Json.Get(o, "trayNumber")) ?? false;
                 s.TrayOnly = Json.Bool(Json.Get(o, "trayOnly")) ?? false;
+                s.ExportUsage = Json.Bool(Json.Get(o, "exportUsage")) ?? false;
+                s.UsageServer = Json.Bool(Json.Get(o, "usageServer")) ?? false;
+                s.UsagePort = (int)Clamp(Json.Num(Json.Get(o, "usagePort")) ?? SentriPet.UsageServer.DefaultPort, 1024, 65535);
                 s.HideOnFullscreen = Json.Bool(Json.Get(o, "hideOnFullscreen")) ?? true;
                 s.ClaudeEstimate = Json.Bool(Json.Get(o, "claudeEstimate")) ?? true;
                 s.Chatty = Json.Bool(Json.Get(o, "chatty")) ?? true;
@@ -133,6 +139,9 @@ namespace SentriPet
                 o["lowPower"] = LowPower;
                 o["trayNumber"] = TrayNumber;
                 o["trayOnly"] = TrayOnly;
+                o["exportUsage"] = ExportUsage;
+                o["usageServer"] = UsageServer;
+                o["usagePort"] = UsagePort;
                 o["hideOnFullscreen"] = HideOnFullscreen;
                 o["claudeEstimate"] = ClaudeEstimate;
                 o["chatty"] = Chatty;

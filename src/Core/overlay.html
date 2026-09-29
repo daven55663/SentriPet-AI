@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SentriPet overlay</title>
+<!--
+  SentriPet (#22): usage bars / the pet for OBS's browser source, served by the widget on http://127.0.0.1:<port>/
+  Options (add to the address):
+    ?view=bars | pet | both     what to show (default bars)
+    &ids=claude,codex           only these AIs (the "id" in usage.json)
+    &layout=column | row        AIs under each other or side by side
+    &compact=1                  one bar per AI (the one that runs out first)
+    &scale=1.5                  bigger or smaller
+    &panel=0                    no dark panel behind the text
+    &text=dark                  dark text (for a light background)
+    &fps=4                      pictures of the pet per second (1-10)
+-->
+<style>
+  :root { --fg: #F8FAFC; --sub: #CBD5E1; --panel: rgba(15, 23, 42, 0.62); --track: rgba(148, 163, 184, 0.28); --shadow: 0 1px 2px rgba(0,0,0,.75); }
+  :root.dark { --fg: #0F172A; --sub: #334155; --panel: rgba(255, 255, 255, 0.72); --track: rgba(15, 23, 42, 0.14); --shadow: none; }
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body { font: 600 15px/1.25 system-ui, "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Hiragino Sans", "Noto Sans CJK TC", sans-serif; color: var(--fg); text-shadow: var(--shadow); }
+  #root { display: inline-flex; flex-direction: column; gap: 10px; padding: 8px; transform-origin: 0 0; }
+  #list { display: flex; flex-direction: column; gap: 8px; }
+  .row #list { flex-direction: row; flex-wrap: wrap; }
+  .p { min-width: 290px; padding: 10px 14px 11px; border-radius: 14px; box-sizing: border-box; }
+  .panel .p { background: var(--panel); }
+  .h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 16px; font-weight: 700; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px rgba(255,255,255,.18); }
+  .active .dot { animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(1.45); opacity: .55; } }
+  .plan { font-size: 12px; font-weight: 600; color: var(--sub); }
+  .m { display: grid; grid-template-columns: 34px 1fr 48px auto; align-items: center; gap: 8px; margin-top: 4px; font-size: 13px; }
+  .l { color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar { height: 9px; border-radius: 5px; background: var(--track); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 5px; transition: width .8s ease; }
+  .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .r { color: var(--sub); font-size: 12px; min-width: 58px; font-variant-numeric: tabular-nums; }
+  .stale { opacity: .6; }
+  #pet { display: none; image-rendering: auto; }
+  .pet #pet { display: block; }
+  .pet #list { display: none; }
+  .both #pet { display: block; }
+  #msg { display: none; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  .panel #msg { background: var(--panel); }
+  .down #msg { display: block; }
+</style>
+</head>
+<body>
+<div id="root"><img id="pet" alt=""><div id="list"></div><div id="msg">SentriPet …</div></div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var view = q.get('view') || 'bars';
+  var ids = (q.get('ids') || '').toLowerCase().split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  var compact = q.get('compact') === '1';
+  var scale = parseFloat(q.get('scale')) || 1;
+  var fps = Math.min(10, Math.max(1, parseFloat(q.get('fps')) || 4));
+  var root = document.getElementById('root'), list = document.getElementById('list'), pet = document.getElementById('pet');
+  root.className = [view, q.get('layout') === 'row' ? 'row' : '', q.get('panel') === '0' ? '' : 'panel'].join(' ');
+  if (q.get('text') === 'dark') document.documentElement.className = 'dark';
+  if (scale !== 1) root.style.transform = 'scale(' + scale + ')';
+  var data = null;
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function level(r) { return r >= 50 ? '#4ADE80' : r >= 20 ? '#FBBF24' : '#F87171'; }
+  function left(m) {
+    if (!m.resetsAt) return '';
+    var s = (Date.parse(m.resetsAt) - Date.now()) / 1000;
+    if (s < 0) s = 0;
+    var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), min = Math.floor(s % 3600 / 60);
+    return '↻ ' + (m.resetEstimated ? '~' : '') + (d ? d + 'd ' + h + 'h' : h ? h + 'h ' + min + 'm' : min + 'm');
+  }
+  function meterRow(m) {
+    var row = el('div', 'm');
+    row.appendChild(el('span', 'l', m.shortLabel || m.label || ''));
+    var bar = el('div', 'bar'), fill = el('i');
+    if (m.unlimited) { fill.style.width = '100%'; fill.style.background = '#93C5FD'; }
+    else { fill.style.width = Math.max(0, Math.min(100, m.remaining)) + '%'; fill.style.background = level(m.remaining); }
+    bar.appendChild(fill);
+    row.appendChild(bar);
+    row.appendChild(el('span', 'v', m.unlimited ? '∞' : (m.estimated ? '~' : '') + Math.round(m.remaining) + '%'));
+    row.appendChild(el('span', 'r', m.unlimited ? '' : left(m)));
+    return row;
+  }
+  function draw() {
+    if (!data) return;
+    list.textContent = '';
+    data.providers.forEach(function (p) {
+      if (ids.length && ids.indexOf(p.id.toLowerCase()) < 0) return;
+      var box = el('div', 'p' + (p.active ? ' active' : '') + (p.stale ? ' stale' : ''));
+      var h = el('div', 'h'), dot = el('span', 'dot');
+      dot.style.background = p.color;
+      h.appendChild(dot);
+      h.appendChild(el('span', '', p.name));
+      if (p.plan) h.appendChild(el('span', 'plan', p.plan));
+      box.appendChild(h);
+      var meters = p.meters.filter(function (m) { return m.unlimited || m.remaining != null; });
+      if (compact && meters.length > 1) {
+        meters = meters.slice().sort(function (a, b) { return (a.unlimited ? 999 : a.remaining) - (b.unlimited ? 999 : b.remaining); }).slice(0, 1);
+      }
+      if (!p.hasData || meters.length === 0) {
+        var none = el('div', 'm');
+        none.appendChild(el('span', 'l', '?'));
+        box.appendChild(none);
+      }
+      meters.forEach(function (m) { box.appendChild(meterRow(m)); });
+      list.appendChild(box);
+    });
+  }
+  function poll() {
+    fetch('/usage.json', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (j) { data = j; root.classList.remove('down'); draw(); })
+      .catch(function () { root.classList.add('down'); })
+      .then(function () { setTimeout(poll, 5000); });
+  }
+  var petUrl = null;
+  function petFrame() {
+    fetch('/pet.png', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.blob(); })
+      .then(function (b) {
+        var u = URL.createObjectURL(b);
+        pet.onload = function () { if (petUrl) URL.revokeObjectURL(petUrl); petUrl = u; };
+        pet.src = u;
+        setTimeout(petFrame, 1000 / fps);
+      })
+      .catch(function () { setTimeout(petFrame, 2000); });
+  }
+  if (view !== 'pet') { poll(); setInterval(draw, 1000); }
+  if (view === 'pet' || view === 'both') petFrame();
+})();
+</script>
+</body>
+</html>

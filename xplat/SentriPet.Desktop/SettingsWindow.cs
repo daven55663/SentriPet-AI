@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using Avalonia;
 using Avalonia.Controls;
-
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -27,6 +27,10 @@ namespace SentriPet
         void RefreshViews();
         /// <summary>The usage report window (#18).</summary>
         void OpenReportWindow();
+        /// <summary>usage.json and the local web page (#22): apply the switches.</summary>
+        void ApplyExportSettings();
+        /// <summary>The local web page's address while it runs, null otherwise.</summary>
+        string UsageServerUrl { get; }
     }
 
     /// <summary>
@@ -81,6 +85,7 @@ namespace SentriPet
             BuildProviders(root);
             BuildAlerts(root);
             BuildReport(root);
+            BuildExport(root);
             BuildGeneral(root);
             Page = root;
             Content = scroller = new ScrollViewer { Content = root, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
@@ -554,6 +559,50 @@ namespace SentriPet
                 Toggle(S.WeeklyReport, v => { S.WeeklyReport = v; SaveSoon(); }));
             Row(body, L.T("用量報告"), L.T("每天用了多少 token、專案排行、模型，最近 7 或 30 天（右鍵選單 → 額度利用率 → 查看完整報告 也能打開）"),
                 Btn(L.T("打開用量報告"), ctl.OpenReportWindow));
+        }
+
+        /// <summary>The format of usage.json and the OBS page's options (docs/usage-json.md, in Chinese for Chinese).</summary>
+        public static string UsageJsonDocs
+        {
+            get { return "https://github.com/daven55663/SentriPet-AI/blob/main/docs/usage-json" + (L.Current.StartsWith("zh") ? ".zh-TW" : "") + ".md"; }
+        }
+        StackPanel serverInfo;
+
+        /// <summary>The numbers for other programs (#22): usage.json, and the local web page for OBS.</summary>
+        void BuildExport(StackPanel root)
+        {
+            var body = Section(root, L.T("給其他程式用"), L.T("把用量接到自己的腳本、Stream Deck 或直播畫面；只有這台電腦讀得到"));
+            Row(body, L.T("輸出 usage.json"), L.T("在設定資料夾持續更新 usage.json：每個 AI 的剩餘 %、重置時間、是否正在工作"),
+                Toggle(S.ExportUsage, v => { S.ExportUsage = v; ctl.ApplyExportSettings(); SaveSoon(); }));
+            Row(body, L.T("直播畫面（OBS）"), L.T("在 OBS 加入「瀏覽器來源」並貼上下面的網址，就會出現透明背景的用量條；網址後面加上 ?view=pet 會改成顯示桌寵"),
+                Toggle(S.UsageServer, v => { S.UsageServer = v; ctl.ApplyExportSettings(); SaveSoon(); ShowServer(); }));
+            serverInfo = new StackPanel { Margin = new Thickness(0, -2, 0, 6) };
+            body.Children.Add(serverInfo);
+            ShowServer();
+            body.Children.Add(new Border { Height = 1, Background = G.B(LineC) });
+            var buttons = new WrapPanel { Margin = new Thickness(0, 12, 0, 4) };
+            buttons.Children.Add(Btn(L.T("格式說明與範例"), () => Integration.OpenPath(UsageJsonDocs)));
+            body.Children.Add(buttons);
+        }
+
+        /// <summary>The web page's address with copy / open buttons, or why it does not run.</summary>
+        void ShowServer()
+        {
+            serverInfo.Children.Clear();
+            serverInfo.IsVisible = S.UsageServer;
+            if (!S.UsageServer) return;
+            string url = ctl.UsageServerUrl;
+            if (url == null)
+            {
+                serverInfo.Children.Add(Txt(L.F("連接埠 {0} 被別的程式用了：請把設定資料夾裡 settings.json 的 usagePort 改成別的數字，再重新打開這個開關", S.UsagePort),
+                    12, Palette.Hex("#FCA5A5"), FontWeight.Normal));
+                return;
+            }
+            var line = new WrapPanel();
+            line.Children.Add(new TextBox { Text = url, IsReadOnly = true, Width = 220, Margin = new Thickness(0, 0, 8, 8), VerticalAlignment = VerticalAlignment.Top });
+            line.Children.Add(Btn(L.T("複製網址"), () => { var c = Clipboard; if (c != null) c.SetTextAsync(url); }));
+            line.Children.Add(Btn(L.T("在瀏覽器打開"), () => Integration.OpenPath(url)));
+            serverInfo.Children.Add(line);
         }
 
         /// <summary>Quiet hours (#17): on/off, from–to and the weekdays they apply to.</summary>

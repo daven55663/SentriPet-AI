@@ -11,6 +11,8 @@
     <EmbeddedResource Include="..\..\src\Lang\*.json" LinkBase="Lang" LogicalName="SentriPet.Lang.%(Filename).json" />
     <!-- API prices for the usage report (#19), read as the resource SentriPet.prices.json -->
     <EmbeddedResource Include="..\..\src\Core\prices.json" Link="Core\prices.json" LogicalName="SentriPet.prices.json" />
+    <!-- the page for OBS's browser source (#22), served by UsageServer -->
+    <EmbeddedResource Include="..\..\src\Core\overlay.html" Link="Core\overlay.html" LogicalName="SentriPet.overlay.html" />
   </ItemGroup>
 
   <ItemGroup>

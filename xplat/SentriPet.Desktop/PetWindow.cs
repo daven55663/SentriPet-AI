@@ -257,6 +257,33 @@ namespace SentriPet
             return smooth ? SmoothMs : IdleMs;
         }
 
+        /// <summary>
+        /// The widget as it looks right now, as a PNG, for the OBS page (#22). While the widget is hidden (only in the
+        /// tray, full screen) nothing animates it, so each picture moves the animation on itself. UI thread only.
+        /// </summary>
+        public byte[] Picture()
+        {
+            if (theme == null) return null;
+            if (!IsVisible)
+            {
+                var now = DateTime.UtcNow;
+                try { theme.Tick(Math.Max(0, Math.Min(0.25, (now - lastFrame).TotalSeconds))); }
+                catch (Exception ex) { Log.Error("theme tick", ex); }
+                lastFrame = now;
+                zoom.Measure(Size.Infinity);
+                zoom.Arrange(new Rect(zoom.DesiredSize));
+            }
+            var size = zoom.Bounds.Size;
+            if (size.Width < 1 || size.Height < 1) return null;
+            using (var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height)), new Vector(96, 96)))
+            using (var ms = new System.IO.MemoryStream())
+            {
+                rtb.Render(zoom);
+                rtb.Save(ms);
+                return ms.ToArray();
+            }
+        }
+
         void AdjustFrameRate(DateTime now)
         {
             int ms = FrameIntervalMs(now);

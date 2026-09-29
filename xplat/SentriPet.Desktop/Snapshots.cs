@@ -45,6 +45,8 @@ namespace SentriPet
             public void ChangeLanguage(string code) { }
             public void RefreshViews() { }
             public void OpenReportWindow() { }
+            public void ApplyExportSettings() { }
+            public string UsageServerUrl { get { return "http://127.0.0.1:" + settings.UsagePort + "/"; } }
             public void MakeShareCard() { }
         }
 

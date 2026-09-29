@@ -30,6 +30,11 @@ namespace SentriPet
         readonly AgentHooks.Reader codexEvents = new AgentHooks.Reader(AgentHooks.CodexEventsFile);
         readonly Random rng = new Random();
         List<ProviderView> views = new List<ProviderView>();
+        readonly UsageExporter exporter = new UsageExporter(UsageExport.File);
+        UsageServer server;
+        readonly object petGate = new object();
+        byte[] petPicture;
+        DateTime petPictureAt;
         PetWindow window;
         TrayIcon tray;
         DispatcherTimer second;
@@ -114,6 +119,7 @@ namespace SentriPet
             if (sd >= 0 && sd + 1 < args.Length) window.ForceDetail(args[sd + 1], 45);
             CreateTray();
             ApplyTrayMode();
+            ApplyExportSettings();
             if (Array.IndexOf(args, "--autostart") >= 0)
             {
                 // give the desktop a moment to settle after sign-in
@@ -139,6 +145,18 @@ namespace SentriPet
                 var done = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
                 done.Tick += (s, e) => { done.Stop(); SmokeReport(report); };
                 done.Start();
+                // the local web page for OBS (#22) on a free port, asked like a browser would: the JSON and the widget's picture
+                var web = new DispatcherTimer { Interval = TimeSpan.FromSeconds(9) };
+                web.Tick += (s, e) =>
+                {
+                    web.Stop();
+                    if (server == null) server = new UsageServer(() => exporter.Latest, PetPng);
+                    if (!server.Running) server.Start(0);
+                    Export(DateTime.UtcNow);
+                    int port = server.Port;
+                    System.Threading.Tasks.Task.Run(() => { smokeJson = Fetch(port, "/usage.json"); smokePng = Fetch(port, "/pet.png"); });
+                };
+                web.Start();
             }
             // --perf-test FILE [--perf-seconds N]: CPU per theme and frame rate (#8)
             int pt = Array.IndexOf(args, "--perf-test");
@@ -181,11 +199,33 @@ namespace SentriPet
             check("animation frames drawn", window.Frames > 30, window.Frames + " frames");
             check("theme attached", window.CurrentTheme != null && window.CurrentTheme.Root != null, window.CurrentTheme != null ? window.CurrentTheme.Id : "none");
             check("tray / menu-bar icon", tray != null || !Os.Linux, tray != null ? "created" : "not available on this desktop");
+            var json = smokeJson != null && smokeJson.StartsWith("200 ") ? Json.Obj(Json.TryParse(smokeJson.Substring(smokeJson.IndexOf('{') >= 0 ? smokeJson.IndexOf('{') : 0))) : null;
+            check("OBS page: usage.json", json != null && Json.Num(Json.Get(json, "version")) == UsageExport.Version && Json.Arr(Json.Get(json, "providers")) != null,
+                  smokeJson == null ? "no answer" : System.Text.RegularExpressions.Regex.Replace(smokeJson.Length > 120 ? smokeJson.Substring(0, 120) + "…" : smokeJson, @"\s+", " "));
+            check("OBS page: picture of the widget", smokePng != null && smokePng.StartsWith("200 image/png "), smokePng ?? "no answer");
             check("no errors logged", Log.Errors == 0, Log.Errors + " error(s), see " + System.IO.Path.Combine(AppPaths.LogDir, "app.log"));
             lines.Insert(0, AppInfo.Name + " " + AppInfo.Version + " smoke test on " + Os.Name + ": " + views.Count + " AI(s), language " + L.Current);
             lines.Add(failed == 0 ? "ALL PASS" : failed + " FAILED");
             try { System.IO.File.WriteAllLines(file, lines); } catch (Exception ex) { Log.Error("smoke report", ex); }
             Quit(failed);
+        }
+
+        string smokeJson, smokePng;
+
+        /// <summary>--smoke-test: "status content-type length" (and the body of a JSON answer) of a GET on the local web page.</summary>
+        static string Fetch(int port, string path)
+        {
+            try
+            {
+                using (var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+                {
+                    var r = http.GetAsync("http://127.0.0.1:" + port + path).Result;
+                    var body = r.Content.ReadAsByteArrayAsync().Result;
+                    return (int)r.StatusCode + " " + r.Content.Headers.ContentType.MediaType + " " + body.Length +
+                           (path.EndsWith(".json") ? " " + System.Text.Encoding.UTF8.GetString(body) : "");
+                }
+            }
+            catch (Exception ex) { return "error " + (ex.InnerException ?? ex).Message; }
         }
 
         /// <summary>A second copy was started: bring the widget back.</summary>
@@ -241,6 +281,7 @@ namespace SentriPet
                 window.Lively(2.5);
             }
             UpdateTray();
+            Export(now);
             alerts.Check(Settings, views, Alert, CelebrateReset);
             if (!greeted && views.Count > 0 && Service.Providers.All(p => Service.SnapshotFor(p.Id) != null || !IsInstalled(p.Id)))
             {
@@ -706,6 +747,53 @@ namespace SentriPet
             window.UpdateVisibility();
         }
 
+        /// <summary>The local web page's address while it runs (#22), null otherwise.</summary>
+        public string UsageServerUrl { get { return server != null && server.Running ? server.Url : null; } }
+
+        /// <summary>
+        /// usage.json and the local web page for OBS and scripts (#22), after start-up or a change on the settings page.
+        /// Turning usage.json off removes the file, so no script keeps reading old numbers.
+        /// </summary>
+        public void ApplyExportSettings()
+        {
+            if (!Settings.ExportUsage) exporter.Remove();
+            if (Settings.UsageServer)
+            {
+                if (server == null) server = new UsageServer(() => exporter.Latest, PetPng);
+                if (!server.Running || server.Port != Settings.UsagePort) server.Start(Settings.UsagePort);
+            }
+            else if (server != null) server.Stop();
+            Export(DateTime.UtcNow);
+        }
+
+        void Export(DateTime now)
+        {
+            bool serving = server != null && server.Running;
+            if (!Settings.ExportUsage && !serving) return;
+            try { exporter.Update(views, now, Settings.ExportUsage); }
+            catch (Exception ex) { Log.Error("usage export", ex); }
+        }
+
+        /// <summary>The widget as a PNG for the OBS page (asked from the server's threads; shared for 90 ms between viewers).</summary>
+        byte[] PetPng()
+        {
+            lock (petGate)
+                if (petPicture != null && (DateTime.UtcNow - petPictureAt).TotalMilliseconds < 90) return petPicture;
+            var done = new System.Threading.Tasks.TaskCompletionSource<byte[]>();
+            Dispatcher.UIThread.Post(() =>
+            {
+                try { done.SetResult(window.Picture()); }
+                catch (Exception ex) { done.SetException(ex); }
+            });
+            if (!done.Task.Wait(3000)) return null;
+            lock (petGate)
+            {
+                petPicture = done.Task.Result;
+                petPictureAt = DateTime.UtcNow;
+                return petPicture;
+            }
+        }
+
         public void OpenSettings()
         {
             if (settingsWindow == null)
@@ -762,6 +850,7 @@ namespace SentriPet
         public void Quit(int exitCode)
         {
             try { Settings.Save(); } catch { }
+            try { if (server != null) server.Stop(); } catch { }
             try { if (tray != null) tray.Dispose(); } catch { }
             try { if (settingsWindow != null) settingsWindow.Close(); } catch { }
             try { Service.Dispose(); } catch { }

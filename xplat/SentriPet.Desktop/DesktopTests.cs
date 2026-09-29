@@ -483,7 +483,34 @@ namespace SentriPet
                 t.Check("設定頁：切換「會說話」會改到設定", host.Settings.Chatty != before, "Chatty=" + host.Settings.Chatty);
                 var gallery = win.GetVisualDescendants().OfType<Button>().Count(b => b.Content is StackPanel);
                 t.Equal("設定頁：造型卡片 8 張", 8, gallery);
+                // for other programs (#22): the OBS switch applies at once and shows the address, or how to fix a taken port
+                host.UsageServerUrl = "http://127.0.0.1:47291/";
+                var obsLabel = win.GetVisualDescendants().OfType<TextBlock>().First(tb => tb.Text == L.T("直播畫面（OBS）"));
+                var obs = obsLabel.FindAncestorOfType<Grid>().GetVisualDescendants().OfType<ToggleSwitch>().First();
+                int changes = host.Changed;
+                obs.IsChecked = true;
+                for (int i = 0; i < 2; i++) Dispatcher.UIThread.RunJobs();
+                t.Check("設定頁：打開直播畫面 → 馬上套用、顯示網址", host.Settings.UsageServer && host.Changed > changes &&
+                        win.GetVisualDescendants().OfType<TextBox>().Any(b => b.Text == host.UsageServerUrl));
+                host.UsageServerUrl = null;
+                obs.IsChecked = false;
+                obs.IsChecked = true;
+                for (int i = 0; i < 2; i++) Dispatcher.UIThread.RunJobs();
+                t.Check("設定頁：連接埠被占用 → 說明要改哪裡", win.GetVisualDescendants().OfType<TextBlock>().Any(tb => tb.Text != null && tb.Text.Contains("usagePort")));
                 win.Close();
+            });
+            Progress = "pet picture";
+            t.Run("pet picture", () =>
+            {
+                // the OBS page's picture of the widget (#22), also while the widget is hidden (only in the tray)
+                var settings = new AppSettings { Theme = "pet" };
+                var pw = new PetWindow(DesktopController.ForSnapshot(settings, MockData.A()), settings);
+                pw.SetTheme(ThemeCatalog.Get("pet").Create());
+                var png = pw.Picture();
+                using (var bmp = png != null ? new Bitmap(new MemoryStream(png)) : null)
+                    t.Check("OBS 的桌寵畫面：隱藏時也畫得出來", bmp != null && bmp.PixelSize.Width > 80 && bmp.PixelSize.Height > 60 && InkPixels(bmp) > 3000,
+                            bmp == null ? "null" : bmp.PixelSize + ", " + InkPixels(bmp) + " px");
+                pw.Close();
             });
         }
 
@@ -502,6 +529,8 @@ namespace SentriPet
             public void ChangeLanguage(string code) { settings.Language = code; Changed++; }
             public void RefreshViews() { Changed++; }
             public void OpenReportWindow() { Changed++; }
+            public void ApplyExportSettings() { Changed++; }
+            public string UsageServerUrl { get; set; }
         }
 
         // ------------------------------------------------------------------ languages
