@@ -19,12 +19,14 @@ Runs on **Windows, macOS and Linux**.
 
 - **See what's left at a glance** — the big number is the shortest quota (e.g. 5 hours), the bars below are the weekly ones, with a reset countdown
 - **"Use it before it resets" nudges** — besides warning you when a quota runs low, SentriPet tells you when you're about to *waste* a weekly quota
+- **Knows when Claude Code or Codex is done** — or waiting for your OK — and hops up to tell you, so you can do something else meanwhile
+- **Forecast and report** — "at this pace it runs out around 15:40", and how much of every past weekly quota you actually used
 - **Eight looks** to match your mood: jelly pets, frosted glass, pixel RPG, hacker terminal, race gauges, magic potions, neon city, sticky note
 - **Claude, Codex, Copilot, Ollama** out of the box, anything else through a small JSON plugin
 - **Private by design** — reads only the usage numbers the tools keep on your computer; never reads or sends your sign-in credentials
 - **Five languages**: English, 繁體中文, 简体中文, 日本語, 한국어 (follows your system language)
 - Drag it to any screen; starts at sign-in; hides itself while you watch videos or play in full screen
-- Light: about 110 MB of memory and well under 1% CPU
+- Light: about 110 MB of memory; animating costs about 1–4% of one CPU core
 
 ## Screenshots
 
@@ -159,8 +161,9 @@ SentriPet looks for AI tools on your computer and every one it finds becomes a p
 |---|---|
 | Looks | Live previews of the eight looks; a random look every day |
 | Appearance | Size, opacity, always on top, hide in full screen, click-through, talking, power saving |
-| AI services | What was detected for each AI and the numbers it reads; turn AIs on or off; Codex refresh rate; Claude weekly reset time, the Claude Code status line, live estimate |
-| Reminders | Quota notifications, "nudge me to use up weekly quota", warning and critical thresholds |
+| AI services | What was detected for each AI and the numbers it reads; turn AIs on or off; Codex refresh rate; Claude weekly reset time, the Claude Code status line, "tell me when an AI is done or waiting", live estimate |
+| Reminders | Quota notifications, "nudge me to use up weekly quota", quiet hours, warning and critical thresholds |
+| Quota use | The last 8 weekly/monthly windows per quota and their average; a notification with the summary at each reset |
 | General | Language, start at sign-in, open the settings / log / program folder |
 
 ### Reading the pets
@@ -187,6 +190,21 @@ the widget: the bar that's about to expire blinks and the pet's face changes; th
 Each new level shows one notification (not repeated after a restart). The pets never interrupt while an AI is working, and
 don't nudge while the 5-hour quota is used up (you couldn't use it anyway). Turn it off in the right-click menu or in *Settings → Reminders*.
 
+### "Done or waiting for you" (Claude Code, Codex)
+
+Turn on *Settings → AI services → Tell me when an AI is done or waiting* and the Claude or Codex pet hops up and tells
+you when Claude Code finishes a longer task (over 30 seconds, so ordinary chat replies stay quiet), needs your OK, or waits
+for your reply — and when Codex finishes a turn. *Also notify* adds a notification. See the FAQ for what it changes.
+
+### Forecast, report and quiet hours
+
+- **Forecast**: while a quota is being used, the hover card shows when it runs out at the pace of the last hour
+  (six hours for weekly quotas), if that is before its reset; 45 minutes before, the pet says so once.
+- **Quota-use report**: when a weekly or monthly quota resets, the pet sums up how much of it you used
+  ("used 82%, only a little wasted!"). *Settings → Quota use* shows the last 8 windows per quota and the average.
+- **Quiet hours**: *Settings → Reminders* (e.g. 22:00–08:00, chosen weekdays), or *Pause reminders for 1 hour* in the
+  right-click menu. No notifications and nothing said unprompted meanwhile; the pet still answers clicks.
+
 ### Languages
 
 English, 繁體中文, 简体中文, 日本語 and 한국어. *Auto* (the default) follows your system's display language.
@@ -211,6 +229,12 @@ first) and keeps the official numbers:
   Turning the option off restores your settings exactly.
 - The numbers update while you use Claude Code; usage from claude.ai, the phone or the desktop app shows up the next time you use Claude Code.
 - Needs a Pro or Max plan (with an API key Claude Code doesn't provide these numbers).
+
+**What does "Tell me when an AI is done or waiting" change?**
+It adds SentriPet as a hook to `~/.claude/settings.json` (`Stop`, and `Notification` for permission and idle prompts) and
+as the `notify` program in `~/.codex/config.toml`, for whichever of the two is installed. Both files are backed up first
+(`….sentripet-backup`); your own hooks stay, and a `notify` program you already had keeps running (SentriPet starts it
+with the same input). Turning the option off restores both. The hook prints nothing and always lets Claude Code carry on.
 
 **Claude's reset time is a little off**
 The Claude desktop app's records don't include reset times, so SentriPet estimates them from the history. Connect the Claude
@@ -274,12 +298,12 @@ xplat/package.sh win-x64                                           package (also
 - `--lang en` forces a language; `--dev --show-detail claude` keeps one hover card open for 45 s.
 - `--snapshot <dir>` draws every look, the hover cards, the bubble and the settings page with sample data to PNG (no display needed);
   `--demo <file.gif> --lang en` makes the demo at the top of this page.
-- `--probe <file>` writes a detection and usage report.
+- `--probe <file>` writes a detection and usage report; `--dev --perf-test <file>` measures the widget's CPU per look.
 
 | Tests | What | Checks |
 |---|---|---|
-| `xplat/SentriPet.Tests` | Core, every data source (sample files and local fake servers, never your real data), reminders, translations, the Claude Code status line | 396 |
-| `SentriPet --selftest <file>` | The eight looks, the pets' faces, hover card and placement, bubble, menu, settings page, languages, tray icon, autostart, notifications, single instance, the demo GIF | 86 |
+| `xplat/SentriPet.Tests` | Core, every data source (sample files and local fake servers, never your real data), reminders, quiet hours, forecast, report, translations, the Claude Code status line and hooks, Codex notify | 477 |
+| `SentriPet --selftest <file>` | The eight looks, the pets' faces, hover card and placement, bubble, menu, settings page, languages, tray icon, autostart, notifications, single instance, the demo GIF, scaled drawing, the hook command | 99 |
 | `SentriPet --dev --smoke-test <file>` | Runs the real app for 15 s: window shown, on screen, bottom-right on first start, animating, tray icon, no errors | 7 |
 
 On every push, [CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) builds and runs all tests on Windows,

@@ -21,6 +21,8 @@ namespace SentriPet
         readonly UseItTracker useIt = new UseItTracker();
         readonly HashSet<string> runsOutAnnounced = new HashSet<string>();
         readonly List<WindowResult> pendingSummaries = new List<WindowResult>();
+        readonly AgentHooks.Reader claudeEvents = new AgentHooks.Reader(AgentHooks.ClaudeEventsFile);
+        readonly AgentHooks.Reader codexEvents = new AgentHooks.Reader(AgentHooks.CodexEventsFile);
         readonly Random rng = new Random();
         List<ProviderView> views = new List<ProviderView>();
         PetWindow window;
@@ -54,7 +56,11 @@ namespace SentriPet
             if (Settings.DailyRandomTheme) PickDailyTheme(false);
             Integration.SetAutostart(Settings.AutoStart);
             Integration.EnsureStartMenuShortcut();
-            if (!AppPaths.Dev) ClaudeStatusLine.Repair(Settings, Environment.ProcessPath);
+            if (!AppPaths.Dev)
+            {
+                ClaudeStatusLine.Repair(Settings, Environment.ProcessPath);
+                AgentHooks.Repair(Settings, Environment.ProcessPath);
+            }
             // --connect-claude-statusline / --disconnect-claude-statusline: the settings switch, for scripts and helpers
             try
             {
@@ -218,11 +224,33 @@ namespace SentriPet
                 greetedAt = DateTime.UtcNow;
                 Greet();
             }
+            CheckAgentEvents();
             if (greeted && (DateTime.UtcNow - greetedAt).TotalSeconds > 8)
             {
                 CheckUseIt();
                 CheckRunsOut(now);
                 SayWindowSummary();
+            }
+        }
+
+        /// <summary>Claude Code / Codex finished a longer task or waits for you (#14): its pet hops and says so.</summary>
+        void CheckAgentEvents()
+        {
+            var events = claudeEvents.ReadNew();
+            events.AddRange(codexEvents.ReadNew());
+            if (!Settings.AgentHooks) return;
+            foreach (var e in events)
+            {
+                if (e.Kind == AgentEvent.Done && e.Seconds >= 0 && e.Seconds < AgentHooks.LongTurnSeconds) continue;   // a quick reply
+                if ((DateTime.UtcNow - e.At).TotalMinutes > 5) continue;   // written while the widget was busy or stopped
+                Log.Info("agent " + e.Source + " " + e.Kind + (e.Seconds >= 0 ? " after " + Math.Round(e.Seconds) + " s" : ""));
+                if (IsQuiet) continue;
+                var v = views.FirstOrDefault(x => x.Id == e.Source);
+                string name = v != null ? v.Name : (e.Source == "codex" ? "Codex" : "Claude");
+                string text = Lines.Agent(e, name);
+                if (v != null && window.CurrentTheme != null) window.CurrentTheme.Poke(v.Id);   // a little hop
+                window.Say(v != null ? v.Id : null, text);
+                if (Settings.AgentHookNotify && Settings.Notifications) Integration.Notify(AppInfo.Name, text);
             }
         }
 

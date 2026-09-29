@@ -211,24 +211,28 @@ namespace SentriPet
 
         // ------------------------------------------------------------------ turning the bridge on and off
 
-        /// <summary>How Claude Code should call us: forward slashes, "~/…" under the home folder (works in Git Bash and PowerShell).</summary>
-        internal static string CommandFor(string exe)
+        /// <summary>How Claude Code should start us: forward slashes, "~/…" under the home folder (works in Git Bash and PowerShell).</summary>
+        internal static string ExeCommand(string exe)
         {
             string p = exe.Replace('\\', '/');
             string home = AppPaths.Home.Replace('\\', '/').TrimEnd('/');
             if (p.StartsWith(home + "/", StringComparison.OrdinalIgnoreCase) && p.IndexOf(' ', home.Length) < 0)
-                return "~" + p.Substring(home.Length) + " --statusline";
-            return (p.Contains(" ") ? "\"" + p + "\"" : p) + " --statusline";
+                return "~" + p.Substring(home.Length);
+            return p.Contains(" ") ? "\"" + p + "\"" : p;
         }
+
+        internal static string CommandFor(string exe) { return ExeCommand(exe) + " --statusline"; }
 
         internal static bool IsOurs(string command)
         {
             return command != null && command.Contains("--statusline") && command.IndexOf(AppInfo.Name, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        static Dictionary<string, object> ReadClaudeSettings()
+        static Dictionary<string, object> ReadClaudeSettings() { return ReadClaudeSettings(ClaudeSettingsFile); }
+
+        /// <summary>Claude Code's settings.json (empty when there is none); an exception when it cannot be read — then it is left alone.</summary>
+        internal static Dictionary<string, object> ReadClaudeSettings(string path)
         {
-            string path = ClaudeSettingsFile;
             if (!File.Exists(path)) return new Dictionary<string, object>();
             string text = File.ReadAllText(path, Encoding.UTF8);
             if (string.IsNullOrWhiteSpace(text)) return new Dictionary<string, object>();
@@ -237,9 +241,10 @@ namespace SentriPet
             return o;
         }
 
-        static void WriteClaudeSettings(Dictionary<string, object> root)
+        static void WriteClaudeSettings(Dictionary<string, object> root) { WriteClaudeSettings(ClaudeSettingsFile, root); }
+
+        internal static void WriteClaudeSettings(string path, Dictionary<string, object> root)
         {
-            string path = ClaudeSettingsFile;
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             // keep the user's original once, before SentriPet ever touched it
             string backup = path + ".sentripet-backup";

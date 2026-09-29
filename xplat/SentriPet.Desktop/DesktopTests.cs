@@ -603,6 +603,40 @@ namespace SentriPet
                 t.Check("狀態列指令：開發模式寫到另一個檔案（不碰正式的數字）", File.Exists(devFile));
                 try { File.Delete(devFile); } catch { }
             });
+            t.Run("hook command", () =>
+            {
+                // the program as Claude Code's hook (JSON on stdin) and as Codex's notify program (JSON as the last argument):
+                // prints nothing (a Stop hook's output can stop Claude from stopping), exit code 0, the event written (#14)
+                foreach (var source in new[] { "claude", "codex" })
+                {
+                    string events = source == "claude" ? AgentHooks.ClaudeEventsFile : AgentHooks.CodexEventsFile;
+                    try { File.Delete(events); } catch { }
+                    var psi = new ProcessStartInfo(Environment.ProcessPath)
+                    {
+                        UseShellExecute = false, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
+                        CreateNoWindow = true, StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    };
+                    psi.ArgumentList.Add("--dev");
+                    psi.ArgumentList.Add("--hook");
+                    psi.ArgumentList.Add(source);
+                    if (source == "codex") psi.ArgumentList.Add("{\"type\":\"agent-turn-complete\",\"cwd\":\"/work/demo-app\"}");
+                    var sw = Stopwatch.StartNew();
+                    using (var p = Process.Start(psi))
+                    {
+                        var w = new StreamWriter(p.StandardInput.BaseStream, new System.Text.UTF8Encoding(false));
+                        if (source == "claude") w.Write("{\"hook_event_name\":\"Notification\",\"notification_type\":\"permission_prompt\",\"cwd\":\"/work/demo-app\"}");
+                        w.Close();
+                        string output = p.StandardOutput.ReadToEnd();
+                        bool exited = p.WaitForExit(20000);
+                        t.Check(source + " hook：不印任何東西、結束碼 0、夠快", exited && p.ExitCode == 0 && output.Length == 0 && sw.ElapsedMilliseconds < 5000,
+                            "exit " + (exited ? p.ExitCode.ToString() : "-") + ", " + output.Length + " chars, " + sw.ElapsedMilliseconds + " ms");
+                    }
+                    var e = File.Exists(events) ? AgentHooks.ParseLine(File.ReadAllLines(events).LastOrDefault()) : null;
+                    t.Check(source + " hook：事件寫到開發模式的檔案", e != null && e.Source == source && e.Project == "demo-app" &&
+                                                                  e.Kind == (source == "claude" ? AgentEvent.Permission : AgentEvent.Done), events);
+                    try { File.Delete(events); } catch { }
+                }
+            });
             t.Check("全螢幕偵測：Windows 與 Linux（X11）", Integration.CanDetectFullscreen == (Os.Windows || Os.Linux));
             t.Run("tray icon", () =>
             {

@@ -36,6 +36,9 @@ namespace SentriPet
         public int CodexLiveMinutes = 5;      // 0 = only local session logs
         public string ClaudeWeeklyReset = ""; // optional override, e.g. "Thu 23:00" / "週四 23:00"
         public bool ClaudeStatusBridge;       // SentriPet is Claude Code's status-line command (official usage, see ClaudeStatusLine)
+        public bool AgentHooks;               // "done / waiting for you" from Claude Code's hooks and Codex's notify (#14, see AgentHooks)
+        public bool AgentHookNotify;          // …also as a notification
+        public string CodexNotifyChain;       // the notify array the user had in Codex's config.toml (still run)
         public string ClaudeStatusLineChain;  // the user's own statusLine object (JSON), shown through SentriPet and restored when turned off
         public Dictionary<string, bool> Enabled = new Dictionary<string, bool>();
         public List<string> Order = new List<string>();
@@ -91,6 +94,9 @@ namespace SentriPet
                 s.CodexLiveMinutes = (int)Clamp(Json.Num(Json.Get(o, "codexLiveMinutes")) ?? 5, 0, 120);
                 s.ClaudeWeeklyReset = Json.Str(Json.Get(o, "claudeWeeklyReset")) ?? "";
                 s.ClaudeStatusBridge = Json.Bool(Json.Get(o, "claudeStatusBridge")) ?? false;
+                s.AgentHooks = Json.Bool(Json.Get(o, "agentHooks")) ?? false;
+                s.AgentHookNotify = Json.Bool(Json.Get(o, "agentHookNotify")) ?? false;
+                s.CodexNotifyChain = Json.Str(Json.Get(o, "codexNotifyChain"));
                 s.ClaudeStatusLineChain = Json.Str(Json.Get(o, "claudeStatusLineChain"));
                 s.FirstRunDone = Json.Bool(Json.Get(o, "firstRunDone")) ?? false;
                 s.TerminalColor = Json.Str(Json.Get(o, "terminalColor")) ?? "green";
@@ -142,6 +148,9 @@ namespace SentriPet
                 o["codexLiveMinutes"] = CodexLiveMinutes;
                 o["claudeWeeklyReset"] = ClaudeWeeklyReset;
                 o["claudeStatusBridge"] = ClaudeStatusBridge;
+                o["agentHooks"] = AgentHooks;
+                o["agentHookNotify"] = AgentHookNotify;
+                if (CodexNotifyChain != null) o["codexNotifyChain"] = CodexNotifyChain;
                 if (ClaudeStatusLineChain != null) o["claudeStatusLineChain"] = ClaudeStatusLineChain;
                 o["firstRunDone"] = FirstRunDone;
                 o["terminalColor"] = TerminalColor;

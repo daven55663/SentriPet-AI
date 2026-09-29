@@ -351,6 +351,47 @@ namespace SentriPet
             Row(body, L.T("連接 Claude Code 狀態列（官方用量）"),
                 L.T("在 ~/.claude/settings.json 加上狀態列設定：Claude Code 每次回覆都會把官方的用量與重置時間交給 SentriPet。原本的狀態列照常顯示，關掉時會還原。Linux 沒有 Claude 桌面版，要開這個才讀得到 Claude 用量"),
                 bridgeBox);
+            // "done / waiting for you" (#14)
+            var hookError = Txt("", 11, Palette.Hex("#FCA5A5"), FontWeight.Normal);
+            hookError.IsVisible = false;
+            hookError.MaxWidth = 200;
+            var hookNotify = Toggle(S.AgentHookNotify, v => { S.AgentHookNotify = v; SaveSoon(); });
+            var hookNotifyRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, 0, 0), IsVisible = S.AgentHooks };
+            hookNotifyRow.Children.Add(new TextBlock { Text = L.T("同時跳通知"), Foreground = G.B(SubC), FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+            hookNotifyRow.Children.Add(hookNotify);
+            ToggleSwitch hooks = null;
+            hooks = Toggle(S.AgentHooks && (AgentHooks.IsClaudeConnected() || AgentHooks.IsCodexConnected()), v =>
+            {
+                if (v == (S.AgentHooks && (AgentHooks.IsClaudeConnected() || AgentHooks.IsCodexConnected()))) return;   // (put back after an error)
+                try
+                {
+                    if (v)
+                    {
+                        if (!AgentHooks.HasClaude && !AgentHooks.HasCodex) throw new InvalidOperationException(L.T("這台電腦上沒有找到 Claude Code 或 Codex"));
+                        AgentHooks.Connect(S, Environment.ProcessPath, AgentHooks.HasClaude, AgentHooks.HasCodex);
+                    }
+                    else AgentHooks.Disconnect(S);
+                    hookError.IsVisible = false;
+                    hookNotifyRow.IsVisible = v;
+                    SaveSoon();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("agent hooks", ex);
+                    hookError.Text = L.F("沒辦法修改設定：{0}", ex.Message);
+                    hookError.IsVisible = true;
+                    S.AgentHooks = !v;
+                    hooks.IsChecked = !v;
+                }
+            });
+            hooks.HorizontalAlignment = HorizontalAlignment.Right;
+            var hookBox = new StackPanel();
+            hookBox.Children.Add(hooks);
+            hookBox.Children.Add(hookNotifyRow);
+            hookBox.Children.Add(hookError);
+            Row(body, L.T("AI 做完或在等你時提醒"),
+                L.T("Claude Code 做完較長的任務（超過 30 秒）、要你確認或在等你回覆時，那隻桌寵會跳起來告訴你；Codex 做完也會。會在 ~/.claude/settings.json 加上 hooks、在 ~/.codex/config.toml 設定 notify（修改前先備份，原本的設定都保留，關掉時還原）"),
+                hookBox);
             Row(body, L.T("Claude 即時推算"), L.T("Claude 桌面版約每 15 分鐘才記錄一次用量。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算這段空檔的用量，數字前面會標「≈」"),
                 Toggle(S.ClaudeEstimate, v => { S.ClaudeEstimate = v; SaveSoon(); ctl.Service.RefreshNow("claude"); }));
             RefreshProviders();

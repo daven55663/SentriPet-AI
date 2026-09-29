@@ -21,6 +21,7 @@ namespace SentriPet
             ClaudeStatusLineTests.Run(t);
             QuietTests.Run(t);
             UsageHistoryTests.Run(t);
+            AgentHookTests.Run(t);
             CodexTests.Run(t);
             ProviderTests.Run(t);
             ServiceTests.Run(t);

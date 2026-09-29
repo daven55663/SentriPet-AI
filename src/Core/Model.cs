@@ -206,6 +206,15 @@ namespace SentriPet
             return t.Month + "/" + t.Day + " " + hm;
         }
 
+        /// <summary>How long something took: 45秒 / 3分12秒 / 1時05分.</summary>
+        public static string Span(double seconds)
+        {
+            var d = TimeSpan.FromSeconds(Math.Max(0, seconds));
+            if (d.TotalHours >= 1) return L.F("{0}時{1}分", (int)d.TotalHours, d.Minutes.ToString("00"));
+            if (d.TotalMinutes >= 1) return L.F("{0}分{1}秒", d.Minutes, d.Seconds.ToString("00"));
+            return L.F("{0}秒", d.Seconds);
+        }
+
         public static string Ago(DateTime? utc)
         {
             if (!utc.HasValue) return L.T("未知");

@@ -41,6 +41,21 @@ namespace SentriPet
                 }
                 catch (Exception ex) { Log.Error("status line", ex); Console.WriteLine(AppInfo.Name); return 0; }
             }
+            // "done / waiting for you" (#14): Claude Code's hook (input on stdin) or Codex's notify program (JSON as the
+            // last argument). Fast, no window, prints nothing, always exit code 0 (never stops Claude or Codex).
+            int hook = Array.IndexOf(args, "--hook");
+            if (hook >= 0 && hook + 1 < args.Length)
+            {
+                if (Array.IndexOf(args, "--dev") >= 0) AppPaths.UseDevProfile();   // tests
+                try
+                {
+                    if (args[hook + 1] == "claude")
+                        return AgentHooks.RunClaude(new System.IO.StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), DateTime.UtcNow);
+                    if (args[hook + 1] == "codex") return AgentHooks.RunCodex(args, AppSettings.Load(), DateTime.UtcNow);
+                }
+                catch (Exception ex) { Log.Error("hook", ex); }
+                return 0;
+            }
             // --lang <code>: force a language (snapshots default to the source language, Traditional Chinese)
             int li = Array.IndexOf(args, "--lang");
             if (li >= 0 && li + 1 < args.Length) LanguageOverride = args[li + 1];

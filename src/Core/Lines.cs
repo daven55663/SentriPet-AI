@@ -89,6 +89,24 @@ namespace SentriPet
             return Say("照這個速度，{name} 的「{meter}」大約 {time} 就會用完（{reset}後才重置），可以放慢一點", v, m, "time", Fmt.When(m.RunsOutAt));
         }
 
+        /// <summary>Claude Code / Codex finished a longer task, or waits for you (#14).</summary>
+        public static string Agent(AgentEvent e, string name)
+        {
+            string[] vars = { "name", name, "project", e.Project ?? "", "time", e.Seconds >= 0 ? Fmt.Span(e.Seconds) : "" };
+            bool project = !string.IsNullOrEmpty(e.Project);
+            switch (e.Kind)
+            {
+                case AgentEvent.Permission:
+                    return Say(project ? "{name} 在「{project}」等你確認，要讓它繼續嗎？" : "{name} 在等你確認，要讓它繼續嗎？", null, null, vars);
+                case AgentEvent.Waiting:
+                    return Say(project ? "{name} 在「{project}」等你回覆" : "{name} 在等你回覆", null, null, vars);
+                default:
+                    if (e.Seconds >= 0)
+                        return Say(project ? "{name} 在「{project}」做完了（花了 {time}），來看看吧！" : "{name} 做完了（花了 {time}），來看看吧！", null, null, vars);
+                    return Say(project ? "{name} 在「{project}」做完了，來看看吧！" : "{name} 做完了，來看看吧！", null, null, vars);
+            }
+        }
+
         /// <summary>A weekly/monthly window ended: how much of it was used (#16).</summary>
         public static string WindowSummary(WindowResult r)
         {
