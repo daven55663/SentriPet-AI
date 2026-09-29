@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
 
 PackageIdentifier: daven55663.SentriPet
-PackageVersion: 2.3.0
+PackageVersion: 2.3.1
 PackageLocale: en-US
 Publisher: daven55663
 PublisherUrl: https://github.com/daven55663
@@ -25,6 +25,6 @@ Tags:
 - desktop-pet
 - usage
 - widget
-ReleaseNotesUrl: https://github.com/daven55663/SentriPet-AI/releases/tag/v2.3.0
+ReleaseNotesUrl: https://github.com/daven55663/SentriPet-AI/releases/tag/v2.3.1
 ManifestType: defaultLocale
 ManifestVersion: 1.12.0
