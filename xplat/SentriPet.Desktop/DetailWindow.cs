@@ -93,10 +93,14 @@ namespace SentriPet
         int useItLevel;
         readonly List<MeterUi> meters = new List<MeterUi>();
 
+        /// <summary>
+        /// What the card is built from: when it changes the card is built again, otherwise its numbers are updated in
+        /// place. The language and the quota names are part of it — they are written once, when the card is built.
+        /// </summary>
         public static string SignatureOf(ProviderView v)
         {
-            return v.Id + "|" + v.HasData + "|" + (v.Plan ?? "") + "|" +
-                   string.Join(",", v.Meters.Select(m => m.Key + (m.Unlimited ? "*" : "")));
+            return v.Id + "|" + v.HasData + "|" + (v.Plan ?? "") + "|" + L.Current + "|" +
+                   string.Join(",", v.Meters.Select(m => m.Key + (m.Unlimited ? "*" : "") + "=" + m.Label));
         }
 
         public bool Matches(ProviderView v) { return signature == SignatureOf(v); }

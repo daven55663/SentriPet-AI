@@ -9,6 +9,7 @@ using System.Xml;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.LogicalTree;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -577,8 +578,17 @@ namespace SentriPet
             t.Section("介面語言（Avalonia）");
             try
             {
+                // the hover card is built once and then only updated: the words written when it was built (quota names,
+                // the hint at the bottom) stayed Chinese after switching the language (user report)
+                var zhCard = DetailCardView.Build(MockData.A()[0]);
                 Program.UseLanguage("en");
                 t.Equal("英文：造型名稱", "Jelly Pet", ThemeCatalog.Get("pet").Name);
+                var enView = MockData.A()[0];
+                t.Check("換語言後懸停卡片會重建，不會只更新數字", !zhCard.Matches(enView));
+                var cardTexts = DetailCardView.Build(enView).Root.GetLogicalDescendants().OfType<TextBlock>().Select(x => x.Text ?? "").ToList();
+                var cardHan = cardTexts.Where(HasHan).ToList();
+                t.Check("英文的懸停卡片沒有中文（額度名稱、最下面的提示）", cardHan.Count == 0 && cardTexts.Any(x => x.StartsWith("Click to interact")),
+                        string.Join(" | ", cardHan.Take(5)));
                 foreach (var info in ThemeCatalog.All)
                 {
                     var ti = info;
