@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -247,11 +246,7 @@ namespace SentriPet
             using (var rtb = new RenderTargetBitmap(new PixelSize(w, h), new Vector(96, 96)))
             {
                 rtb.Render(host);
-                var buf = new byte[w * h * 4];
-                var handle = GCHandle.Alloc(buf, GCHandleType.Pinned);
-                try { rtb.CopyPixels(new PixelRect(0, 0, w, h), handle.AddrOfPinnedObject(), buf.Length, w * 4); }
-                finally { handle.Free(); }
-                return buf;   // BGRA; the stage is opaque, so premultiplied or not makes no difference
+                return Snapshots.Bgra(rtb, new PixelRect(0, 0, w, h));   // the stage is opaque: premultiplied or not makes no difference
             }
         }
     }

@@ -228,6 +228,42 @@ namespace SentriPet
             return rtb;
         }
 
+        static bool? rgba;
+
+        /// <summary>
+        /// Whether bitmaps give their pixels as R, G, B, A (macOS) rather than B, G, R, A (Windows, Linux): one red pixel tells.
+        /// </summary>
+        public static bool PixelsAreRgba
+        {
+            get
+            {
+                if (rgba == null)
+                {
+                    using (var bmp = Draw(new Border { Width = 1, Height = 1, Background = Brushes.Red }, 1))
+                    {
+                        var px = new byte[4];
+                        var h = System.Runtime.InteropServices.GCHandle.Alloc(px, System.Runtime.InteropServices.GCHandleType.Pinned);
+                        try { bmp.CopyPixels(new PixelRect(0, 0, 1, 1), h.AddrOfPinnedObject(), 4, 4); }
+                        finally { h.Free(); }
+                        rgba = px[0] > 128 && px[2] < 128;
+                    }
+                }
+                return rgba.Value;
+            }
+        }
+
+        /// <summary>The pixels of a bitmap as B, G, R, A whatever the platform gives.</summary>
+        public static byte[] Bgra(Bitmap bmp, PixelRect rect)
+        {
+            var buf = new byte[rect.Width * rect.Height * 4];
+            var h = System.Runtime.InteropServices.GCHandle.Alloc(buf, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try { bmp.CopyPixels(rect, h.AddrOfPinnedObject(), buf.Length, rect.Width * 4); }
+            finally { h.Free(); }
+            if (PixelsAreRgba)
+                for (int i = 0; i < buf.Length; i += 4) { byte r = buf[i]; buf[i] = buf[i + 2]; buf[i + 2] = r; }
+            return buf;
+        }
+
         /// <summary>Lays out and renders a control to a bitmap (the settings page's theme previews).</summary>
         public static Bitmap RenderToBitmap(Control element, double scale)
         {

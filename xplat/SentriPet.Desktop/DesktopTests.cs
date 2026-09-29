@@ -336,14 +336,7 @@ namespace SentriPet
                     Child = new Border { Background = Avalonia.Media.Brushes.Blue, Width = 10, Height = 10,
                                          HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top },
                 };
-                Func<RenderTargetBitmap, int, int, byte[]> pixel = (bmp, x, y) =>
-                {
-                    var px = new byte[4];
-                    var h = System.Runtime.InteropServices.GCHandle.Alloc(px, System.Runtime.InteropServices.GCHandleType.Pinned);
-                    try { bmp.CopyPixels(new PixelRect(x, y, 1, 1), h.AddrOfPinnedObject(), 4, 4); }
-                    finally { h.Free(); }
-                    return px;   // BGRA
-                };
+                Func<RenderTargetBitmap, int, int, byte[]> pixel = (bmp, x, y) => Snapshots.Bgra(bmp, new PixelRect(x, y, 1, 1));   // (macOS gives RGBA)
                 Func<byte[], bool> red = px => px[2] > 200 && px[0] < 60;
                 Func<byte[], bool> blue = px => px[0] > 200 && px[2] < 60;
                 for (int pass = 1; pass <= 2; pass++)
