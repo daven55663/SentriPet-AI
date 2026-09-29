@@ -133,6 +133,14 @@ namespace SentriPet
                 var lit = AgentHooks.ParseTomlArray("['C:\\Tools\\chime.exe', \"caf\\u00e9\", \"a\\\"b\"]");
                 t.Check("字面字串（Windows 路徑）與跳脫字元", lit != null && lit[0] == "C:\\Tools\\chime.exe" && lit[1] == "café" && lit[2] == "a\"b", lit == null ? "null" : string.Join("|", lit));
                 t.Check("不是字串陣列：看不懂", AgentHooks.ParseTomlArray("\"just a string\"") == null && AgentHooks.ParseTomlArray("[1, 2]") == null);
+                // what the Codex desktop app writes (computer use): blank lines before, tables with literal Windows paths after
+                string app = "model = \"gpt-6\"\n\n\n\nnotify = [ \"C:\\\\Users\\\\me\\\\AppData\\\\Local\\\\OpenAI\\\\Codex\\\\runtimes\\\\cua_node\\\\b63e\\\\bin\\\\codex-computer-use.exe\", \"turn-ended\" ]\n\n" +
+                             "[marketplaces.openai-bundled]\nsource_type = \"local\"\nsource = '\\\\?\\C:\\Users\\me\\.codex\\.tmp\\bundled'\n";
+                var ak = AgentHooks.FindNotify(app);
+                var aa = ak != null ? AgentHooks.ParseTomlArray(ak.Value) : null;
+                t.Check("Codex 桌面版寫的 notify（computer use）：讀得出程式與參數", aa != null && aa.Count == 2 &&
+                        aa[0] == "C:\\Users\\me\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\b63e\\bin\\codex-computer-use.exe" && aa[1] == "turn-ended",
+                        aa == null ? "null" : string.Join(" | ", aa));
                 var ours = AgentHooks.ParseTomlArray(AgentHooks.NotifyLine("C:\\Users\\me\\SentriPet.exe").Substring("notify = ".Length));
                 t.Check("我們的 notify：程式路徑原樣、加上 --hook codex", ours != null && ours.Count == 3 && ours[0] == "C:\\Users\\me\\SentriPet.exe" && ours[1] == "--hook" && ours[2] == "codex");
             });
@@ -202,6 +210,15 @@ namespace SentriPet
                 t.Check("再開一次：不會把我們自己當成原本的", s.CodexNotifyChain == "[\"python3\", \"/x/chime.py\"]");
                 AgentHooks.Disconnect(s);
                 t.Equal("關閉：原本的 notify 放回去", own, File.ReadAllText(file));
+
+                string app = "model = \"gpt-6\"\n\n\nnotify = [ \"C:\\\\Tools\\\\codex-computer-use.exe\", \"turn-ended\" ]\n\n[marketplaces.x]\nsource = '\\\\?\\C:\\x'\n";
+                File.WriteAllText(file, app);
+                AgentHooks.Connect(s, exe, false, true);
+                var chain = AgentHooks.ParseTomlArray(s.CodexNotifyChain);
+                t.Check("Codex 桌面版的 notify：記下來、之後照樣以同樣參數執行", chain != null && chain[0] == "C:\\Tools\\codex-computer-use.exe" && chain[1] == "turn-ended" &&
+                                                                       File.ReadAllText(file).Contains("[marketplaces.x]\nsource = '\\\\?\\C:\\x'"));
+                AgentHooks.Disconnect(s);
+                t.Equal("Codex 桌面版的 notify：關閉後一字不差地放回去", app, File.ReadAllText(file));
 
                 // the user's notify program still runs, with the same argument
                 string marker = Path.Combine(root, "chained.txt");

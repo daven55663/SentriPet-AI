@@ -78,6 +78,24 @@ namespace SentriPet
                 }
             }
             catch (Exception ex) { Log.Error("status line bridge", ex); }
+            // --connect-agent-hooks / --disconnect-agent-hooks: the "done / waiting for you" switch (#14), likewise
+            try
+            {
+                if (Array.IndexOf(Environment.GetCommandLineArgs(), "--connect-agent-hooks") >= 0)
+                {
+                    AgentHooks.Connect(Settings, Environment.ProcessPath, AgentHooks.HasClaude, AgentHooks.HasCodex);
+                    Settings.Save();
+                    Log.Info("agent hooks connected: claude " + AgentHooks.IsClaudeConnected() + ", codex " + AgentHooks.IsCodexConnected() +
+                             (Settings.CodexNotifyChain != null ? " (runs the notify program Codex had)" : ""));
+                }
+                else if (Array.IndexOf(Environment.GetCommandLineArgs(), "--disconnect-agent-hooks") >= 0)
+                {
+                    AgentHooks.Disconnect(Settings);
+                    Settings.Save();
+                    Log.Info("agent hooks disconnected");
+                }
+            }
+            catch (Exception ex) { Log.Error("agent hooks", ex); }
             History = new UsageHistory(UsageHistory.DefaultFile);
             Service = new UsageService(Settings);
             Service.Changed += () => Dispatcher.UIThread.Post(RefreshViews);
