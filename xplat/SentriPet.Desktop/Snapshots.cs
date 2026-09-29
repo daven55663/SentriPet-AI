@@ -45,6 +45,7 @@ namespace SentriPet
             public void ChangeLanguage(string code) { }
             public void RefreshViews() { }
             public void OpenReportWindow() { }
+            public void MakeShareCard() { }
         }
 
         public static int Run(string[] args)
@@ -163,6 +164,13 @@ namespace SentriPet
                 {
                     failures++;
                     File.WriteAllText(Path.Combine(outDir, "report_error.txt"), ex.ToString());
+                }
+                // the shareable weekly summary (#20)
+                try { ShareCard.Save(new SnapshotSettingsHost(), Path.Combine(outDir, "share.png"), DateTime.Now); }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "share_error.txt"), ex.ToString());
                 }
             }
             // the right-click menu and its looks submenu

@@ -225,6 +225,26 @@ namespace SentriPet
             return n.ToString("#,0", ci);
         }
 
+        /// <summary>
+        /// A model's short name: claude-opus-5-5 → Opus 5.5, claude-sonnet-4-5-20250929 → Sonnet 4.5,
+        /// claude-3-5-haiku-20241022 → Haiku 3.5, gpt-6-astra → GPT-6 Astra; anything else as it is.
+        /// </summary>
+        public static string ModelName(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return id;
+            var parts = id.Split('-').Where(p => !(p.Length == 8 && p.All(char.IsDigit))).ToList();   // (no date)
+            if (parts.Count >= 2 && parts[0].Equals("claude", StringComparison.OrdinalIgnoreCase))
+            {
+                var words = parts.Skip(1).Where(p => !p.All(char.IsDigit)).ToList();
+                var numbers = parts.Skip(1).Where(p => p.All(char.IsDigit)).ToList();
+                if (words.Count == 1 && numbers.Count > 0)
+                    return char.ToUpperInvariant(words[0][0]) + words[0].Substring(1) + " " + string.Join(".", numbers);
+            }
+            if (parts.Count >= 2 && parts[0].Equals("gpt", StringComparison.OrdinalIgnoreCase))
+                return "GPT-" + parts[1] + string.Concat(parts.Skip(2).Select(p => " " + char.ToUpperInvariant(p[0]) + p.Substring(1)));
+            return id;
+        }
+
         /// <summary>US dollars: $1,234 / $12.34 / $0.05.</summary>
         public static string Usd(double v)
         {

@@ -71,6 +71,8 @@ namespace SentriPet
                 ApiPrices.Override = null;
                 ApiPrices.Reload();
             }
+            t.Equal("模型的簡稱（週報圖）", "Opus 5.5|Sonnet 4.5|Haiku 3.5|GPT-6 Astra|GPT-5.6 Sol|codex-auto-review",
+                string.Join("|", new[] { "claude-opus-5-5", "claude-sonnet-4-5-20250929", "claude-3-5-haiku-20241022", "gpt-6-astra", "gpt-5.6-sol", "codex-auto-review" }.Select(Fmt.ModelName)));
             t.Equal("金額：$1,234／$12.34／$0.05", "$1,234|$12.34|$0.05", Fmt.Usd(1234.4) + "|" + Fmt.Usd(12.344) + "|" + Fmt.Usd(0.05));
         }
 

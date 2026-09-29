@@ -596,6 +596,7 @@ namespace SentriPet
                 }
             if (list.Count == 0) list.Add(new MenuItem { Header = L.T("目前沒有每週或每月的額度"), IsEnabled = false });
             list.Add(new Separator());
+            list.Add(Item(L.T("產生這週的週報圖"), MakeShareCard));
             list.Add(Item(L.T("查看完整報告…"), OpenReport));
             menu.ItemsSource = list;
             return menu;
@@ -605,6 +606,35 @@ namespace SentriPet
         public void OpenReport()
         {
             OpenReportWindow();
+        }
+
+        /// <summary>
+        /// The shareable weekly summary (#20): reads the last days' tokens (in the background), draws the picture into
+        /// Pictures/SentriPet and opens it.
+        /// </summary>
+        public void MakeShareCard()
+        {
+            var ledger = Ledger;
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try { ledger.Update(DateTime.UtcNow); }
+                catch (Exception ex) { Log.Error("token ledger", ex); }
+            }).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    string file = System.IO.Path.Combine(ShareCard.Folder, "weekly-" + DateTime.Now.ToString("yyyy-MM-dd") + ".png");
+                    ShareCard.Save(this, file, DateTime.Now);
+                    Log.Info("share card: " + file);
+                    Integration.OpenPath(file);
+                    window.Say(null, L.T("這週的週報圖做好了，可以直接分享！"));
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("share card", ex);
+                    window.Say(null, L.F("週報圖做不出來：{0}", ex.Message));
+                }
+            }));
         }
 
         /// <summary>The usage report window (#18).</summary>

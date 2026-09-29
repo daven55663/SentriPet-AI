@@ -454,6 +454,14 @@ namespace SentriPet
                 t.Check("用量報告：專案排行（最多 8 個）", win.ProjectNames.Contains("SentriPet") && win.ProjectNames.Count <= 8, string.Join(", ", win.ProjectNames));
                 t.Check("用量報告：API 等值費用有算出來（範例資料）", win.CostTotal.HasValue && win.CostTotal.Value > 1, win.CostTotal.HasValue ? Fmt.Usd(win.CostTotal.Value) : "null");
                 win.Close();
+                // the shareable weekly summary (#20): a 1200 × 675 PNG
+                string card = Path.Combine(Path.GetTempPath(), "sentripet-share-test.png");
+                try { File.Delete(card); } catch { }
+                ShareCard.Save(new Snapshots.SnapshotSettingsHost(), card, DateTime.Now);
+                var head = File.Exists(card) ? File.ReadAllBytes(card).Take(24).ToArray() : new byte[0];
+                int w = head.Length == 24 ? head[16] << 24 | head[17] << 16 | head[18] << 8 | head[19] : 0, h = head.Length == 24 ? head[20] << 24 | head[21] << 16 | head[22] << 8 | head[23] : 0;
+                t.Equal("週報圖：1200 × 675 的 PNG", "1200x675", w + "x" + h);
+                try { File.Delete(card); } catch { }
             });
             Progress = "settings page";
             t.Run("settings", () =>

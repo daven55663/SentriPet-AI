@@ -17,6 +17,8 @@ namespace SentriPet
         List<ProviderView> Views { get; }
         UsageHistory History { get; }
         TokenLedger Ledger { get; }
+        /// <summary>Draws and opens the shareable weekly summary (#20).</summary>
+        void MakeShareCard();
     }
 
     /// <summary>
@@ -63,7 +65,15 @@ namespace SentriPet
             try { Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SentriPet/Assets/app.ico"))); } catch { }
 
             var root = new StackPanel { Margin = new Thickness(28, 20, 28, 30), Background = G.B(Bg) };
-            root.Children.Add(Txt(L.T("用量報告"), 22, TextC, FontWeight.Bold));
+            var title = new Grid();
+            title.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            title.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            title.Children.Add(Txt(L.T("用量報告"), 22, TextC, FontWeight.Bold));
+            var share = new Button { Content = L.T("產生這週的週報圖"), Padding = new Thickness(14, 6), CornerRadius = new CornerRadius(9), VerticalAlignment = VerticalAlignment.Center };
+            share.Click += (s, e) => host.MakeShareCard();
+            Grid.SetColumn(share, 1);
+            title.Children.Add(share);
+            root.Children.Add(title);
             root.Children.Add(Txt(L.T("只讀 Claude Code 與 Codex 本機紀錄裡的數字（token 數、模型、資料夾名稱），不讀對話內容"), 12, SubC, FontWeight.Normal));
             BuildQuotaUse(root);
             BuildTokens(root);
