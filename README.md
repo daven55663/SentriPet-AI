@@ -335,7 +335,7 @@ xplat/package.sh win-x64                                           package (also
 | Tests | What | Checks |
 |---|---|---|
 | `xplat/SentriPet.Tests` | Core, every data source (sample files and local fake servers, never your real data), reminders, quiet hours, forecast, quota-use report, token ledger, API prices, usage.json and the local web server, translations, the Claude Code status line and hooks, Codex notify | 556 |
-| `SentriPet --selftest <file>` | The eight looks, the pets' faces, hover card and placement, bubble, menu, settings page, usage report, weekly picture, tray icons, the pet picture for OBS, languages, autostart, notifications, single instance, the demo GIF, scaled drawing, the hook command | 113 |
+| `SentriPet --selftest <file>` | The eight looks, the pets' faces, hover card and placement, bubble, menu, settings page, usage report, weekly picture, tray icons, the pet picture for OBS, languages, autostart, notifications, single instance, the demo GIF, scaled drawing, the hook command | 115 |
 | `SentriPet --dev --smoke-test <file>` | Runs the real app for 15 s: window shown, on screen, bottom-right on first start, animating, tray icon, the OBS page answering over HTTP, no errors | 9 |
 
 On every push, [CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) builds and runs all tests on Windows,

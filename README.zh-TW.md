@@ -341,7 +341,7 @@ xplat/package.sh win-x64                                           打包（osx-
 | 測試 | 內容 | 數量 |
 |---|---|---|
 | `xplat/SentriPet.Tests` | 核心、每個資料來源（範例檔與本機假伺服器，不碰真實資料）、提醒、勿擾時段、用完預測、週報、token 帳本、API 價格、usage.json 與本機網頁伺服器、翻譯、Claude Code 狀態列與 hooks、Codex notify | 556 項 |
-| `SentriPet --selftest 報告.txt` | 8 種造型、果凍的表情、詳情卡與擺放位置、泡泡、選單、設定頁、用量報告、週報圖、系統匣圖示、OBS 用的桌寵畫面、語言、開機啟動、通知、單一執行、示範動畫、縮放繪製、hook 指令 | 113 項 |
+| `SentriPet --selftest 報告.txt` | 8 種造型、果凍的表情、詳情卡與擺放位置、泡泡、選單、設定頁、用量報告、週報圖、系統匣圖示、OBS 用的桌寵畫面、語言、開機啟動、通知、單一執行、示範動畫、縮放繪製、hook 指令 | 115 項 |
 | `SentriPet --dev --smoke-test 報告.txt` | 真的開啟程式 15 秒：視窗有出來、在螢幕內、第一次在右下角、有在動畫、系統匣、OBS 網頁真的用 HTTP 回應、沒有錯誤 | 9 項 |
 
 每次推送，[CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) 會在 Windows、macOS、Linux 上編譯、跑全部測試
