@@ -442,6 +442,18 @@ namespace SentriPet
                 t.Check("額度利用率：每個週／月額度一項，最後是完整報告",
                     entries.Any(m => text(m).StartsWith("Codex · ")) && text(entries.Last()) == L.T("查看完整報告…"), string.Join(" | ", entries.Select(text)));
             });
+            Progress = "report window";
+            t.Run("report window", () =>
+            {
+                var win = new ReportWindow(new Snapshots.SnapshotSettingsHost(), false) { Width = 760, Height = 900 };
+                win.Show();
+                for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
+                t.Equal("用量報告：預設最近 7 天，每天一根", 7, win.DayColumns);
+                win.ShowDays(30);
+                t.Equal("用量報告：切到最近 30 天", 30, win.DayColumns);
+                t.Check("用量報告：專案排行（最多 8 個）", win.ProjectNames.Contains("SentriPet") && win.ProjectNames.Count <= 8, string.Join(", ", win.ProjectNames));
+                win.Close();
+            });
             Progress = "settings page";
             t.Run("settings", () =>
             {
@@ -480,6 +492,7 @@ namespace SentriPet
             public void ChangeTheme(string id) { settings.Theme = id; Changed++; }
             public void ChangeLanguage(string code) { settings.Language = code; Changed++; }
             public void RefreshViews() { Changed++; }
+            public void OpenReportWindow() { Changed++; }
         }
 
         // ------------------------------------------------------------------ languages

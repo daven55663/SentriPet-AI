@@ -10,11 +10,16 @@ using Avalonia.Threading;
 namespace SentriPet
 {
     /// <summary>Wires the data service, the widget, the tray icon and the menus together (Avalonia version).</summary>
-    class DesktopController : ISettingsHost
+    class DesktopController : ISettingsHost, IReportHost
     {
         /// <summary>The running controller (the single-instance pipe asks it to show the widget).</summary>
         public static DesktopController Instance { get; private set; }
         SettingsWindow settingsWindow;
+        ReportWindow reportWindow;
+        TokenLedger ledger;
+
+        /// <summary>The token counts of the last month (#18), read when the report is first opened.</summary>
+        public TokenLedger Ledger { get { return ledger ?? (ledger = TokenLedger.ForThisComputer()); } }
         readonly Application app;
         readonly IClassicDesktopStyleApplicationLifetime desktop;
         readonly AlertTracker alerts = new AlertTracker();
@@ -599,8 +604,20 @@ namespace SentriPet
         /// <summary>The settings page, scrolled to the quota-use report.</summary>
         public void OpenReport()
         {
-            OpenSettings();
-            settingsWindow.ShowReport();
+            OpenReportWindow();
+        }
+
+        /// <summary>The usage report window (#18).</summary>
+        public void OpenReportWindow()
+        {
+            if (reportWindow == null)
+            {
+                reportWindow = new ReportWindow(this, true);
+                reportWindow.Closed += (s, e) => reportWindow = null;
+                reportWindow.Show();
+            }
+            if (reportWindow.WindowState == WindowState.Minimized) reportWindow.WindowState = WindowState.Normal;
+            reportWindow.Activate();
         }
 
         static MenuItem Item(string header, Action click)

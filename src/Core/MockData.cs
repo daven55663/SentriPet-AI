@@ -75,6 +75,41 @@ namespace SentriPet
             return h;
         }
 
+        /// <summary>A month of token counts (the report window's snapshot and self-test), always the same.</summary>
+        public static TokenLedger Tokens()
+        {
+            var ledger = new TokenLedger(null, null);
+            var rng = new Random(12);
+            var today = DateTime.Now.Date;
+            string[] claudeProjects = { "SentriPet", "web-shop", "SentriPet", "notes", "SentriPet" };
+            string[] codexProjects = { "api-server", "SentriPet", "api-server" };
+            for (int d = 29; d >= 0; d--)
+            {
+                var day = today.AddDays(-d);
+                bool weekend = day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday;
+                int replies = weekend ? rng.Next(0, 8) : rng.Next(15, 45);
+                for (int i = 0; i < replies; i++)
+                {
+                    bool opus = rng.NextDouble() < 0.7;
+                    ledger.Add(new TokenEntry
+                    {
+                        At = day.AddHours(9 + rng.NextDouble() * 12).ToUniversalTime(), Source = "claude",
+                        Project = claudeProjects[rng.Next(claudeProjects.Length)], Model = opus ? "claude-opus-5-5" : "claude-sonnet-5",
+                        Input = rng.Next(20, 400), Output = rng.Next(300, 4000), CacheWrite = rng.Next(1000, 20000), CacheRead = rng.Next(40000, 400000),
+                    });
+                }
+                int turns = weekend ? rng.Next(0, 3) : rng.Next(3, 14);
+                for (int i = 0; i < turns; i++)
+                    ledger.Add(new TokenEntry
+                    {
+                        At = day.AddHours(10 + rng.NextDouble() * 10).ToUniversalTime(), Source = "codex",
+                        Project = codexProjects[rng.Next(codexProjects.Length)], Model = rng.NextDouble() < 0.8 ? "gpt-6-astra" : "codex-auto-review",
+                        Input = rng.Next(2000, 30000), Output = rng.Next(200, 3000), CacheRead = rng.Next(20000, 200000),
+                    });
+            }
+            return ledger;
+        }
+
         class CustomProviderStub : Provider
         {
             public CustomProviderStub(string id, string name, string mascot, string color)

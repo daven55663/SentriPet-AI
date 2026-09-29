@@ -59,6 +59,24 @@ namespace SentriPet
                 var d = c.Detect();
                 if (d.Installed) sb.AppendLine("  " + c.Name + ": " + d.EvidenceText);
             }
+            // the usage report's token counts (#18): how long a month of logs takes, and the totals
+            sb.AppendLine();
+            sb.AppendLine("[tokens, last " + TokenLedger.Days + " days]");
+            try
+            {
+                var ledger = TokenLedger.ForThisComputer();
+                var t1 = DateTime.UtcNow;
+                ledger.Update(DateTime.UtcNow);
+                var took = (DateTime.UtcNow - t1).TotalMilliseconds;
+                var entries = ledger.Entries();
+                sb.AppendLine("  read in " + (int)took + " ms, " + entries.Count + " entries");
+                foreach (var g in entries.GroupBy(e => e.Source))
+                    sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "  {0,-7} total {1:N0}  input {2:N0}  output {3:N0}  cache write {4:N0}  cache read {5:N0}",
+                        g.Key, g.Sum(e => e.Total), g.Sum(e => e.Input), g.Sum(e => e.Output), g.Sum(e => e.CacheWrite), g.Sum(e => e.CacheRead)));
+                foreach (var m in TokenLedger.ByModel(entries).Take(6)) sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "  model {0,-24} {1:N0}", m.Key, m.Value));
+                sb.AppendLine("  folders: " + TokenLedger.ByProject(entries, 100).Count);
+            }
+            catch (Exception ex) { sb.AppendLine("  error: " + ex.Message); }
             string text = sb.ToString();
             if (outFile != null) File.WriteAllText(outFile, text, new UTF8Encoding(false));
             else Console.Write(text);

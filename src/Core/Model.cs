@@ -206,6 +206,25 @@ namespace SentriPet
             return t.Month + "/" + t.Day + " " + hm;
         }
 
+        /// <summary>A number of tokens: 1.2 萬 / 3,456 萬 / 3.4 億 (Chinese, Japanese, Korean count in ten-thousands) or 12K / 34M / 3.4B.</summary>
+        public static string Tokens(double n)
+        {
+            var ci = CultureInfo.InvariantCulture;
+            if (n < 0) n = 0;
+            if (L.Current == "en")
+            {
+                if (n >= 1e9) return (n / 1e9).ToString(n >= 1e10 ? "0" : "0.#", ci) + "B";
+                if (n >= 1e6) return (n / 1e6).ToString(n >= 1e7 ? "0" : "0.#", ci) + "M";
+                if (n >= 1e3) return (n / 1e3).ToString(n >= 1e4 ? "0" : "0.#", ci) + "K";
+                return n.ToString("0", ci);
+            }
+            string wan = L.T("萬"), yi = L.T("億");
+            string space = L.Current == "ko" ? "" : " ";
+            if (n >= 1e8) return (n / 1e8).ToString(n >= 1e10 ? "#,0" : "0.#", ci) + space + yi;
+            if (n >= 1e4) return (n / 1e4).ToString(n >= 1e6 ? "#,0" : "0.#", ci) + space + wan;
+            return n.ToString("#,0", ci);
+        }
+
         /// <summary>How long something took: 45秒 / 3分12秒 / 1時05分.</summary>
         public static string Span(double seconds)
         {

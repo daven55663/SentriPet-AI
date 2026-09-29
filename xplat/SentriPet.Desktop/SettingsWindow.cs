@@ -25,6 +25,8 @@ namespace SentriPet
         void ChangeTheme(string id);
         void ChangeLanguage(string code);
         void RefreshViews();
+        /// <summary>The usage report window (#18).</summary>
+        void OpenReportWindow();
     }
 
     /// <summary>
@@ -545,6 +547,8 @@ namespace SentriPet
             }
             Row(body, L.T("重置時跳通知總結"), L.T("週額度重置時桌寵會說那一期用掉多少；開啟後也會跳一則通知"),
                 Toggle(S.WeeklyReport, v => { S.WeeklyReport = v; SaveSoon(); }));
+            Row(body, L.T("用量報告"), L.T("每天用了多少 token、專案排行、模型，最近 7 或 30 天（右鍵選單 → 額度利用率 → 查看完整報告 也能打開）"),
+                Btn(L.T("打開用量報告"), ctl.OpenReportWindow));
         }
 
         /// <summary>Quiet hours (#17): on/off, from–to and the weekdays they apply to.</summary>

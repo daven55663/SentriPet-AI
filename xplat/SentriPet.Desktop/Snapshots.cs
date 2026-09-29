@@ -29,7 +29,7 @@ namespace SentriPet
         }
 
         /// <summary>The settings page without a running app: sample data, a service that is never started.</summary>
-        class SnapshotSettingsHost : ISettingsHost
+        internal class SnapshotSettingsHost : ISettingsHost, IReportHost
         {
             readonly AppSettings settings = new AppSettings();
             UsageService service;
@@ -38,10 +38,13 @@ namespace SentriPet
             public List<ProviderView> Views { get { return MockData.A(); } }
             public UsageHistory History { get { return history ?? (history = MockData.History()); } }
             UsageHistory history;
+            public TokenLedger Ledger { get { return ledger ?? (ledger = MockData.Tokens()); } }
+            TokenLedger ledger;
             public void ApplyWidgetSettings() { }
             public void ChangeTheme(string id) { }
             public void ChangeLanguage(string code) { }
             public void RefreshViews() { }
+            public void OpenReportWindow() { }
         }
 
         public static int Run(string[] args)
@@ -136,6 +139,30 @@ namespace SentriPet
                 {
                     failures++;
                     File.WriteAllText(Path.Combine(outDir, "settings_error.txt"), ex.ToString());
+                }
+                // the usage report (#18), 7 and 30 days
+                try
+                {
+                    var win = new ReportWindow(new SnapshotSettingsHost(), false) { Width = 760, Height = 900 };
+                    win.Show();
+                    foreach (var d in new[] { 7, 30 })
+                    {
+                        win.ShowDays(d);
+                        for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
+                        var page = win.Page;
+                        var size = page.Bounds.Size;
+                        using (var rtb = new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height)), new Vector(96, 96)))
+                        {
+                            rtb.Render(page);
+                            rtb.Save(Path.Combine(outDir, "report_" + d + ".png"));
+                        }
+                    }
+                    win.Close();
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "report_error.txt"), ex.ToString());
                 }
             }
             // the right-click menu and its looks submenu
