@@ -103,6 +103,23 @@ namespace SentriPet
                 done.Tick += (s, e) => { done.Stop(); SmokeReport(report); };
                 done.Start();
             }
+            // --perf-test FILE [--perf-seconds N]: CPU per theme and frame rate (#8)
+            int pt = Array.IndexOf(args, "--perf-test");
+            if (pt >= 0 && pt + 1 < args.Length)
+            {
+                double secs;
+                int ps = Array.IndexOf(args, "--perf-seconds");
+                if (ps < 0 || ps + 1 >= args.Length || !double.TryParse(args[ps + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out secs)) secs = 5;
+                double scale;
+                int pz = Array.IndexOf(args, "--perf-scale");
+                if (pz >= 0 && pz + 1 < args.Length && double.TryParse(args[pz + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out scale))
+                {
+                    Settings.Scale = scale;
+                    window.ApplySettings();
+                }
+                int pth = Array.IndexOf(args, "--perf-themes");
+                new PerfTest(this, window, args[pt + 1], secs, pth >= 0 && pth + 1 < args.Length ? args[pth + 1] : null).Start();
+            }
         }
 
         /// <summary>What a person would check after starting the program: the widget is on screen, animates, has a theme, no errors.</summary>
@@ -159,10 +176,19 @@ namespace SentriPet
             }
         }
 
+        string numbersSig;
+
         public void RefreshViews()
         {
             views = Service.BuildViews(Settings, false);
             if (window.CurrentTheme != null) window.CurrentTheme.Update(views);
+            // new numbers: the themes animate to them (rings fill up, needles swing), so animate smoothly for a moment
+            string sig = string.Join("|", views.Select(v => v.Id + ":" + string.Join(",", v.Meters.Select(m => Math.Round(m.Remaining, 1).ToString(System.Globalization.CultureInfo.InvariantCulture)))));
+            if (sig != numbersSig)
+            {
+                numbersSig = sig;
+                window.Lively(2.5);
+            }
             UpdateTray();
             alerts.Check(Settings, views, Alert, CelebrateReset);
             if (!greeted && views.Count > 0 && Service.Providers.All(p => Service.SnapshotFor(p.Id) != null || !IsInstalled(p.Id)))

@@ -41,6 +41,7 @@ namespace SentriPet
         StackPanel list;
         TextBlock clock;
         Ellipse liveDot;
+        bool? liveActive;
         readonly List<Row> rows = new List<Row>();
 
         public override string Id { get { return "glass"; } }
@@ -57,7 +58,7 @@ namespace SentriPet
                 Background = G.Vertical(Color.FromArgb(0xEC, 0x2A, 0x2F, 0x3D), Color.FromArgb(0xF2, 0x14, 0x17, 0x20)),
                 BorderBrush = G.Vertical(Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF), Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF)),
                 BorderThickness = new Thickness(1.2),
-                Effect = G.Shadow(28, 6, 0.42, Colors.Black),
+                BoxShadow = G.Shadow(28, 6, 0.42, Colors.Black),
                 MinWidth = 230,
             };
             var layers = new Grid();
@@ -227,7 +228,12 @@ namespace SentriPet
             base.Tick(dt);
             bool anyActive = Views.Any(v => v.Active);
             liveDot.Opacity = anyActive ? 0.55 + 0.45 * Math.Sin(Time * 6) : 0.9;
-            liveDot.Fill = G.B(anyActive ? Palette.Hex("#60A5FA") : Palette.Hex("#4ADE80"));
+            if (anyActive != liveActive)
+            {
+                // (a new brush every frame would redraw the card every frame)
+                liveActive = anyActive;
+                liveDot.Fill = G.B(anyActive ? Palette.Hex("#60A5FA") : Palette.Hex("#4ADE80"));
+            }
             foreach (var r in rows)
             {
                 var v = View(r.Id);

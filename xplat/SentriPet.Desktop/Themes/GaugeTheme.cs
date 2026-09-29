@@ -90,6 +90,7 @@ namespace SentriPet
             public TextBlock SubLabel, SubPct;
             public string SubKey;
             public double Sweep, TargetValue;
+            public double Drawn = double.NaN;          // the needle position last drawn
             public Color Accent;
             public int UrgentLeds, UrgentArc, Lit;     // "use it before it resets": what blinks, at which level
         }
@@ -113,7 +114,7 @@ namespace SentriPet
                 Background = G.Vertical(Palette.Hex("#FF20242C"), Palette.Hex("#FF0C0D11")),
                 BorderBrush = G.Vertical(Palette.Hex("#FF6B727E"), Palette.Hex("#FF1C1F25")),
                 BorderThickness = new Thickness(2),
-                Effect = G.Shadow(26, 6, 0.5, Colors.Black),
+                BoxShadow = G.Shadow(26, 6, 0.5, Colors.Black),
             };
             row = new StackPanel { Orientation = Orientation.Horizontal };
             root.Child = row;
@@ -343,9 +344,15 @@ namespace SentriPet
                 double val = Math.Max(-2, Math.Min(102, g.Spring.X));
                 var v = View(g.Id);
                 if (v != null && v.Active) val += Math.Sin(Time * 30) * 0.4;   // engine vibration
-                g.Needle.Angle = -135 + 270 * val / 100;
-                double shown = Math.Max(0, Math.Min(100, val));
-                g.ValueArc.Data = shown < 0.3 ? null : G.Arc(C, 45, -135, -135 + 270 * shown / 100);
+                // only when the needle moved: the spring creeps towards its target for ever, and a new arc every
+                // frame redraws the glowing gauge every frame (#8)
+                if (!(Math.Abs(val - g.Drawn) < 0.02))
+                {
+                    g.Drawn = val;
+                    g.Needle.Angle = -135 + 270 * val / 100;
+                    double shown = Math.Max(0, Math.Min(100, val));
+                    g.ValueArc.Data = shown < 0.3 ? null : G.Arc(C, 45, -135, -135 + 270 * shown / 100);
+                }
                 if (g.UrgentLeds > 0 && g.Leds != null)
                 {
                     double o = G.UrgentPulse(g.UrgentLeds, Time);

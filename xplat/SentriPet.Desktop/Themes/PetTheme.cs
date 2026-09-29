@@ -280,7 +280,7 @@ namespace SentriPet
                 CornerRadius = new CornerRadius(11),
                 Padding = new Thickness(9, 5, 9, 6),
                 IsVisible = false,
-                Effect = G.Shadow(8, 1.5, 0.25, Colors.Black),
+                BoxShadow = G.Shadow(8, 1.5, 0.25, Colors.Black),
             };
             c.BubbleTail = new Path
             {
@@ -438,7 +438,7 @@ namespace SentriPet
                 Background = G.Vertical(Color.FromArgb(0xF4, 0xFF, 0xFF, 0xFF), Color.FromArgb(0xF0, 0xF6, 0xF6, 0xFA)),
                 BorderBrush = G.B(Palette.Lighten(c.Color, 0.35)),
                 BorderThickness = new Thickness(1.3),
-                Effect = G.Shadow(10, 2, 0.22, Colors.Black),
+                BoxShadow = G.Shadow(10, 2, 0.22, Colors.Black),
                 Margin = new Thickness(0, -6, 0, 0),
             };
             var sp = new StackPanel();

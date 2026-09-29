@@ -25,6 +25,7 @@ All of these use a separate dev profile:
 - `SentriPet.exe --snapshot <dir> [--theme id] [--frames N] [--lang xx]` renders every theme with sample data (sets a/b/c; c = quota about to expire unused at levels 1–3), the hover cards, the speech bubble and the settings page to PNG, headless.
 - `SentriPet.exe --dev --smoke-test <file>` runs the real app for 15 s and reports window, frames, theme, tray and logged errors (a window appears on screen).
 - `SentriPet.exe --demo <file.gif> [--lang xx]` renders the README demo (`docs/images/demo.gif` = en, `demo.zh-TW.gif`); `--social-card <file.png>` the repository's social preview (`docs/images/social-preview.png`).
+- `SentriPet.exe --dev --perf-test <file> [--perf-seconds N] [--perf-scale 1.3] [--perf-themes glass,pet]` runs the real widget and measures its CPU per theme at fixed frame rates, the automatic one and hidden (a window appears on screen).
 - `--probe <file>` prints detection + live usage (incl. the Claude estimate calibration) for every provider. `--dev --show-detail <id>` forces one hover card open for 45 s. `--lang <code>` forces a language.
 - READMEs: `README.md` (English) and `README.zh-TW.md` (Traditional Chinese) — keep both in step.
 - The desktop app's `get_usage` tool (ccd_session_mgmt) returns the official live Claude numbers — use it to check the Claude estimate.
@@ -41,6 +42,8 @@ All of these use a separate dev profile:
 
 - Windows draws on the CPU by default (`--gpu` for the GPU): about 110 MB instead of 250 MB. Microsoft JhengHei draws ≈ badly through Skia, so Windows shows `~` for estimates (`G.Approx`).
 - macOS: brush-style CJK fonts (Kaiti, BiauKai, Klee…) are downloaded on demand and stall text layout — never list them on a Mac. Transform origins: Avalonia rotates/scales around the element centre by default (WPF used the top-left); use `G.At(x, y)`.
+- CPU (#8): almost all of it is drawing, not the themes' code. Never put a `DropShadowEffect` on a container whose children change (every change inside re-blurs the whole thing): Borders take `BoxShadow = G.Shadow(...)`, effects (`G.Glow`, `G.ShapeShadow`) only on small elements. Only set properties when the value changed (springs creep forever; a new geometry or brush every frame redraws every frame). The widget animates at ~16 fps idle and ~22 fps while something happens (`PetWindow.Lively`), and not at all while hidden.
+- Off-screen drawing at a scale goes through `Snapshots.Draw` (a scale transform at 96 dpi): at a higher dpi Avalonia draws a Border that has a BoxShadow without the dpi scale.
 - Templated controls (switches, sliders) only get their look inside a window; headless snapshots of the settings page show a real (headless) window first.
 
 ## Claude desktop (MSIX) virtualization

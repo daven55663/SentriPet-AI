@@ -118,7 +118,7 @@ namespace SentriPet
                 Background = G.Vertical(Palette.Hex("#B07A45"), Palette.Hex("#7A4E28"), Palette.Hex("#5E3A1C")),
                 BorderBrush = G.B(Palette.Hex("#3E2410")),
                 BorderThickness = new Thickness(1),
-                Effect = G.Shadow(10, 4, 0.45, Colors.Black),
+                BoxShadow = G.Shadow(10, 4, 0.45, Colors.Black),
             };
             var grain = new Canvas { IsHitTestVisible = false, ClipToBounds = true };
             for (int k = 0; k < 3; k++)
@@ -230,7 +230,7 @@ namespace SentriPet
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(8, 3, 8, 4),
-                Effect = G.Shadow(6, 2, 0.35, Colors.Black),
+                BoxShadow = G.Shadow(6, 2, 0.35, Colors.Black),
                 RenderTransform = new RotateTransform(Rng.NextDouble() * 4 - 2),
                 RenderTransformOrigin = new RelativePoint(0.5, 0, RelativeUnit.Relative),
             });

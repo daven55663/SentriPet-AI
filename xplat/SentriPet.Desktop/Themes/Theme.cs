@@ -243,7 +243,18 @@ namespace SentriPet
             return br.ToImmutable();
         }
 
-        public static IEffect Shadow(double blur, double depth, double opacity, Color color)
+        /// <summary>
+        /// A drop shadow for a Border (its BoxShadow): drawn with the border itself, so what moves inside the border
+        /// redraws only itself. (A DropShadowEffect on the border draws the whole subtree into a layer and blurs it
+        /// again for every change inside — most of the widget's CPU, #8.)
+        /// </summary>
+        public static BoxShadows Shadow(double blur, double depth, double opacity, Color color)
+        {
+            return new BoxShadows(new BoxShadow { Blur = blur, OffsetX = 0, OffsetY = depth, Color = Palette.A(color, opacity * color.A / 255.0) });
+        }
+
+        /// <summary>A drop shadow for a shape (not a Border): an effect, fine for small elements that rarely change.</summary>
+        public static IEffect ShapeShadow(double blur, double depth, double opacity, Color color)
         {
             return new DropShadowEffect { BlurRadius = blur, OffsetX = 0, OffsetY = depth, Opacity = opacity, Color = color };
         }

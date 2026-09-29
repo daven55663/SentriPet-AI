@@ -235,15 +235,16 @@ namespace SentriPet
         /// <summary>Renders the stage; returns the pixels as 0xRRGGBB.</summary>
         static byte[] Pixels(Control stage, int w, int h, double scale)
         {
-            // a new parent each frame, like --snapshot (a reused, unrooted tree does not show the animation)
-            var old = stage.Parent as Panel;
-            if (old != null) old.Children.Remove(stage);
+            // a new parent each frame, like --snapshot (a reused, unrooted tree does not show the animation);
+            // scaled by a transform at 96 dpi (see Snapshots.Draw)
+            var old = stage.Parent as LayoutTransformControl;
+            if (old != null) old.Child = null;
             var host = new Panel();
-            host.Children.Add(stage);
-            host.Measure(new Size(Width, Height));
-            host.Arrange(new Rect(0, 0, Width, Height));
+            host.Children.Add(new LayoutTransformControl { LayoutTransform = new ScaleTransform(scale, scale), Child = stage });
+            host.Measure(new Size(w, h));
+            host.Arrange(new Rect(0, 0, w, h));
             Dispatcher.UIThread.RunJobs();
-            using (var rtb = new RenderTargetBitmap(new PixelSize(w, h), new Vector(96 * scale, 96 * scale)))
+            using (var rtb = new RenderTargetBitmap(new PixelSize(w, h), new Vector(96, 96)))
             {
                 rtb.Render(host);
                 var buf = new byte[w * h * 4];

@@ -207,7 +207,7 @@ namespace SentriPet
             };
             d.arrowUp = Arrow(true);
             d.arrowDown = Arrow(false);
-            var column = new StackPanel { Margin = new Thickness(Margin), Effect = G.Shadow(18, 4, 0.45, Colors.Black) };
+            var column = new StackPanel { Margin = new Thickness(Margin), Effect = G.ShapeShadow(18, 4, 0.45, Colors.Black) };
             column.Children.Add(d.arrowUp);
             column.Children.Add(card);
             column.Children.Add(d.arrowDown);
@@ -391,7 +391,7 @@ namespace SentriPet
             bubble = new Border { Child = text, Background = G.B(Paper), BorderThickness = new Thickness(1.4), CornerRadius = new CornerRadius(12), Padding = new Thickness(11, 7, 11, 8) };
             tailUp = Tail(true);
             tailDown = Tail(false);
-            column = new StackPanel { Margin = new Thickness(Pad), Effect = G.Shadow(10, 2, 0.28, Colors.Black), IsHitTestVisible = false };
+            column = new StackPanel { Margin = new Thickness(Pad), Effect = G.ShapeShadow(10, 2, 0.28, Colors.Black), IsHitTestVisible = false };
             column.Children.Add(tailUp);
             column.Children.Add(bubble);
             column.Children.Add(tailDown);

@@ -178,14 +178,15 @@ namespace SentriPet
         static void RenderMenu(List<object> items, string file, double scale)
         {
             var menu = new ContextMenu { ItemsSource = items };
-            var win = new Window { Content = menu, SizeToContent = SizeToContent.WidthAndHeight, Background = Brushes.Transparent, FontFamily = G.Ui };
+            var zoom = new LayoutTransformControl { LayoutTransform = new ScaleTransform(scale, scale), Child = menu };
+            var win = new Window { Content = zoom, SizeToContent = SizeToContent.WidthAndHeight, Background = Brushes.Transparent, FontFamily = G.Ui };
             RenderOptions.SetTextRenderingMode(win, TextRenderingMode.Antialias);
             win.Show();
             for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
-            var size = menu.Bounds.Size;
-            using (var rtb = new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width * scale), (int)Math.Ceiling(size.Height * scale)), new Vector(96 * scale, 96 * scale)))
+            var size = zoom.Bounds.Size;
+            using (var rtb = new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height)), new Vector(96, 96)))
             {
-                rtb.Render(menu);
+                rtb.Render(zoom);
                 rtb.Save(file);
             }
             win.Close();
@@ -197,21 +198,39 @@ namespace SentriPet
             return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
         }
 
+        /// <summary>
+        /// Lays out and draws a control into a bitmap at a scale. The scale is a transform at 96 dpi, not a higher dpi:
+        /// in a bitmap drawn at a higher dpi Avalonia draws a Border that has a BoxShadow without the dpi scale
+        /// (the card came out at 1×, its content at 1.5×). Widget windows are not affected.
+        /// </summary>
+        public static RenderTargetBitmap Draw(Control content, double scale)
+        {
+            // the transform control puts its transform on the child itself: put back what was there afterwards,
+            // or the next drawing of the same control is scaled twice
+            var transform = content.RenderTransform;
+            var origin = content.RenderTransformOrigin;
+            var zoom = new LayoutTransformControl { LayoutTransform = new ScaleTransform(scale, scale), Child = content };
+            var host = new Panel();
+            RenderOptions.SetTextRenderingMode(host, TextRenderingMode.Antialias);   // like the windows (see PetWindow)
+            host.Children.Add(zoom);
+            host.Measure(Size.Infinity);
+            host.Arrange(new Rect(host.DesiredSize));
+            Dispatcher.UIThread.RunJobs();
+            var size = host.DesiredSize;
+            var rtb = new RenderTargetBitmap(new PixelSize(Math.Max(1, (int)Math.Ceiling(size.Width)), Math.Max(1, (int)Math.Ceiling(size.Height))), new Vector(96, 96));
+            rtb.Render(host);
+            zoom.Child = null;
+            host.Children.Clear();
+            content.RenderTransform = transform;
+            content.RenderTransformOrigin = origin;
+            return rtb;
+        }
+
         /// <summary>Lays out and renders a control to a bitmap (the settings page's theme previews).</summary>
         public static Bitmap RenderToBitmap(Control element, double scale)
         {
             DetachFromParent(element);
-            var host = new Panel();
-            RenderOptions.SetTextRenderingMode(host, TextRenderingMode.Antialias);
-            host.Children.Add(element);
-            host.Measure(Size.Infinity);
-            host.Arrange(new Rect(host.DesiredSize));
-            var size = host.DesiredSize;
-            var pixels = new PixelSize(Math.Max(1, (int)Math.Ceiling(size.Width * scale)), Math.Max(1, (int)Math.Ceiling(size.Height * scale)));
-            var rtb = new RenderTargetBitmap(pixels, new Vector(96 * scale, 96 * scale));
-            rtb.Render(host);
-            host.Children.Clear();
-            return rtb;
+            return Draw(element, scale);
         }
 
         /// <summary>Lays out and renders a control to a PNG (optionally on a sample wallpaper).</summary>
@@ -226,20 +245,7 @@ namespace SentriPet
                 visual = frame;
             }
             else DetachFromParent(element);
-            var host = new Panel();
-            RenderOptions.SetTextRenderingMode(host, TextRenderingMode.Antialias);   // like the windows (see PetWindow)
-            host.Children.Add(visual);
-            host.Measure(Size.Infinity);
-            host.Arrange(new Rect(host.DesiredSize));
-            Dispatcher.UIThread.RunJobs();
-            var size = host.DesiredSize;
-            var pixels = new PixelSize(Math.Max(1, (int)Math.Ceiling(size.Width * scale)), Math.Max(1, (int)Math.Ceiling(size.Height * scale)));
-            using (var rtb = new RenderTargetBitmap(pixels, new Vector(96 * scale, 96 * scale)))
-            {
-                rtb.Render(host);
-                rtb.Save(file);
-            }
-            host.Children.Clear();
+            using (var rtb = Draw(visual, scale)) rtb.Save(file);
             if (frame != null) frame.Child = null;
         }
 

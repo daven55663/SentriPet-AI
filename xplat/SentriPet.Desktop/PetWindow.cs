@@ -67,7 +67,7 @@ namespace SentriPet
             zoom = new LayoutTransformControl { LayoutTransform = new ScaleTransform(settings.Scale, settings.Scale), Child = host };
             Content = zoom;
 
-            frame = new DispatcherTimer(TimeSpan.FromMilliseconds(settings.LowPower ? 250 : 33), DispatcherPriority.Render, OnFrame);
+            frame = new DispatcherTimer(TimeSpan.FromMilliseconds(settings.LowPower ? 250 : SmoothMs), DispatcherPriority.Render, OnFrame);
             Opened += (s, e) =>
             {
                 PlaceInitially();
@@ -96,6 +96,7 @@ namespace SentriPet
             t.Attach(this);
             host.Children.Add(t.Root);
             t.Update(ctl.Views);
+            Lively(3);   // start-up animations (gauge sweep, rings filling up)
         }
 
         public void ApplySettings()
@@ -103,7 +104,7 @@ namespace SentriPet
             zoom.LayoutTransform = new ScaleTransform(settings.Scale, settings.Scale);
             Opacity = settings.Opacity;
             Topmost = settings.AlwaysOnTop;
-            frame.Interval = TimeSpan.FromMilliseconds(settings.LowPower ? 250 : 33);
+            AdjustFrameRate(DateTime.UtcNow);
             if (IsVisible) Integration.SetClickThrough(this, settings.ClickThrough);
         }
 
@@ -119,12 +120,16 @@ namespace SentriPet
             {
                 Show();
                 if (settings.ClickThrough) Integration.SetClickThrough(this, true);
+                lastFrame = DateTime.UtcNow;
+                frame.Start();
+                Lively(2);
             }
             else if (!want && IsVisible)
             {
                 HideDetail();
                 HideSpeech();
                 Hide();
+                frame.Stop();   // nothing to draw while hidden (#8)
             }
         }
 
@@ -174,6 +179,7 @@ namespace SentriPet
         public void Say(string providerId, string text)
         {
             if (theme == null || string.IsNullOrEmpty(text)) return;
+            Lively(4 + Math.Min(6, text.Length * 0.12));
             bool handled = false;
             try { handled = theme.Say(providerId, text); }
             catch (Exception ex) { Log.Error("say", ex); }
@@ -221,6 +227,42 @@ namespace SentriPet
         /// <summary>Animation frames drawn so far (the smoke test checks the widget is alive).</summary>
         public int Frames { get; private set; }
 
+        /// <summary>Time spent in the themes' animation code (--perf-test).</summary>
+        public TimeSpan TickTime { get { return tickWatch.Elapsed; } }
+        readonly System.Diagnostics.Stopwatch tickWatch = new System.Diagnostics.Stopwatch();
+
+        /// <summary>--perf-test: a fixed frame interval instead of the automatic one (null = automatic).</summary>
+        public int? FixedIntervalMs { get; set; }
+
+        // Frame rate (#8): drawing the widget is what costs CPU, so it animates at about 16 frames a second while
+        // nothing is going on, and smoothly while you look at it or something happens (the Windows timer ticks
+        // every 15.6 ms: 33 ms gives about 22 frames, 62 ms 16)
+        const int SmoothMs = 33, IdleMs = 62, LowPowerMs = 250;
+        DateTime smoothUntil;
+
+        /// <summary>Smooth animation for a while: speech, clicks, new numbers, a new theme.</summary>
+        public void Lively(double seconds)
+        {
+            var until = DateTime.UtcNow.AddSeconds(seconds);
+            if (until > smoothUntil) smoothUntil = until;
+        }
+
+        /// <summary>The frame interval wanted now (--perf-test can fix it).</summary>
+        public int FrameIntervalMs(DateTime now)
+        {
+            if (FixedIntervalMs.HasValue) return FixedIntervalMs.Value;
+            if (settings.LowPower) return LowPowerMs;
+            bool smooth = now < smoothUntil || pressed || dragging || hoverId != null || shownId != null
+                          || (speech != null && speech.IsVisible) || ctl.Views.Any(v => v.Active);
+            return smooth ? SmoothMs : IdleMs;
+        }
+
+        void AdjustFrameRate(DateTime now)
+        {
+            int ms = FrameIntervalMs(now);
+            if ((int)Math.Round(frame.Interval.TotalMilliseconds) != ms) frame.Interval = TimeSpan.FromMilliseconds(ms);
+        }
+
         void OnFrame(object sender, EventArgs e)
         {
             Frames++;
@@ -228,8 +270,10 @@ namespace SentriPet
             double dt = Math.Max(0, Math.Min(0.25, (now - lastFrame).TotalSeconds));
             lastFrame = now;
             if (theme == null) return;
+            tickWatch.Start();
             try { theme.Tick(dt); }
             catch (Exception ex) { Log.Error("theme tick", ex); }
+            tickWatch.Stop();
             try { PollHover(now); }
             catch (Exception ex) { Log.Error("hover", ex); }
             if (speech != null && speech.IsVisible)
@@ -237,6 +281,7 @@ namespace SentriPet
                 if (now >= speech.Until || !IsVisible) HideSpeech();
                 else PlaceSpeech();   // follows the widget while it is dragged
             }
+            AdjustFrameRate(now);
         }
 
         /// <summary>Called once a second: keep the card's numbers current and follow the widget.</summary>
@@ -467,6 +512,7 @@ namespace SentriPet
                 return;
             }
             if (theme == null) return;
+            Lively(3);
             quietUntil = DateTime.UtcNow.AddSeconds(3.5);   // let the reply bubble be seen before the card comes back
             var rootPoint = e.GetPosition(theme.Root);
             if (theme.Click(rootPoint)) return;

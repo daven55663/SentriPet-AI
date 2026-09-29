@@ -13,7 +13,7 @@ using Avalonia.Media.Imaging;
 
 namespace SentriPet
 {
-    /// <summary>CRT scanlines: a dark line every 3 px, drifting down with <see cref="Offset"/> (WPF used a tiled drawing brush).</summary>
+    /// <summary>CRT scanlines: a dark line every 3 px (WPF used a tiled drawing brush; they no longer drift, see Tick).</summary>
     class Scanlines : Control
     {
         public double Offset;
@@ -64,7 +64,7 @@ namespace SentriPet
                 CornerRadius = new CornerRadius(9),
                 Margin = new Thickness(14),
                 BorderThickness = new Thickness(1.3),
-                Effect = G.Shadow(24, 6, 0.5, Colors.Black),
+                BoxShadow = G.Shadow(24, 6, 0.5, Colors.Black),
                 MinWidth = 300,
             };
             var grid = new Grid();
@@ -281,9 +281,11 @@ namespace SentriPet
                 var brush = G.UrgentPulse(b.Item2, Time) > 0.6 ? b.Item3 : b.Item4;
                 if (b.Item1.Foreground != brush) b.Item1.Foreground = brush;
             }
-            scan.Offset = (Time * 6) % 3;
-            scan.InvalidateVisual();
-            if (Rng.NextDouble() < 0.08) root.Opacity = 0.93 + Rng.NextDouble() * 0.07;
+            // the scanlines stay put and the tube flickers only now and then: either one redraws the whole glowing
+            // screen, and doing it every frame was most of this theme's CPU (#8)
+            if (flickerUntil > Time) root.Opacity = 0.93 + Rng.NextDouble() * 0.05;
+            else if (root.Opacity != 1) root.Opacity = 1;
+            else if (Rng.NextDouble() < dt / 9) flickerUntil = Time + 0.15;
         }
 
         public override bool Click(Point rootPoint)
@@ -306,7 +308,7 @@ namespace SentriPet
         }
 
         string sayText;
-        double sayUntil;
+        double sayUntil, flickerUntil;
 
         public override bool Say(string providerId, string text)
         {

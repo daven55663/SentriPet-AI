@@ -314,6 +314,45 @@ namespace SentriPet
                 t.Check("浮動泡泡量得出大小、不超過最大寬度", size.Width > 60 && size.Width < 300 && size.Height > 30, size.ToString());
                 t.Check("泡泡在秒數到了之前不會消失", bubble.Until > DateTime.UtcNow.AddSeconds(3));
             });
+            Progress = "scaled drawing";
+            t.Run("scaled drawing", () =>
+            {
+                // a card with a BoxShadow (the themes' shadows since #8) drawn at 2×, twice: the card must fill the
+                // bitmap both times (at a higher dpi Avalonia drew such a border at 1×; the scale transform used
+                // instead must not stay on the control)
+                var card = new Border
+                {
+                    Width = 50, Height = 30,
+                    Background = Avalonia.Media.Brushes.Red,
+                    BoxShadow = G.Shadow(8, 2, 0.5, Avalonia.Media.Colors.Black),
+                    // a 10 × 10 blue square in the top-left corner of the red card
+                    Child = new Border { Background = Avalonia.Media.Brushes.Blue, Width = 10, Height = 10,
+                                         HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top },
+                };
+                Func<RenderTargetBitmap, int, int, byte[]> pixel = (bmp, x, y) =>
+                {
+                    var px = new byte[4];
+                    var h = System.Runtime.InteropServices.GCHandle.Alloc(px, System.Runtime.InteropServices.GCHandleType.Pinned);
+                    try { bmp.CopyPixels(new PixelRect(x, y, 1, 1), h.AddrOfPinnedObject(), 4, 4); }
+                    finally { h.Free(); }
+                    return px;   // BGRA
+                };
+                Func<byte[], bool> red = px => px[2] > 200 && px[0] < 60;
+                Func<byte[], bool> blue = px => px[0] > 200 && px[2] < 60;
+                for (int pass = 1; pass <= 2; pass++)
+                {
+                    using (var bmp = Snapshots.Draw(card, 2))
+                    {
+                        t.Equal("放大 2 倍的截圖尺寸（第 " + pass + " 次）", "100x60", bmp.PixelSize.Width + "x" + bmp.PixelSize.Height);
+                        var corner = pixel(bmp, 96, 56);
+                        var outside = pixel(bmp, 30, 30);
+                        var inside = pixel(bmp, 10, 10);
+                        t.Check("卡片畫滿到右下角（不是只畫 1 倍）（第 " + pass + " 次）", red(corner), "BGRA " + string.Join(",", corner));
+                        t.Check("左上角的小方塊是 2 倍大、沒有被放大兩次（第 " + pass + " 次）", blue(inside) && red(outside),
+                                "BGRA " + string.Join(",", inside) + " / " + string.Join(",", outside));
+                    }
+                }
+            });
             Progress = "demo gif";
             t.Run("demo gif", () =>
             {

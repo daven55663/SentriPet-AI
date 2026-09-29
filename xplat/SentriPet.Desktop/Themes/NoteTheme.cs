@@ -54,7 +54,7 @@ namespace SentriPet
                 Background = G.Vertical(Palette.Hex("#FFF7B0"), Palette.Hex("#FFEE85")),
                 CornerRadius = new CornerRadius(2),
                 Padding = new Thickness(18, 22, 20, 18),
-                Effect = G.Shadow(14, 5, 0.38, Colors.Black),
+                BoxShadow = G.Shadow(14, 5, 0.38, Colors.Black),
                 MinWidth = 240,
             };
             var content = new StackPanel();
@@ -87,7 +87,7 @@ namespace SentriPet
                 Fill = G.Lg(Palette.Hex("#E8D66A"), Palette.Hex("#F9EC9C"), 135),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Effect = G.Shadow(4, 1, 0.25, Colors.Black),
+                Effect = G.ShapeShadow(4, 1, 0.25, Colors.Black),
             };
             root.Children.Add(fold);
             // masking tape
