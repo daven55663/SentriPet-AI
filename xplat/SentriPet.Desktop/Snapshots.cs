@@ -165,6 +165,20 @@ namespace SentriPet
                     failures++;
                     File.WriteAllText(Path.Combine(outDir, "report_error.txt"), ex.ToString());
                 }
+                // the tray icons: the jelly and the number (#21)
+                try
+                {
+                    foreach (var v in new[] { 87, 42, 9, 100, -1 })
+                    {
+                        using (var b = TrayArt.DrawNumber(v, v == 42, 64)) b.Save(Path.Combine(outDir, "tray_number_" + (v < 0 ? "unknown" : v.ToString()) + ".png"));
+                        using (var b = TrayArt.Draw(v, v == 42, 64)) b.Save(Path.Combine(outDir, "tray_jelly_" + (v < 0 ? "unknown" : v.ToString()) + ".png"));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "tray_error.txt"), ex.ToString());
+                }
                 // the shareable weekly summary (#20)
                 try { ShareCard.Save(new SnapshotSettingsHost(), Path.Combine(outDir, "share.png"), DateTime.Now); }
                 catch (Exception ex)

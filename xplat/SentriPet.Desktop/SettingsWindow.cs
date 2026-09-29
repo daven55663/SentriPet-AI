@@ -292,6 +292,11 @@ namespace SentriPet
                 Row(body, L.T("滑鼠穿透"), L.T("桌寵不會擋住點擊（要關閉請從系統匣圖示按右鍵）"), Toggle(S.ClickThrough, v => { S.ClickThrough = v; ctl.ApplyWidgetSettings(); SaveSoon(); }));
             Row(body, L.T("會說話"), L.T("偶爾冒出一句話、點牠會回應"), Toggle(S.Chatty, v => { S.Chatty = v; SaveSoon(); }));
             Row(body, L.T("省電模式"), L.T("降低動畫幀率，筆電用電池時可以開"), Toggle(S.LowPower, v => { S.LowPower = v; ctl.ApplyWidgetSettings(); SaveSoon(); }));
+            // (#21)
+            Row(body, L.T("系統匣／選單列圖示顯示剩餘 %"), L.T("圖示直接畫出最低的剩餘額度，顏色跟著變"),
+                Toggle(S.TrayNumber, v => { S.TrayNumber = v; ctl.ApplyWidgetSettings(); SaveSoon(); }));
+            Row(body, L.T("只顯示在系統匣／選單列"), L.T("桌面上不放桌寵，只留顯示剩餘 % 的圖示；點圖示可以叫出桌寵"),
+                Toggle(S.TrayOnly, v => { S.TrayOnly = v; ctl.ApplyWidgetSettings(); SaveSoon(); }));
         }
 
         void BuildProviders(StackPanel root)

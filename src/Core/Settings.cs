@@ -17,6 +17,8 @@ namespace SentriPet
         public bool AlwaysOnTop = true;
         public bool ClickThrough;
         public bool LowPower;
+        public bool TrayNumber;               // the tray icon shows the lowest remaining % (#21)
+        public bool TrayOnly;                 // no pet on the desktop, only the tray icon (#21)
         public bool HideOnFullscreen = true;  // step aside for full-screen videos / games
         public bool ClaudeEstimate = true;    // fill the gaps between desktop samples from Claude Code transcripts
         public bool Chatty = true;            // idle speech bubbles
@@ -70,6 +72,8 @@ namespace SentriPet
                 s.AlwaysOnTop = Json.Bool(Json.Get(o, "alwaysOnTop")) ?? true;
                 s.ClickThrough = Json.Bool(Json.Get(o, "clickThrough")) ?? false;
                 s.LowPower = Json.Bool(Json.Get(o, "lowPower")) ?? false;
+                s.TrayNumber = Json.Bool(Json.Get(o, "trayNumber")) ?? false;
+                s.TrayOnly = Json.Bool(Json.Get(o, "trayOnly")) ?? false;
                 s.HideOnFullscreen = Json.Bool(Json.Get(o, "hideOnFullscreen")) ?? true;
                 s.ClaudeEstimate = Json.Bool(Json.Get(o, "claudeEstimate")) ?? true;
                 s.Chatty = Json.Bool(Json.Get(o, "chatty")) ?? true;
@@ -127,6 +131,8 @@ namespace SentriPet
                 o["alwaysOnTop"] = AlwaysOnTop;
                 o["clickThrough"] = ClickThrough;
                 o["lowPower"] = LowPower;
+                o["trayNumber"] = TrayNumber;
+                o["trayOnly"] = TrayOnly;
                 o["hideOnFullscreen"] = HideOnFullscreen;
                 o["claudeEstimate"] = ClaudeEstimate;
                 o["chatty"] = Chatty;

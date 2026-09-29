@@ -687,6 +687,11 @@ namespace SentriPet
                 int full = InkPixels(TrayArt.Draw(90, false, 64)), empty = InkPixels(TrayArt.Draw(10, true, 64));
                 t.Check("系統匣圖示畫得出來（果凍＋工作中的藍點）", full > 1500 && empty > 1500, full + " / " + empty + " px");
                 t.Check("不同剩餘額度畫出不同的圖", !SamePixels(TrayArt.Draw(90, false, 32), TrayArt.Draw(10, false, 32)));
+                // the number icon (#21): a full badge, a different picture for each number, "100" and "?" drawn too
+                int badge = InkPixels(TrayArt.DrawNumber(42, false, 64));
+                t.Check("數字圖示：整個方塊都畫出來", badge > 3000, badge + " px");
+                t.Check("數字圖示：不同數字畫出不同的圖", !SamePixels(TrayArt.DrawNumber(42, false, 32), TrayArt.DrawNumber(87, false, 32)) &&
+                                                       !SamePixels(TrayArt.DrawNumber(100, false, 32), TrayArt.DrawNumber(-1, false, 32)));
             });
             if (OperatingSystem.IsWindows()) ShortcutChecks(t);
         }

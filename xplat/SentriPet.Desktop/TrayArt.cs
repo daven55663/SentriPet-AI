@@ -48,5 +48,31 @@ namespace SentriPet
             }
             return rtb;
         }
+
+        /// <summary>
+        /// The icon as a number (#21): the lowest remaining % in big digits on a badge of its colour, for people who
+        /// keep only the tray icon. "?" when unknown; a blue dot while an AI works.
+        /// </summary>
+        public static Bitmap DrawNumber(double remaining, bool active, int size = 64)
+        {
+            var rtb = new RenderTargetBitmap(new PixelSize(size, size), new Vector(96, 96));
+            double k = size / 32.0;
+            Color level = remaining < 0 ? Color.FromRgb(150, 160, 175) :
+                          remaining >= 50 ? Color.FromRgb(52, 211, 153) :
+                          remaining >= 20 ? Color.FromRgb(251, 191, 36) : Color.FromRgb(248, 113, 113);
+            string text = remaining < 0 ? "?" : Math.Round(Math.Max(0, Math.Min(100, remaining))).ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+            // as large as fits: two digits nearly fill the badge, "100" a little smaller
+            double em = (text.Length >= 3 ? 15.5 : 22) * k;
+            var ft = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                                       new Typeface(G.Num, FontStyle.Normal, FontWeight.Black), em, G.B(Color.FromRgb(24, 22, 28)));
+            using (var dc = rtb.CreateDrawingContext())
+            {
+                dc.DrawRectangle(G.B(level), null, new RoundedRect(new Rect(0.5 * k, 0.5 * k, 31 * k, 31 * k), 8 * k));
+                dc.DrawText(ft, new Point((size - ft.Width) / 2, (size - ft.Height) / 2));
+                if (active)
+                    dc.DrawEllipse(G.B(Color.FromRgb(59, 130, 246)), new Pen(Brushes.White, 1.4 * k), new Rect(23 * k, 0, 9 * k, 9 * k));
+            }
+            return rtb;
+        }
     }
 }

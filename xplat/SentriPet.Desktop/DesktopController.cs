@@ -113,6 +113,7 @@ namespace SentriPet
             int sd = Array.IndexOf(args, "--show-detail");
             if (sd >= 0 && sd + 1 < args.Length) window.ForceDetail(args[sd + 1], 45);
             CreateTray();
+            ApplyTrayMode();
             if (Array.IndexOf(args, "--autostart") >= 0)
             {
                 // give the desktop a moment to settle after sign-in
@@ -392,11 +393,12 @@ namespace SentriPet
             var limited = views.Where(v => v.HasData && !v.Unlimited).ToList();
             double min = limited.Count > 0 ? limited.Min(v => v.Remaining) : -1;
             bool active = views.Any(v => v.Active);
-            string sig = (int)Math.Round(min) + (active ? "a" : "");
+            bool number = Settings.TrayNumber || Settings.TrayOnly;   // (#21)
+            string sig = (int)Math.Round(min) + (active ? "a" : "") + (number ? "n" : "");
             if (sig != traySig)
             {
                 traySig = sig;
-                try { tray.Icon = new WindowIcon(TrayArt.Draw(min, active, 64)); }
+                try { tray.Icon = new WindowIcon(number ? TrayArt.DrawNumber(min, active, 64) : TrayArt.Draw(min, active, 64)); }
                 catch (Exception ex) { Log.Warn("tray icon: " + ex.Message); }
             }
             string tip = views.Count == 0 ? AppInfo.Name : string.Join(" · ", views.Select(v => v.Summary));
@@ -683,7 +685,25 @@ namespace SentriPet
         public void ApplyWidgetSettings()
         {
             window.ApplySettings();
+            ApplyTrayMode();
             Settings.Save();
+        }
+
+        bool? trayOnlyApplied;
+
+        /// <summary>
+        /// The tray icon as a number, and "only in the tray" (#21): the pet stays hidden until the tray icon is clicked.
+        /// Only when there is a tray icon — without one (some Linux desktops) the pet is the only way in.
+        /// </summary>
+        void ApplyTrayMode()
+        {
+            traySig = null;
+            UpdateTray();
+            bool only = Settings.TrayOnly && tray != null;
+            if (trayOnlyApplied == only) return;
+            trayOnlyApplied = only;
+            window.UserHidden = only;
+            window.UpdateVisibility();
         }
 
         public void OpenSettings()
