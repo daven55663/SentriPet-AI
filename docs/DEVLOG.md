@@ -243,5 +243,8 @@ xplat/                新的跨平台版（.NET 10）
 - 2026-09-29：發佈 v2.2.0（使用者同意）；版本說明附上開發與測試環境（使用者要求）：Intel Core Ultra 7 265KF（20 核）、64 GB、
   Windows 11 專業版 25H2（26200.9457）、3 台 1920×1080 螢幕（100%）、.NET SDK 10.0.401、Avalonia 12.1.3、
   Claude 桌面版 2.9939.4（Claude Code 2.1.284）、Codex 26.924。#8 的 CPU 數字都是在這台量的。
+- 2026-09-29：依使用者要求在這台電腦更新到 2.2.0 並開啟「AI 做完或在等你時提醒」（新增 `--connect-agent-hooks`，經 explorer 啟動）。
+  使用者的 Codex 設定原本有 Codex 桌面版 computer use 的 `notify`（`codex-computer-use.exe turn-ended`），已記下並由 SentriPet 照樣代為執行；
+  確認 config.toml 只改了 notify 那一行、Claude 的 settings.json 只多了 hooks，備份都是原檔。新增這種格式的測試（核心 480 項）。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。
