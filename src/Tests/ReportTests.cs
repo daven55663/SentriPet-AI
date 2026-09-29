@@ -37,6 +37,41 @@ namespace SentriPet
             }
             finally { try { Directory.Delete(root, true); } catch { } }
             t.Run("Token numbers", () => Numbers(t));
+            t.Section("用量報告（#19）：API 等值費用");
+            t.Run("Prices", () => Prices(t));
+        }
+
+        static void Prices(TestKit t)
+        {
+            ApiPrices.Override = null;
+            ApiPrices.Reload();
+            var o55 = ApiPrices.For("claude-opus-5-5");
+            t.Check("Claude Opus 5.5：官方價格（輸入 4、快取寫入 5、快取讀取 0.2、輸出 20）", o55 != null && o55.Input == 4 && o55.CacheWrite == 5 && o55.CacheRead == 0.2 && o55.Output == 20);
+            t.Check("有日期的型號對到同一個價格", ApiPrices.For("claude-opus-5-5-20260801") == o55);
+            t.Check("最長的名稱優先：claude-opus-5 不會被當成 5.5", ApiPrices.For("claude-opus-5").Input == 5 && ApiPrices.For("claude-opus-5-20260101").Input == 5);
+            t.Check("舊的命名方式（claude-3-5-haiku-…）", ApiPrices.For("claude-3-5-haiku-20241022") != null && ApiPrices.For("claude-3-5-haiku-20241022").Input == 0.8);
+            t.Check("OpenAI 模型", ApiPrices.For("gpt-6-astra").Output == 50 && ApiPrices.For("gpt-6-sol").CacheRead == 0.2);
+            t.Check("價格表上沒有的模型：不猜", ApiPrices.For("codex-auto-review") == null && ApiPrices.Cost(new TokenEntry { Model = "codex-auto-review", Input = 1000 }) == null);
+            var cost = ApiPrices.Cost(new TokenEntry { Model = "claude-opus-5-5", Input = 1000000, Output = 1000000, CacheWrite = 1000000, CacheRead = 1000000 });
+            t.Check("費用＝各種 token × 各自的價格（每百萬）", cost.HasValue && Math.Abs(cost.Value - 29.2) < 1e-9, cost.ToString());
+            t.Check("價格表附上查詢日期與來源", ApiPrices.CheckedOn > new DateTime(2026, 1, 1) && ApiPrices.Sources.Count >= 2);
+            double age = (DateTime.Now - ApiPrices.CheckedOn).TotalDays;
+            if (age > 120) t.Skip("價格表還算新", "已經 " + (int)age + " 天沒更新：請重新查官方價格，更新 src/Core/prices.json");
+            else t.Check("價格表還算新（" + (int)age + " 天前查的）", true);
+            try
+            {
+                ApiPrices.Override = "{\"checked\":\"2027-01-01\",\"models\":{\"x-model\":[1,2,3,4],\"broken\":[1,2]}}";
+                ApiPrices.Reload();
+                var x = ApiPrices.For("x-model-2");
+                t.Check("使用者自己的價格表（設定資料夾的 prices.json）取代內建的；格式不對的那筆略過",
+                    x != null && x.Output == 4 && ApiPrices.For("broken") == null && ApiPrices.For("claude-opus-5-5") == null && ApiPrices.CheckedOn.Year == 2027);
+            }
+            finally
+            {
+                ApiPrices.Override = null;
+                ApiPrices.Reload();
+            }
+            t.Equal("金額：$1,234／$12.34／$0.05", "$1,234|$12.34|$0.05", Fmt.Usd(1234.4) + "|" + Fmt.Usd(12.344) + "|" + Fmt.Usd(0.05));
         }
 
         static void Ledger(TestKit t, string claude, string codex)

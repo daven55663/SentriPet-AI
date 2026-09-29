@@ -34,6 +34,7 @@ namespace SentriPet
 
         readonly IReportHost host;
         readonly StackPanel tokens = new StackPanel();
+        readonly StackPanel cost = new StackPanel();
         readonly Dictionary<int, Button> rangeButtons = new Dictionary<int, Button>();
         int days = 7;
         bool loaded;
@@ -66,6 +67,7 @@ namespace SentriPet
             root.Children.Add(Txt(L.T("只讀 Claude Code 與 Codex 本機紀錄裡的數字（token 數、模型、資料夾名稱），不讀對話內容"), 12, SubC, FontWeight.Normal));
             BuildQuotaUse(root);
             BuildTokens(root);
+            BuildCost(root);
             Page = root;
             Content = new ScrollViewer { Content = root, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
             if (load) Opened += (s, e) => Load();
@@ -158,6 +160,54 @@ namespace SentriPet
             tokens.Children.Add(Txt(L.T("正在統計最近 30 天的紀錄…"), 12.5, SubC, FontWeight.Normal));
         }
 
+        // ------------------------------------------------------------------ API-equivalent cost (#19)
+
+        void BuildCost(StackPanel root)
+        {
+            var body = Section(root, L.T("API 等值費用"),
+                L.F("把上面的 token 數乘上官方 API 價格（{0} 查的價格），估算如果改用 API 付費大約要花多少。訂閱方案和 API 的計價方式不同，只供參考",
+                    ApiPrices.CheckedOn == DateTime.MinValue ? "?" : ApiPrices.CheckedOn.ToString("yyyy-MM-dd")), null);
+            body.Children.Add(cost);
+        }
+
+        /// <summary>The cost section for the chosen range.</summary>
+        void FillCost(List<TokenEntry> inRange)
+        {
+            cost.Children.Clear();
+            CostTotal = null;
+            if (inRange.Count == 0) { cost.Children.Add(Txt(L.T("這段期間沒有 Claude Code 或 Codex 的紀錄"), 12.5, SubC, FontWeight.Normal)); return; }
+            var priced = inRange.Select(e => new { E = e, Cost = ApiPrices.Cost(e) }).ToList();
+            double total = priced.Where(p => p.Cost.HasValue).Sum(p => p.Cost.Value);
+            CostTotal = total;
+            var head = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+            head.Children.Add(Txt(L.F("最近 {0} 天約 {1}", days, Fmt.Usd(total)), 15, TextC, FontWeight.Bold));
+            foreach (var s in priced.Select(p => p.E.Source).Distinct().OrderBy(s => s == "claude" ? 0 : 1))
+            {
+                head.Children.Add(new Border { Width = 9, Height = 9, CornerRadius = new CornerRadius(5), Background = G.B(ColorOf(s)), Margin = new Thickness(18, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+                var t = Txt(SourceName(s) + " " + Fmt.Usd(priced.Where(p => p.E.Source == s && p.Cost.HasValue).Sum(p => p.Cost.Value)), 12.5, SubC, FontWeight.Normal);
+                t.VerticalAlignment = VerticalAlignment.Center;
+                head.Children.Add(t);
+            }
+            cost.Children.Add(head);
+            // per model: what it costs, and which models have no known price
+            var models = priced.GroupBy(p => p.E.Model ?? "?")
+                               .Select(g => new { Model = g.Key, Source = g.First().E.Source, Known = g.First().Cost.HasValue, Cost = g.Where(p => p.Cost.HasValue).Sum(p => p.Cost.Value), Tokens = g.Sum(p => p.E.Total) })
+                               .OrderByDescending(m => m.Cost).ThenByDescending(m => m.Tokens).ToList();
+            double top = Math.Max(0.01, models.Count > 0 ? models.Max(m => m.Cost) : 0.01);
+            foreach (var m in models.Take(8))
+            {
+                if (m.Known) cost.Children.Add(BarRow(ColorOf(m.Source), m.Model, null, (long)Math.Round(m.Cost * 100), (long)Math.Round(top * 100), null, Fmt.Usd(m.Cost) + " · " + Fmt.Pct(100 * m.Cost / Math.Max(0.01, total))));
+                else cost.Children.Add(Txt(L.F("{0}：官方價格表上沒有這個模型，不計入（{1} token）", m.Model, Fmt.Tokens(m.Tokens)), 12, SubC, FontWeight.Normal));
+            }
+            var note = Txt(L.F("價格來源：{0}", string.Join("、", ApiPrices.Sources)), 11, SubC, FontWeight.Normal);
+            note.Margin = new Thickness(0, 10, 0, 0);
+            note.Opacity = 0.8;
+            cost.Children.Add(note);
+        }
+
+        /// <summary>For the self-test: the total of the cost section (USD), or null.</summary>
+        internal double? CostTotal { get; private set; }
+
         void Load()
         {
             var ledger = host.Ledger;
@@ -185,6 +235,7 @@ namespace SentriPet
             var all = host.Ledger != null ? host.Ledger.Entries() : new List<TokenEntry>();
             var from = today.AddDays(1 - days).ToUniversalTime();
             var inRange = all.Where(e => e.At >= from).ToList();
+            FillCost(inRange);
             if (inRange.Count == 0)
             {
                 tokens.Children.Add(Txt(L.T("這段期間沒有 Claude Code 或 Codex 的紀錄"), 12.5, SubC, FontWeight.Normal));
@@ -278,7 +329,7 @@ namespace SentriPet
         }
 
         /// <summary>A name, a proportional bar and the number (the folders and the models).</summary>
-        Control BarRow(Color color, string name, string note, long value, long top, string share)
+        Control BarRow(Color color, string name, string note, long value, long top, string share, string text = null)
         {
             var g = new Grid { Margin = new Thickness(0, 3, 0, 3) };
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
@@ -300,7 +351,7 @@ namespace SentriPet
             g.Children.Add(trackBox);
             var num = new TextBlock
             {
-                Text = Fmt.Tokens(value) + (share != null ? " · " + share : ""), Foreground = G.B(SubC), FontSize = 12,
+                Text = text ?? Fmt.Tokens(value) + (share != null ? " · " + share : ""), Foreground = G.B(SubC), FontSize = 12,
                 HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center,
             };
             Grid.SetColumn(num, 2);

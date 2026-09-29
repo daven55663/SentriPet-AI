@@ -9,6 +9,8 @@
     <Compile Include="..\..\src\Providers\**\*.cs" LinkBase="Providers" />
     <!-- translations: src/Lang/xx.json is read as the resource SentriPet.Lang.xx.json -->
     <EmbeddedResource Include="..\..\src\Lang\*.json" LinkBase="Lang" LogicalName="SentriPet.Lang.%(Filename).json" />
+    <!-- API prices for the usage report (#19), read as the resource SentriPet.prices.json -->
+    <EmbeddedResource Include="..\..\src\Core\prices.json" Link="Core\prices.json" LogicalName="SentriPet.prices.json" />
   </ItemGroup>
 
   <ItemGroup>

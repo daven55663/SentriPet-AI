@@ -1,0 +1,37 @@
+{
+  "checked": "2026-09-29",
+  "sources": [
+    "https://platform.claude.com/docs/en/about-claude/pricing",
+    "https://developers.openai.com/api/docs/pricing"
+  ],
+  "note": "USD per million tokens, standard tier: input, cache write (5-minute), cache read, output. A model id matches the longest key it starts with. Copy this file to SentriPet's settings folder as prices.json to use newer prices.",
+  "models": {
+    "claude-fable-5-1":   [10, 12.5, 0.25, 50],
+    "claude-mythos-5-1":  [10, 12.5, 0.25, 50],
+    "claude-fable-5":     [10, 12.5, 1, 50],
+    "claude-mythos-5":    [10, 12.5, 1, 50],
+    "claude-opus-5-5":    [4, 5, 0.2, 20],
+    "claude-opus-5":      [5, 6.25, 0.5, 25],
+    "claude-opus-4-8":    [5, 6.25, 0.5, 25],
+    "claude-opus-4-7":    [5, 6.25, 0.5, 25],
+    "claude-opus-4-6":    [5, 6.25, 0.5, 25],
+    "claude-opus-4-5":    [5, 6.25, 0.5, 25],
+    "claude-opus-4-1":    [15, 18.75, 1.5, 75],
+    "claude-opus-4":      [15, 18.75, 1.5, 75],
+    "claude-sonnet-5-5":  [2, 2.5, 0.2, 10],
+    "claude-sonnet-5":    [2, 2.5, 0.2, 10],
+    "claude-sonnet-4-6":  [3, 3.75, 0.3, 15],
+    "claude-sonnet-4-5":  [3, 3.75, 0.3, 15],
+    "claude-sonnet-4":    [3, 3.75, 0.3, 15],
+    "claude-haiku-4-5":   [1, 1.25, 0.1, 5],
+    "claude-3-5-haiku":   [0.8, 1, 0.08, 4],
+    "gpt-6-astra":        [10, 10, 1, 50],
+    "gpt-6-sol":          [2, 2, 0.2, 10],
+    "gpt-6-luna":         [0.1, 0.1, 0.01, 0.5],
+    "gpt-5.6-sol":        [4, 4, 0.4, 20],
+    "gpt-5.6-terra":      [2, 2, 0.2, 12],
+    "gpt-5.6-luna":       [0.2, 0.2, 0.02, 1.2],
+    "gpt-5.5":            [5, 5, 0.5, 30],
+    "gpt-5.3-codex":      [1.75, 1.75, 0.175, 14]
+  }
+}

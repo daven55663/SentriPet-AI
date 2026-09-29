@@ -75,6 +75,9 @@ namespace SentriPet
                         g.Key, g.Sum(e => e.Total), g.Sum(e => e.Input), g.Sum(e => e.Output), g.Sum(e => e.CacheWrite), g.Sum(e => e.CacheRead)));
                 foreach (var m in TokenLedger.ByModel(entries).Take(6)) sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "  model {0,-24} {1:N0}", m.Key, m.Value));
                 sb.AppendLine("  folders: " + TokenLedger.ByProject(entries, 100).Count);
+                var costs = entries.Select(e => ApiPrices.Cost(e)).ToList();
+                sb.AppendLine("  API-equivalent (prices of " + ApiPrices.CheckedOn.ToString("yyyy-MM-dd") + "): " + Fmt.Usd(costs.Where(c => c.HasValue).Sum(c => c.Value)) +
+                              "; no price: " + string.Join(", ", entries.Where(e => ApiPrices.For(e.Model) == null).Select(e => e.Model).Distinct()));
             }
             catch (Exception ex) { sb.AppendLine("  error: " + ex.Message); }
             string text = sb.ToString();

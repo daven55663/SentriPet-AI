@@ -225,6 +225,13 @@ namespace SentriPet
             return n.ToString("#,0", ci);
         }
 
+        /// <summary>US dollars: $1,234 / $12.34 / $0.05.</summary>
+        public static string Usd(double v)
+        {
+            var ci = CultureInfo.InvariantCulture;
+            return "$" + (v >= 100 ? v.ToString("#,0", ci) : v.ToString("0.00", ci));
+        }
+
         /// <summary>How long something took: 45秒 / 3分12秒 / 1時05分.</summary>
         public static string Span(double seconds)
         {

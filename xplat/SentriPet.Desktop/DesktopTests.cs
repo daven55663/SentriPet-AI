@@ -452,6 +452,7 @@ namespace SentriPet
                 win.ShowDays(30);
                 t.Equal("用量報告：切到最近 30 天", 30, win.DayColumns);
                 t.Check("用量報告：專案排行（最多 8 個）", win.ProjectNames.Contains("SentriPet") && win.ProjectNames.Count <= 8, string.Join(", ", win.ProjectNames));
+                t.Check("用量報告：API 等值費用有算出來（範例資料）", win.CostTotal.HasValue && win.CostTotal.Value > 1, win.CostTotal.HasValue ? Fmt.Usd(win.CostTotal.Value) : "null");
                 win.Close();
             });
             Progress = "settings page";
