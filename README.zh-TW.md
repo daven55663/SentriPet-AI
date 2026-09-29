@@ -5,6 +5,7 @@
 [![CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/daven55663/SentriPet-AI)](https://github.com/daven55663/SentriPet-AI/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![開發環境](https://img.shields.io/badge/%E9%96%8B%E7%99%BC%E7%92%B0%E5%A2%83-Windows%2011%20%C2%B7%20Core%20Ultra%207%20265KF-0078D4)](docs/environment.zh-TW.md)
 
 **SentriPet** 是放在桌面上的 AI 用量監控桌寵。它會自動偵測電腦上的 AI 工具（Claude、Codex、Copilot…），
 即時顯示還剩多少額度、多久後重置，不用再一直點開「設定 → 用量」；每週額度快重置卻還沒用完時，還會催你把它用掉。
@@ -23,7 +24,7 @@
 - 可以拖到任何一個螢幕；開機自動啟動；看影片、玩遊戲的全螢幕畫面時自動躲起來
 - 可用 JSON 外掛接上任何 AI 服務
 - **只在本機讀取**用量資料，不讀取、也不傳送任何登入憑證
-- 輕量：約 110 MB 記憶體，動畫約佔單核 1～4%
+- 輕量：約 110 MB 記憶體，動畫約佔單核 1～4%（在[開發環境](docs/environment.zh-TW.md)量測）
 
 ## 畫面一覽
 
@@ -320,7 +321,7 @@ xplat/package.sh win-x64                                           打包（osx-
 推送 `v*` 標籤時，[Release](.github/workflows/release.yml) 流程會在各系統打包、讓每個安裝檔先跑一次自我測試，全部通過才發佈；
 發佈後自動更新 Scoop、Homebrew、winget 的安裝設定（`bucket/`、`Casks/`、`packaging/winget/`），
 再用 Scoop 和 Homebrew 實際安裝一次、跑自我測試（[Package managers](.github/workflows/packages.yml)）。
-開發紀錄見 [docs/DEVLOG.md](docs/DEVLOG.md)。
+開發紀錄見 [docs/DEVLOG.md](docs/DEVLOG.md)，開發與測試用的電腦和工具見 [docs/environment.zh-TW.md](docs/environment.zh-TW.md)。
 
 ## 檔案位置
 

@@ -5,6 +5,7 @@
 [![CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/daven55663/SentriPet-AI)](https://github.com/daven55663/SentriPet-AI/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Development environment](https://img.shields.io/badge/dev%20environment-Windows%2011%20%C2%B7%20Core%20Ultra%207%20265KF-0078D4)](docs/environment.md)
 
 **A desktop pet that shows how much of your AI plan is left — and nudges you to use it before it resets.**
 
@@ -26,7 +27,7 @@ Runs on **Windows, macOS and Linux**.
 - **Private by design** — reads only the usage numbers the tools keep on your computer; never reads or sends your sign-in credentials
 - **Five languages**: English, 繁體中文, 简体中文, 日本語, 한국어 (follows your system language)
 - Drag it to any screen; starts at sign-in; hides itself while you watch videos or play in full screen
-- Light: about 110 MB of memory; animating costs about 1–4% of one CPU core
+- Light: about 110 MB of memory; animating costs about 1–4% of one CPU core (measured on the [development machine](docs/environment.md))
 
 ## Screenshots
 
@@ -311,7 +312,8 @@ macOS and Linux (on Linux the smoke test runs on a virtual display), renders the
 Pushing a `v*` tag runs the [Release](.github/workflows/release.yml) workflow: every package is built on its own system and
 self-tested before the release is published; then the Scoop, Homebrew and winget manifests are updated and SentriPet is
 installed through Scoop and Homebrew and self-tested again ([Package managers](.github/workflows/packages.yml)).
-The development log (in Chinese) is [docs/DEVLOG.md](docs/DEVLOG.md).
+The development log (in Chinese) is [docs/DEVLOG.md](docs/DEVLOG.md); the machine and tools it is developed and tested with are in
+[docs/environment.md](docs/environment.md).
 
 ## File locations
 
