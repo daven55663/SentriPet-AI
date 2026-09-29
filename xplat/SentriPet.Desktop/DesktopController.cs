@@ -438,6 +438,7 @@ namespace SentriPet
             var c = new DesktopController(null, null);
             c.Settings = settings;
             c.views = sample;
+            c.History = MockData.History();
             return c;
         }
 
@@ -496,6 +497,7 @@ namespace SentriPet
             }));
             themes.ItemsSource = themeItems;
             items.Add(themes);
+            items.Add(ReportMenu());
             items.Add(Item(L.T("立即更新"), () => { Service.RefreshNow(null); if (views.Count > 0) window.Say(views[0].Id, L.T("更新中…")); }));
 
             var size = new MenuItem { Header = L.T("大小") };
@@ -538,18 +540,8 @@ namespace SentriPet
             foreach (var li in L.Languages) langs.Add(LanguageItem(li.Code, li.Native));
             lang.ItemsSource = langs;
             items.Add(lang);
-            items.Add(Toggle(L.T("永遠在最上層"), Settings.AlwaysOnTop, () => { Settings.AlwaysOnTop = !Settings.AlwaysOnTop; window.ApplySettings(); Settings.Save(); }));
-            if (Integration.CanClickThrough)
-                items.Add(Toggle(L.T("滑鼠穿透（不擋點擊）"), Settings.ClickThrough, () =>
-                {
-                    Settings.ClickThrough = !Settings.ClickThrough;
-                    ApplyWidgetSettings();
-                    if (tray != null) tray.Menu = BuildTrayMenu();
-                    if (Settings.ClickThrough && Settings.Notifications) Integration.Notify(AppInfo.Name, L.T("已開啟滑鼠穿透：桌寵不會擋住點擊。要關閉請在右下角系統匣圖示按右鍵。"));
-                }));
-            items.Add(Toggle(L.T("會說話"), Settings.Chatty, () => { Settings.Chatty = !Settings.Chatty; Settings.Save(); }));
-            items.Add(Toggle(L.T("額度提醒通知"), Settings.Notifications, () => { Settings.Notifications = !Settings.Notifications; Settings.Save(); }));
-            items.Add(Toggle(L.T("催我用完週額度（重置前提醒）"), Settings.UseItReminder, () => { Settings.UseItReminder = !Settings.UseItReminder; Settings.Save(); RefreshViews(); }));
+            // (the switches that are rarely changed — on top, click-through, talking, notifications, "use it",
+            // autostart — are on the settings page only; the tray menu keeps click-through, the way back)
             var now = DateTime.UtcNow;
             if (Quiet.Paused(Settings, now))
                 items.Add(Item(L.F("恢復提醒（暫停到 {0}）", Settings.PausedUntil.Value.ToLocalTime().ToString("HH:mm")), () =>
@@ -574,10 +566,37 @@ namespace SentriPet
             }
             items.Add(new Separator());
             items.Add(Item(L.T("設定…"), OpenSettings));
-            items.Add(Toggle(L.T("開機自動啟動"), Settings.AutoStart, () => { Settings.AutoStart = !Settings.AutoStart; Integration.SetAutostart(Settings.AutoStart); Settings.Save(); }));
             items.Add(Item(L.T("先藏起來（點系統匣叫回）"), ToggleWidget));
             items.Add(Item(L.T("結束"), Quit));
             return items;
+        }
+
+        /// <summary>The weekly/monthly quotas: how much of this window is used so far and how the last one ended (#16), and the full report.</summary>
+        MenuItem ReportMenu()
+        {
+            var menu = new MenuItem { Header = L.T("額度利用率（週報／月報）") };
+            var list = new List<object>();
+            var results = History != null ? History.Results : new List<WindowResult>();
+            foreach (var v in views)
+                foreach (var m in v.Meters.Where(x => !x.Unlimited && x.WindowMinutes >= UsageHistory.ReportWindowMinutes))
+                {
+                    var last = results.LastOrDefault(r => r.Provider == v.Id && r.Meter == m.Key);
+                    list.Add(Item(last != null
+                        ? L.F("{0} · {1}：這期用了 {2}，上期 {3}", v.Name, m.Label, Fmt.Pct(m.Used), Fmt.Pct(last.Used))
+                        : L.F("{0} · {1}：這期用了 {2}", v.Name, m.Label, Fmt.Pct(m.Used)), OpenReport));
+                }
+            if (list.Count == 0) list.Add(new MenuItem { Header = L.T("目前沒有每週或每月的額度"), IsEnabled = false });
+            list.Add(new Separator());
+            list.Add(Item(L.T("查看完整報告…"), OpenReport));
+            menu.ItemsSource = list;
+            return menu;
+        }
+
+        /// <summary>The settings page, scrolled to the quota-use report.</summary>
+        public void OpenReport()
+        {
+            OpenSettings();
+            settingsWindow.ShowReport();
         }
 
         static MenuItem Item(string header, Action click)

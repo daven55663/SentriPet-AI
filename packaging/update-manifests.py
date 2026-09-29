@@ -62,7 +62,7 @@ def scoop(version, sha):
         # Start menu shortcut (needed for its notifications) the first time it runs
         'post_install': ['Start-Process "$dir\\SentriPet.exe"'],
         'notes': [
-            'SentriPet is running: it adds itself to the Start menu and starts when you sign in (turn that off in its right-click menu).',
+            'SentriPet is running: it adds itself to the Start menu and starts when you sign in (turn that off in its settings).',
             'Quit it (right-click > Quit) before "scoop update sentripet" or "scoop uninstall sentripet".',
         ],
         'checkver': 'github',

@@ -49,6 +49,8 @@ namespace SentriPet
         readonly DispatcherTimer refresh, saveTimer;
         ToggleSwitch randomToggle;
         string providerSig;
+        ScrollViewer scroller;
+        Control reportAnchor;
 
         AppSettings S { get { return ctl.Settings; } }
 
@@ -79,7 +81,7 @@ namespace SentriPet
             BuildReport(root);
             BuildGeneral(root);
             Page = root;
-            Content = new ScrollViewer { Content = root, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
+            Content = scroller = new ScrollViewer { Content = root, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
 
             saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
             saveTimer.Tick += (s, e) => { saveTimer.Stop(); S.Save(); };
@@ -88,6 +90,16 @@ namespace SentriPet
             refresh.Start();
             Closed += (s, e) => { refresh.Stop(); if (saveTimer.IsEnabled) { saveTimer.Stop(); S.Save(); } };
             Opened += (s, e) => Dispatcher.UIThread.Post(RenderPreviews, DispatcherPriority.Background);
+        }
+
+        /// <summary>Scrolls to the quota-use report (the widget's menu opens it there).</summary>
+        public void ShowReport()
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                var p = reportAnchor != null && Page != null ? reportAnchor.TranslatePoint(new Point(0, 0), Page) : null;
+                if (p.HasValue) scroller.Offset = new Vector(0, Math.Max(0, p.Value.Y - 12));
+            }, DispatcherPriority.Background);
         }
 
         void SaveSoon()
@@ -511,7 +523,9 @@ namespace SentriPet
         /// <summary>How much of each weekly/monthly window was used (#16): the last 8 windows as bars, and the average.</summary>
         void BuildReport(StackPanel root)
         {
+            int at = root.Children.Count;
             var body = Section(root, L.T("額度利用率"), L.T("每週／每月額度重置時，記下那一期用掉多少，看看有沒有浪費"));
+            reportAnchor = root.Children[at];
             var results = ctl.History != null ? ctl.History.Results : new List<WindowResult>();
             if (results.Count == 0)
                 Row(body, L.T("還沒有紀錄"), L.T("每週額度重置一次之後，這裡就會出現那一週用掉多少"), null);

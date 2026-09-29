@@ -45,7 +45,7 @@ Runs on **Windows, macOS and Linux**.
 **Right-click menu and settings** (double-click the pet to open the settings)
 
 <p align="center">
-  <img src="docs/images/en/menu.png" alt="Right-click menu with the looks submenu" width="470">
+  <img src="docs/images/en/menu.png" alt="Right-click menu with the quota-use submenu" width="470">
   <img src="docs/images/en/settings.png" alt="Settings page" width="350">
 </p>
 
@@ -92,7 +92,7 @@ Each package contains everything it needs; you don't have to install .NET.
 1. Unzip `SentriPet-<version>-win-x64.zip` into a folder you keep (e.g. `%LOCALAPPDATA%\Programs\SentriPet`).
 2. Run `SentriPet.exe`. If Windows says *Windows protected your PC*, click *More info* → *Run anyway* (the program is not code-signed).
 3. The pet appears in the bottom-right corner, with a jelly icon in the system tray. SentriPet adds itself to the
-   Start menu and starts when you sign in (you can turn that off in its right-click menu).
+   Start menu and starts when you sign in (you can turn that off in *Settings → General*).
 
 **From source** (needs the [.NET 10 SDK](https://dotnet.microsoft.com/download)): `git clone` this repository and run
 `install.cmd`; it builds SentriPet, installs it to `%LOCALAPPDATA%\Programs\SentriPet` and starts it (`uninstall.cmd` removes it).
@@ -127,7 +127,7 @@ cd SentriPet-<version>-linux-x64
 
 - **Update**: `scoop update sentripet` / `brew upgrade --cask sentripet` (quit SentriPet first: right-click → Quit).
   A downloaded copy: replace the files with the new version (on Linux, run `install.sh` again). Your settings are kept.
-- **Uninstall**: turn off *Start at sign-in* in the right-click menu → *Quit*, then `scoop uninstall sentripet` /
+- **Uninstall**: turn off *Start at sign-in* in *Settings → General*, right-click the pet → *Quit*, then `scoop uninstall sentripet` /
   `brew uninstall --cask sentripet`, or delete the program and its settings folder (see [File locations](#file-locations)).
 
 ## Using SentriPet
@@ -151,7 +151,7 @@ SentriPet looks for AI tools on your computer and every one it finds becomes a p
 | Drag | Move it (snaps to screen edges); the position is remembered |
 | Click | The pet answers |
 | Hover | Details: every quota, reset times, data source |
-| Right-click | Menu: change look (each look with its mood, or leave it to fate), language, size, opacity, move to screen, click-through… |
+| Right-click | Menu: change look (each look with its mood, or leave it to fate), quota use this week/month and last time (with the full report), size, opacity, move to screen, language, pause reminders. The switches you rarely change (always on top, click-through, talking, notifications, "use it" nudges, start at sign-in) are in the settings |
 | Double-click | Settings |
 | Tray / menu-bar icon | Left click shows/hides the pet; right click opens the menu (turn click-through off here). The jelly in the icon is as full as your lowest quota; a blue dot means an AI is working |
 
@@ -188,7 +188,7 @@ the widget: the bar that's about to expire blinks and the pet's face changes; th
 | Last 6 hours | 5% or more | Fast blinking, trembling, the alarm rings non-stop; about every 12 minutes |
 
 Each new level shows one notification (not repeated after a restart). The pets never interrupt while an AI is working, and
-don't nudge while the 5-hour quota is used up (you couldn't use it anyway). Turn it off in the right-click menu or in *Settings → Reminders*.
+don't nudge while the 5-hour quota is used up (you couldn't use it anyway). Turn it off in *Settings → Reminders*.
 
 ### "Done or waiting for you" (Claude Code, Codex)
 
@@ -242,7 +242,7 @@ Code status line for the official times, or type the time shown on Claude's *Set
 *Settings → AI services → Claude weekly reset time* (e.g. `Thu 23:00`).
 
 **The pet is in the way**
-Turn on *Click-through* in the right-click menu and clicks go straight through it (turn it off from the tray icon).
+Turn on *Click-through* in *Settings → Appearance* and clicks go straight through it (turn it off from the tray icon).
 You can also make it smaller or move it to another screen.
 
 **The pet disappeared in full screen**

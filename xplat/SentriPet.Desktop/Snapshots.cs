@@ -147,6 +147,8 @@ namespace SentriPet
                     RenderMenu(ctl.BuildMenuItems(), Path.Combine(outDir, "menu.png"), scale);
                     var looks = ctl.BuildMenuItems().OfType<MenuItem>().First(m => Equals(m.Header, L.T("換造型")));
                     RenderMenu(((IEnumerable<object>)looks.ItemsSource).ToList(), Path.Combine(outDir, "menu_themes.png"), scale);
+                    var report = ctl.BuildMenuItems().OfType<MenuItem>().First(m => Equals(m.Header, L.T("額度利用率（週報／月報）")));
+                    RenderMenu(((IEnumerable<object>)report.ItemsSource).ToList(), Path.Combine(outDir, "menu_report.png"), scale);
                 }
                 catch (Exception ex)
                 {

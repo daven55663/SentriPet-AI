@@ -412,6 +412,17 @@ namespace SentriPet
                 t.Equal("換造型：目前的造型打勾", 1, radios.Count(m => m.IsChecked));
                 t.Check("換造型：隨機與每天隨機換都在同一個選單", looks.OfType<MenuItem>().Any(m => Equals(m.Header, L.T("交給命運吧（隨機）"))) &&
                                                                looks.OfType<MenuItem>().Any(m => Equals(m.Header, L.T("每天隨機換一個"))));
+                // the switches that are rarely changed are on the settings page only (the user's request)
+                var rare = new[] { L.T("永遠在最上層"), L.T("滑鼠穿透（不擋點擊）"), L.T("會說話"), L.T("額度提醒通知"), L.T("催我用完週額度（重置前提醒）"), L.T("開機自動啟動") };
+                t.Check("右鍵選單：不常用的開關只放在設定頁", !items.OfType<MenuItem>().Any(m => rare.Contains(m.Header as string)),
+                    string.Join(", ", items.OfType<MenuItem>().Where(m => rare.Contains(m.Header as string)).Select(m => m.Header)));
+                var report = subs.FirstOrDefault(m => Equals(m.Header, L.T("額度利用率（週報／月報）")));
+                t.Check("右鍵選單：額度利用率緊接在換造型後面", report != null && items.IndexOf(report) == items.IndexOf(subs.First(m => Equals(m.Header, L.T("換造型")))) + 1);
+                var lines = report != null ? ((IEnumerable<object>)report.ItemsSource).OfType<MenuItem>().Select(m => m.Header as string).ToList() : new List<string>();
+                t.Check("額度利用率：每個週額度一行（這期與上期）、最後是完整報告",
+                    lines.Count(l => l != null && l.StartsWith("Claude · ")) == 1 && lines.Any(l => l != null && l.StartsWith("Codex · ")) &&
+                    lines.First(l => l != null && l.StartsWith("Claude · ")).Contains(Fmt.Pct(88)) && lines.Last() == L.T("查看完整報告…"),
+                    string.Join(" | ", lines));
             });
             Progress = "settings page";
             t.Run("settings", () =>
