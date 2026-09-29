@@ -1,12 +1,12 @@
 {
-    "version": "2.2.1",
+    "version": "2.3.0",
     "description": "A desktop pet that shows how much of your AI plan is left (Claude, Codex, Copilot…) and nudges you to use it before it resets.",
     "homepage": "https://github.com/daven55663/SentriPet-AI",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/daven55663/SentriPet-AI/releases/download/v2.2.1/SentriPet-2.2.1-win-x64.zip",
-            "hash": "30ec5cbf4979b091c60dd7b3647e02f14510c5d85868c930889af83f33d1a52d"
+            "url": "https://github.com/daven55663/SentriPet-AI/releases/download/v2.3.0/SentriPet-2.3.0-win-x64.zip",
+            "hash": "fdf6d42baf74e0afbee0179b2e13c72eab1342a7b0ab352e3d6ee1509e5310b7"
         }
     },
     "post_install": [
