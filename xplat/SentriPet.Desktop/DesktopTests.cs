@@ -418,11 +418,29 @@ namespace SentriPet
                     string.Join(", ", items.OfType<MenuItem>().Where(m => rare.Contains(m.Header as string)).Select(m => m.Header)));
                 var report = subs.FirstOrDefault(m => Equals(m.Header, L.T("額度利用率（週報／月報）")));
                 t.Check("右鍵選單：額度利用率緊接在換造型後面", report != null && items.IndexOf(report) == items.IndexOf(subs.First(m => Equals(m.Header, L.T("換造型")))) + 1);
-                var lines = report != null ? ((IEnumerable<object>)report.ItemsSource).OfType<MenuItem>().Select(m => m.Header as string).ToList() : new List<string>();
-                t.Check("額度利用率：每個週額度一行（這期與上期）、最後是完整報告",
-                    lines.Count(l => l != null && l.StartsWith("Claude · ")) == 1 && lines.Any(l => l != null && l.StartsWith("Codex · ")) &&
-                    lines.First(l => l != null && l.StartsWith("Claude · ")).Contains(Fmt.Pct(88)) && lines.Last() == L.T("查看完整報告…"),
-                    string.Join(" | ", lines));
+                var entries = report != null ? ((IEnumerable<object>)report.ItemsSource).OfType<MenuItem>().ToList() : new List<MenuItem>();
+                Func<object, List<Control>> all = null;
+                all = o =>
+                {
+                    var list = new List<Control>();
+                    var c = o as Control;
+                    if (c == null) return list;
+                    list.Add(c);
+                    var panel = c as Panel;
+                    if (panel != null) foreach (var ch in panel.Children) list.AddRange(all(ch));
+                    var border = c as Border;
+                    if (border != null) list.AddRange(all(border.Child));
+                    return list;
+                };
+                Func<MenuItem, string> text = m => m.Header as string ?? string.Join(" ", all(m.Header).OfType<TextBlock>().Select(x => x.Text));
+                var claude = entries.FirstOrDefault(m => text(m).StartsWith("Claude · "));
+                // the sample report has 8 past Claude weeks: 8 bars and the week in progress
+                var claudeBars = claude != null ? all(claude.Header).OfType<StackPanel>().FirstOrDefault(sp => sp.Orientation == Avalonia.Layout.Orientation.Horizontal) : null;
+                t.Check("額度利用率：選單裡直接有圖表（過去 8 期＋這期）與數字（上期 88%）",
+                    claude != null && claudeBars != null && claudeBars.Children.Count == 9 && text(claude).Contains(Fmt.Pct(88)),
+                    claude == null ? "no Claude entry" : text(claude) + " / " + (claudeBars == null ? "no bars" : claudeBars.Children.Count + " bars"));
+                t.Check("額度利用率：每個週／月額度一項，最後是完整報告",
+                    entries.Any(m => text(m).StartsWith("Codex · ")) && text(entries.Last()) == L.T("查看完整報告…"), string.Join(" | ", entries.Select(text)));
             });
             Progress = "settings page";
             t.Run("settings", () =>

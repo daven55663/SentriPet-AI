@@ -534,38 +534,17 @@ namespace SentriPet
                 var last = g.OrderBy(r => r.EndedAt).ToList();
                 if (last.Count > 8) last = last.GetRange(last.Count - 8, 8);
                 var newest = last[last.Count - 1];
+                // (the window in progress, when this quota is shown right now)
+                var view = ctl.Views.FirstOrDefault(v => v.Id == newest.Provider);
+                var current = view != null ? view.Meters.FirstOrDefault(m => m.Key == newest.Meter && !m.Unlimited) : null;
+                var bars = ReportChart.Bars(last, current, 40, 26, true);
+                bars.HorizontalAlignment = HorizontalAlignment.Right;
                 Row(body, newest.Name + " · " + newest.Label,
                     L.F("最近 {0} 期平均用掉 {1}，最近一期 {2}", last.Count, Fmt.Pct(last.Average(r => r.Used)), Fmt.Pct(newest.Used)),
-                    UsageBars(last));
+                    bars);
             }
             Row(body, L.T("重置時跳通知總結"), L.T("週額度重置時桌寵會說那一期用掉多少；開啟後也會跳一則通知"),
                 Toggle(S.WeeklyReport, v => { S.WeeklyReport = v; SaveSoon(); }));
-        }
-
-        /// <summary>One bar per window: its height is the share used (green: used well, amber: some wasted, red: mostly wasted).</summary>
-        static Control UsageBars(List<WindowResult> windows)
-        {
-            const double H = 40;
-            var sp = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-            foreach (var r in windows)
-            {
-                var color = Palette.Hex(r.Used >= 80 ? "#4ADE80" : r.Used >= 50 ? "#FBBF24" : "#F87171");
-                var col = new StackPanel { Width = 26, Margin = new Thickness(2, 0, 2, 0) };
-                var track = new Border { Height = H, Background = G.B(Colors.White, 0.06), CornerRadius = new CornerRadius(4), ClipToBounds = true };
-                track.Child = new Border
-                {
-                    Height = Math.Max(2, H * r.Used / 100), VerticalAlignment = VerticalAlignment.Bottom,
-                    Background = G.B(color, r.SeenToEnd ? 0.9 : 0.45), CornerRadius = new CornerRadius(4),
-                };
-                col.Children.Add(track);
-                var local = r.EndedAt.ToLocalTime();
-                col.Children.Add(new TextBlock { Text = local.Month + "/" + local.Day, FontSize = 9.5, Foreground = G.B(SubC), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 3, 0, 0) });
-                ToolTip.SetTip(col, L.F("{0} 重置：用掉 {1}", Fmt.When(r.EndedAt), Fmt.Pct(r.Used)) +
-                                    (r.SeenToEnd ? "" : "\n" + L.T("這一期最後一段 SentriPet 沒在執行，實際可能用得更多")) +
-                                    (r.NudgeLevel > 0 ? "\n" + L.T("這一期有催過你") : ""));
-                sp.Children.Add(col);
-            }
-            return sp;
         }
 
         /// <summary>Quiet hours (#17): on/off, from–to and the weekdays they apply to.</summary>

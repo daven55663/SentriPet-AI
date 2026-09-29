@@ -151,7 +151,7 @@ SentriPet looks for AI tools on your computer and every one it finds becomes a p
 | Drag | Move it (snaps to screen edges); the position is remembered |
 | Click | The pet answers |
 | Hover | Details: every quota, reset times, data source |
-| Right-click | Menu: change look (each look with its mood, or leave it to fate), quota use this week/month and last time (with the full report), size, opacity, move to screen, language, pause reminders. The switches you rarely change (always on top, click-through, talking, notifications, "use it" nudges, start at sign-in) are in the settings |
+| Right-click | Menu: change look (each look with its mood, or leave it to fate), quota use at a glance (bars of the last 8 weekly/monthly windows and the one in progress, with the numbers), size, opacity, move to screen, language, pause reminders. The switches you rarely change (always on top, click-through, talking, notifications, "use it" nudges, start at sign-in) are in the settings |
 | Double-click | Settings |
 | Tray / menu-bar icon | Left click shows/hides the pet; right click opens the menu (turn click-through off here). The jelly in the icon is as full as your lowest quota; a blue dot means an AI is working |
 

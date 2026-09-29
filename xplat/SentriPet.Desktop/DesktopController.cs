@@ -571,7 +571,10 @@ namespace SentriPet
             return items;
         }
 
-        /// <summary>The weekly/monthly quotas: how much of this window is used so far and how the last one ended (#16), and the full report.</summary>
+        /// <summary>
+        /// The weekly/monthly quotas at a glance (#16): for each, the bars of its last 8 windows and the one in progress,
+        /// with the numbers — right in the menu; "Full report…" opens the settings page there.
+        /// </summary>
         MenuItem ReportMenu()
         {
             var menu = new MenuItem { Header = L.T("額度利用率（週報／月報）") };
@@ -580,10 +583,11 @@ namespace SentriPet
             foreach (var v in views)
                 foreach (var m in v.Meters.Where(x => !x.Unlimited && x.WindowMinutes >= UsageHistory.ReportWindowMinutes))
                 {
-                    var last = results.LastOrDefault(r => r.Provider == v.Id && r.Meter == m.Key);
-                    list.Add(Item(last != null
-                        ? L.F("{0} · {1}：這期用了 {2}，上期 {3}", v.Name, m.Label, Fmt.Pct(m.Used), Fmt.Pct(last.Used))
-                        : L.F("{0} · {1}：這期用了 {2}", v.Name, m.Label, Fmt.Pct(m.Used)), OpenReport));
+                    var past = results.Where(r => r.Provider == v.Id && r.Meter == m.Key).ToList();
+                    if (past.Count > 8) past = past.GetRange(past.Count - 8, 8);
+                    var entry = Item(v.Name + " · " + m.Label, OpenReport);
+                    entry.Header = ReportChart.MenuEntry(v.Name, m, past);
+                    list.Add(entry);
                 }
             if (list.Count == 0) list.Add(new MenuItem { Header = L.T("目前沒有每週或每月的額度"), IsEnabled = false });
             list.Add(new Separator());
