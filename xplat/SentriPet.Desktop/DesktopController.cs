@@ -19,6 +19,8 @@ namespace SentriPet
         readonly IClassicDesktopStyleApplicationLifetime desktop;
         readonly AlertTracker alerts = new AlertTracker();
         readonly UseItTracker useIt = new UseItTracker();
+        readonly HashSet<string> runsOutAnnounced = new HashSet<string>();
+        readonly List<WindowResult> pendingSummaries = new List<WindowResult>();
         readonly Random rng = new Random();
         List<ProviderView> views = new List<ProviderView>();
         PetWindow window;
@@ -30,8 +32,12 @@ namespace SentriPet
         public AppSettings Settings { get; private set; }
         public UsageService Service { get; private set; }
         public List<ProviderView> Views { get { return views; } }
+        public UsageHistory History { get; private set; }
         /// <summary>True while a menu is open (the widget keeps its hover card out of the way).</summary>
         public bool MenuOpen { get { return menuOpen; } }
+
+        /// <summary>Quiet time (#17): no notifications and nothing said unprompted.</summary>
+        public bool IsQuiet { get { return Settings != null && Quiet.IsQuiet(Settings, DateTime.UtcNow); } }
 
         public DesktopController(Application app, IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -66,6 +72,7 @@ namespace SentriPet
                 }
             }
             catch (Exception ex) { Log.Error("status line bridge", ex); }
+            History = new UsageHistory(UsageHistory.DefaultFile);
             Service = new UsageService(Settings);
             Service.Changed += () => Dispatcher.UIThread.Post(RefreshViews);
 
@@ -171,7 +178,7 @@ namespace SentriPet
             if (apply && window != null)
             {
                 window.SetTheme(pick.Create());
-                window.Say(null, L.F("新的一天，今天換成「{0}」！", pick.Name));
+                if (!IsQuiet) window.Say(null, L.F("新的一天，今天換成「{0}」！", pick.Name));
                 if (settingsWindow != null) settingsWindow.OnThemeChanged();
             }
         }
@@ -181,6 +188,20 @@ namespace SentriPet
         public void RefreshViews()
         {
             views = Service.BuildViews(Settings, false);
+            var now = DateTime.UtcNow;
+            if (History != null)
+            {
+                try
+                {
+                    foreach (var r in History.Observe(views, Settings, now))
+                    {
+                        Log.Info("window ended: " + r.Key + " used " + r.Used + "%" + (r.SeenToEnd ? "" : " (last seen earlier)"));
+                        pendingSummaries.Add(r);
+                    }
+                    History.Annotate(views, now);
+                }
+                catch (Exception ex) { Log.Error("usage history", ex); }
+            }
             if (window.CurrentTheme != null) window.CurrentTheme.Update(views);
             // new numbers: the themes animate to them (rings fill up, needles swing), so animate smoothly for a moment
             string sig = string.Join("|", views.Select(v => v.Id + ":" + string.Join(",", v.Meters.Select(m => Math.Round(m.Remaining, 1).ToString(System.Globalization.CultureInfo.InvariantCulture)))));
@@ -197,7 +218,41 @@ namespace SentriPet
                 greetedAt = DateTime.UtcNow;
                 Greet();
             }
-            if (greeted && (DateTime.UtcNow - greetedAt).TotalSeconds > 8) CheckUseIt();
+            if (greeted && (DateTime.UtcNow - greetedAt).TotalSeconds > 8)
+            {
+                CheckUseIt();
+                CheckRunsOut(now);
+                SayWindowSummary();
+            }
+        }
+
+        /// <summary>At the recent pace a quota runs out within 45 minutes, before its reset: say so once (#15).</summary>
+        void CheckRunsOut(DateTime now)
+        {
+            if (IsQuiet) return;
+            foreach (var v in views)
+                foreach (var m in v.Meters)
+                {
+                    if (!m.RunsOutAt.HasValue || (m.RunsOutAt.Value - now).TotalMinutes > 45 || m.Remaining < 5) continue;
+                    string key = v.Id + "|" + m.Key + "|" + (m.ResetsAt.HasValue ? m.ResetsAt.Value.ToString("yyyyMMddHH") : "");
+                    if (!runsOutAnnounced.Add(key)) continue;
+                    string text = Lines.RunsOut(v, m);
+                    Log.Info("runs out: " + key + " at " + m.RunsOutAt.Value.ToString("o"));
+                    window.Say(v.Id, text);
+                    if (Settings.Notifications) Integration.Notify(AppInfo.Name, text);
+                    return;   // one at a time
+                }
+        }
+
+        /// <summary>A weekly/monthly window ended: how much of it was used (#16), once quiet time is over.</summary>
+        void SayWindowSummary()
+        {
+            if (pendingSummaries.Count == 0 || IsQuiet || !window.IsVisible || menuOpen) return;
+            var r = pendingSummaries[0];
+            pendingSummaries.RemoveAt(0);
+            string text = Lines.WindowSummary(r);
+            window.Say(views.Any(v => v.Id == r.Provider) ? r.Provider : null, text);
+            if (Settings.Notifications && Settings.WeeklyReport) Integration.Notify(AppInfo.Name + " · " + L.T("額度利用率"), text);
         }
 
         bool IsInstalled(string id)
@@ -208,6 +263,7 @@ namespace SentriPet
 
         void Greet()
         {
+            if (IsQuiet) return;   // (the first-run greeting waits for the next start)
             if (!Settings.FirstRunDone)
             {
                 Settings.FirstRunDone = true;
@@ -223,6 +279,7 @@ namespace SentriPet
         void Alert(ProviderView v, Meter m, int level)
         {
             string text = level >= 2 ? Lines.Critical(v, m) : Lines.Warn(v, m);
+            if (IsQuiet) { Log.Info("quiet: " + text); return; }
             window.Say(v.Id, text);
             if (Settings.Notifications) Integration.Notify(AppInfo.Name, text);
         }
@@ -231,12 +288,15 @@ namespace SentriPet
         {
             string text = Lines.Reset(v, m);
             if (window.CurrentTheme != null) window.CurrentTheme.Celebrate(v.Id);
+            if (IsQuiet) return;
+            if (m.WindowMinutes >= UsageHistory.ReportWindowMinutes) return;   // the window's summary says it (#16)
             window.Say(v.Id, text);
             if (Settings.Notifications && previousUsed >= 50) Integration.Notify(AppInfo.Name, text);
         }
 
         void CheckUseIt()
         {
+            if (IsQuiet) return;   // new levels are announced when the quiet time is over
             foreach (var e in useIt.Check(Settings, views, DateTime.UtcNow, window.IsVisible && !menuOpen, rng))
             {
                 if (e.Announce)
@@ -444,6 +504,28 @@ namespace SentriPet
             items.Add(Toggle(L.T("會說話"), Settings.Chatty, () => { Settings.Chatty = !Settings.Chatty; Settings.Save(); }));
             items.Add(Toggle(L.T("額度提醒通知"), Settings.Notifications, () => { Settings.Notifications = !Settings.Notifications; Settings.Save(); }));
             items.Add(Toggle(L.T("催我用完週額度（重置前提醒）"), Settings.UseItReminder, () => { Settings.UseItReminder = !Settings.UseItReminder; Settings.Save(); RefreshViews(); }));
+            var now = DateTime.UtcNow;
+            if (Quiet.Paused(Settings, now))
+                items.Add(Item(L.F("恢復提醒（暫停到 {0}）", Settings.PausedUntil.Value.ToLocalTime().ToString("HH:mm")), () =>
+                {
+                    Settings.PausedUntil = null;
+                    Settings.Save();
+                    window.Say(null, L.T("提醒恢復了！"));
+                }));
+            else
+            {
+                if (Quiet.InHours(Settings, now.ToLocalTime()))
+                {
+                    var end = Quiet.EndsAt(Settings, now);
+                    items.Add(new MenuItem { Header = L.F("勿擾時段中（到 {0}）", end.HasValue ? end.Value.ToString("HH:mm") : "—"), IsEnabled = false });
+                }
+                else items.Add(Item(L.T("暫停提醒 1 小時"), () =>
+                {
+                    Settings.PausedUntil = DateTime.UtcNow + Quiet.PauseLength;
+                    Settings.Save();
+                    window.Say(null, L.T("好，接下來 1 小時我先安靜"));
+                }));
+            }
             items.Add(new Separator());
             items.Add(Item(L.T("設定…"), OpenSettings));
             items.Add(Toggle(L.T("開機自動啟動"), Settings.AutoStart, () => { Settings.AutoStart = !Settings.AutoStart; Integration.SetAutostart(Settings.AutoStart); Settings.Save(); }));

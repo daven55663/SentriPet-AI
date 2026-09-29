@@ -36,6 +36,8 @@ namespace SentriPet
             public AppSettings Settings { get { return settings; } }
             public UsageService Service { get { return service ?? (service = new UsageService(settings)); } }
             public List<ProviderView> Views { get { return MockData.A(); } }
+            public UsageHistory History { get { return history ?? (history = MockData.History()); } }
+            UsageHistory history;
             public void ApplyWidgetSettings() { }
             public void ChangeTheme(string id) { }
             public void ChangeLanguage(string code) { }

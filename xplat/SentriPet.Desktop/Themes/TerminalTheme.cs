@@ -16,14 +16,12 @@ namespace SentriPet
     /// <summary>CRT scanlines: a dark line every 3 px (WPF used a tiled drawing brush; they no longer drift, see Tick).</summary>
     class Scanlines : Control
     {
-        public double Offset;
         static readonly IBrush Line = G.B(Colors.Black, 0.55);
 
         public override void Render(DrawingContext dc)
         {
             double w = Bounds.Width, h = Bounds.Height;
-            for (double y = Offset - 1; y < h; y += 3)
-                if (y >= 0) dc.FillRectangle(Line, new Rect(0, y, w, 1));
+            for (double y = 2; y < h; y += 3) dc.FillRectangle(Line, new Rect(0, y, w, 1));
         }
     }
 

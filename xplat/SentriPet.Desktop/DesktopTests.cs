@@ -302,6 +302,13 @@ namespace SentriPet
                 cv.Update(c);
                 t.Check("更新後提醒消失", !cv.BannerShown);
                 t.Check("同樣的額度組成：就地更新", cv.Matches(c) && !cv.Matches(a));
+                t.Equal("沒有預測：不顯示用完時間", "", cv.Forecasts);
+                c.Meters[0].RunsOutAt = DateTime.UtcNow.AddMinutes(40);
+                cv.Update(c);
+                t.Contains("照目前速度會用完：卡片上顯示時間（#15）", cv.Forecasts, Fmt.When(c.Meters[0].RunsOutAt));
+                c.Meters[0].RunsOutAt = null;
+                cv.Update(c);
+                t.Equal("預測消失：那一行也消失", "", cv.Forecasts);
             });
             Progress = "speech bubble";
             t.Run("speech", () =>
@@ -445,6 +452,8 @@ namespace SentriPet
             public AppSettings Settings { get { return settings; } }
             public UsageService Service { get { return service ?? (service = new UsageService(settings)); } }
             public List<ProviderView> Views { get { return MockData.A(); } }
+            readonly UsageHistory history = MockData.History();
+            public UsageHistory History { get { return history; } }
             public void ApplyWidgetSettings() { Changed++; }
             public void ChangeTheme(string id) { settings.Theme = id; Changed++; }
             public void ChangeLanguage(string code) { settings.Language = code; Changed++; }

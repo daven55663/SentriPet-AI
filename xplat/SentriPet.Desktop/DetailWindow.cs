@@ -81,7 +81,7 @@ namespace SentriPet
         class MeterUi
         {
             public string Key;
-            public TextBlock Pct, Info;
+            public TextBlock Pct, Info, Forecast;
             public Border Fill;
         }
 
@@ -104,6 +104,8 @@ namespace SentriPet
         /// <summary>For the self-test: the "use it before it resets" banner.</summary>
         internal bool BannerShown { get { return useIt.IsVisible; } }
         internal string BannerText { get { return useItText.Text; } }
+        /// <summary>For the self-test: the "runs out at this pace" lines shown (#15).</summary>
+        internal string Forecasts { get { return string.Join("|", meters.Where(x => x.Forecast.IsVisible).Select(x => x.Forecast.Text)); } }
 
         public static DetailCardView Build(ProviderView v)
         {
@@ -184,6 +186,12 @@ namespace SentriPet
                 ui.Info.TextWrapping = TextWrapping.Wrap;
                 ui.Info.Margin = new Thickness(0, 4, 0, 0);
                 sp.Children.Add(ui.Info);
+                // at the recent pace this runs out before its reset (#15)
+                ui.Forecast = G.T("", 11, Palette.Hex("#FBBF24"), FontWeight.SemiBold, G.Ui);
+                ui.Forecast.TextWrapping = TextWrapping.Wrap;
+                ui.Forecast.Margin = new Thickness(0, 2, 0, 0);
+                ui.Forecast.IsVisible = false;
+                sp.Children.Add(ui.Forecast);
                 d.meters.Add(ui);
             }
             sp.Children.Add(new Border { Height = 1, Background = G.B(Colors.White, 0.1), Margin = new Thickness(0, 10, 0, 8) });
@@ -280,6 +288,8 @@ namespace SentriPet
                 if (m.ValueText != null && !m.Unlimited) info = m.ValueText + " · " + info;
                 if (m.WasReset) info += " · " + L.T("已自動重置");
                 ui.Info.Text = info;
+                ui.Forecast.IsVisible = m.RunsOutAt.HasValue;
+                if (m.RunsOutAt.HasValue) ui.Forecast.Text = "⏱ " + L.F("照目前速度，約 {0} 用完", Fmt.When(m.RunsOutAt));
             }
             status.Text = v.HasData ? (v.StatusText ?? "") : "";
             status.IsVisible = !string.IsNullOrEmpty(status.Text);

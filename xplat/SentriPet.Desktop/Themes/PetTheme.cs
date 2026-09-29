@@ -628,7 +628,8 @@ namespace SentriPet
             if (Host != null && Host.Settings.Chatty && Views.Count > 0)
             {
                 nextChat -= dt;
-                if (nextChat <= 0)
+                if (nextChat <= 0 && Quiet.IsQuiet(Host.Settings, DateTime.UtcNow)) nextChat = 60;   // quiet time (#17): later
+                else if (nextChat <= 0)
                 {
                     nextChat = 420 + Rng.NextDouble() * 480;
                     var v = Views[Rng.Next(Views.Count)];

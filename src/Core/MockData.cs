@@ -61,6 +61,20 @@ namespace SentriPet
             return new List<ProviderView> { View(new ClaudeProvider(), claude), View(new CodexProvider(), codex), View(new CopilotProvider(), copilot) };
         }
 
+        /// <summary>A report of past weekly windows (settings page snapshot, self-test), not saved anywhere.</summary>
+        public static UsageHistory History()
+        {
+            var h = new UsageHistory(null);
+            var end = DateTime.UtcNow.Date.AddDays(-2).AddHours(15);
+            double[] claude = { 62, 78, 91, 55, 84, 97, 73, 88 };
+            double[] codex = { 40, 35, 66, 71, 52, 80 };
+            for (int i = 0; i < claude.Length; i++)
+                h.AddResult(new WindowResult { Provider = "claude", Name = "Claude", Meter = "sd", Label = L.T("每週"), EndedAt = end.AddDays(-7 * (claude.Length - 1 - i)), Used = claude[i], SeenToEnd = true, NudgeLevel = claude[i] < 70 ? 2 : 0 });
+            for (int i = 0; i < codex.Length; i++)
+                h.AddResult(new WindowResult { Provider = "codex", Name = "Codex", Meter = "codex:10080", Label = L.T("每週"), EndedAt = end.AddDays(1 - 7 * (codex.Length - 1 - i)), Used = codex[i], SeenToEnd = i != 2 });
+            return h;
+        }
+
         class CustomProviderStub : Provider
         {
             public CustomProviderStub(string id, string name, string mascot, string color)

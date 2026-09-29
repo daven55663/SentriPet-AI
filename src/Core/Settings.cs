@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -22,6 +23,11 @@ namespace SentriPet
         public bool Notifications = true;
         public bool UseItReminder = true;     // nag to spend a weekly/monthly quota before it resets unused
         public Dictionary<string, string> UseItNotified = new Dictionary<string, string>();   // "provider|meter" → "resetUtc#level" already announced
+        public bool QuietHours;               // quiet time (#17): no notifications, no speech of its own
+        public string QuietFrom = "22:00", QuietTo = "08:00";
+        public string QuietDays = "0123456";  // weekdays with quiet hours (Sunday = 0)
+        public DateTime? PausedUntil;         // "pause reminders" from the menu (UTC)
+        public bool WeeklyReport = true;      // a notification with the summary when a weekly/monthly window ends (#16)
         public int WarnAt = 80;               // used %
         public int CriticalAt = 95;           // used %
         public bool AutoStart = true;
@@ -68,6 +74,14 @@ namespace SentriPet
                 s.UseItReminder = Json.Bool(Json.Get(o, "useItReminder")) ?? true;
                 var un = Json.Obj(Json.Get(o, "useItNotified"));
                 if (un != null) foreach (var kv in un) { var str = Json.Str(kv.Value); if (str != null) s.UseItNotified[kv.Key] = str; }
+                s.WeeklyReport = Json.Bool(Json.Get(o, "weeklyReport")) ?? true;
+                s.QuietHours = Json.Bool(Json.Get(o, "quietHours")) ?? false;
+                s.QuietFrom = Json.Str(Json.Get(o, "quietFrom")) ?? s.QuietFrom;
+                s.QuietTo = Json.Str(Json.Get(o, "quietTo")) ?? s.QuietTo;
+                s.QuietDays = Json.Str(Json.Get(o, "quietDays")) ?? s.QuietDays;
+                DateTime paused;
+                if (DateTime.TryParse(Json.Str(Json.Get(o, "pausedUntil")) ?? "", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out paused))
+                    s.PausedUntil = DateTime.SpecifyKind(paused, DateTimeKind.Utc);
                 s.WarnAt = (int)Clamp(Json.Num(Json.Get(o, "warnAt")) ?? 80, 10, 99);
                 s.CriticalAt = (int)Clamp(Json.Num(Json.Get(o, "criticalAt")) ?? 95, 10, 100);
                 s.AutoStart = Json.Bool(Json.Get(o, "autoStart")) ?? true;
@@ -113,6 +127,12 @@ namespace SentriPet
                 o["notifications"] = Notifications;
                 o["useItReminder"] = UseItReminder;
                 o["useItNotified"] = UseItNotified.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
+                o["weeklyReport"] = WeeklyReport;
+                o["quietHours"] = QuietHours;
+                o["quietFrom"] = QuietFrom;
+                o["quietTo"] = QuietTo;
+                o["quietDays"] = QuietDays;
+                if (PausedUntil.HasValue && PausedUntil.Value > DateTime.UtcNow) o["pausedUntil"] = PausedUntil.Value.ToString("o", CultureInfo.InvariantCulture);
                 o["warnAt"] = WarnAt;
                 o["criticalAt"] = CriticalAt;
                 o["autoStart"] = AutoStart;

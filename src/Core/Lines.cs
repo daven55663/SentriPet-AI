@@ -83,6 +83,22 @@ namespace SentriPet
             return Say("{name} 的「{meter}」快用完了（剩 {pct}），{reset}後重置", v, m);
         }
 
+        /// <summary>At the recent pace a quota runs out before its reset (#15).</summary>
+        public static string RunsOut(ProviderView v, Meter m)
+        {
+            return Say("照這個速度，{name} 的「{meter}」大約 {time} 就會用完（{reset}後才重置），可以放慢一點", v, m, "time", Fmt.When(m.RunsOutAt));
+        }
+
+        /// <summary>A weekly/monthly window ended: how much of it was used (#16).</summary>
+        public static string WindowSummary(WindowResult r)
+        {
+            string[] vars = { "name", r.Name ?? "", "quota", QuotaName(new Meter { Label = r.Label }), "used", Fmt.Pct(r.Used), "left", Fmt.Pct(r.Wasted) };
+            if (r.Used >= 90) return Say("{name} 這次的{quota}用掉 {used}，幾乎沒浪費，太厲害了！", null, null, vars);
+            if (r.Used >= 70) return Say("{name} 這次的{quota}用掉 {used}，只浪費 {left}，不錯喔", null, null, vars);
+            if (r.Used >= 40) return Say("{name} 這次的{quota}用掉 {used}，浪費了 {left}，下次多用一點吧", null, null, vars);
+            return Say("{name} 這次的{quota}只用了 {used}，{left} 白白浪費了…下次一起加油！", null, null, vars);
+        }
+
         /// <summary>"每週額度" / "每週 Opus 額度".</summary>
         public static string QuotaName(Meter m)
         {

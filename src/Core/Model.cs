@@ -19,6 +19,7 @@ namespace SentriPet
         public bool Unlimited;
         public string ValueText;      // optional, e.g. "250 / 300"
         public bool WasReset;         // window rolled over after the data was observed
+        public DateTime? RunsOutAt;   // UTC: runs out before its reset at the recent pace (#15, see UsageHistory)
 
         public double Remaining
         {

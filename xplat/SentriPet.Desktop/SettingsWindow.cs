@@ -19,6 +19,8 @@ namespace SentriPet
         AppSettings Settings { get; }
         UsageService Service { get; }
         List<ProviderView> Views { get; }
+        /// <summary>The pace and the report of past weekly/monthly windows (#15, #16).</summary>
+        UsageHistory History { get; }
         void ApplyWidgetSettings();
         void ChangeTheme(string id);
         void ChangeLanguage(string code);
@@ -74,6 +76,7 @@ namespace SentriPet
             BuildLook(root);
             BuildProviders(root);
             BuildAlerts(root);
+            BuildReport(root);
             BuildGeneral(root);
             Page = root;
             Content = new ScrollViewer { Content = root, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
@@ -459,8 +462,115 @@ namespace SentriPet
             Row(body, L.T("額度提醒通知"), Integration.NotificationHint, Toggle(S.Notifications, v => { S.Notifications = v; SaveSoon(); }));
             Row(body, L.T("催我用完週額度"), L.T("每週／每月額度快重置、卻還剩不少時，桌寵會拿鬧鐘催你把它用掉：剩 2 天（還有 30% 以上）開始提醒，最後一天、最後 6 小時會越催越勤，並各跳一次通知"),
                 Toggle(S.UseItReminder, v => { S.UseItReminder = v; SaveSoon(); ctl.RefreshViews(); }));
+            Row(body, L.T("勿擾時段"), L.T("這段時間不跳通知、桌寵不主動說話（點牠還是會回應），數字照常顯示；右鍵選單也可以暫停提醒 1 小時"), QuietHoursBox());
             Row(body, L.T("提醒門檻"), L.T("用量超過這個比例時提醒一次"), SliderBox(50, 95, S.WarnAt, 5, v => L.F("用掉 {0}%", Math.Round(v)), v => { S.WarnAt = (int)Math.Round(v); SaveSoon(); }));
             Row(body, L.T("緊急門檻"), L.T("快用完時再提醒一次"), SliderBox(60, 100, S.CriticalAt, 1, v => L.F("用掉 {0}%", Math.Round(v)), v => { S.CriticalAt = (int)Math.Round(v); SaveSoon(); }));
+        }
+
+        /// <summary>How much of each weekly/monthly window was used (#16): the last 8 windows as bars, and the average.</summary>
+        void BuildReport(StackPanel root)
+        {
+            var body = Section(root, L.T("額度利用率"), L.T("每週／每月額度重置時，記下那一期用掉多少，看看有沒有浪費"));
+            var results = ctl.History != null ? ctl.History.Results : new List<WindowResult>();
+            if (results.Count == 0)
+                Row(body, L.T("還沒有紀錄"), L.T("每週額度重置一次之後，這裡就會出現那一週用掉多少"), null);
+            foreach (var g in results.GroupBy(r => r.Key))
+            {
+                var last = g.OrderBy(r => r.EndedAt).ToList();
+                if (last.Count > 8) last = last.GetRange(last.Count - 8, 8);
+                var newest = last[last.Count - 1];
+                Row(body, newest.Name + " · " + newest.Label,
+                    L.F("最近 {0} 期平均用掉 {1}，最近一期 {2}", last.Count, Fmt.Pct(last.Average(r => r.Used)), Fmt.Pct(newest.Used)),
+                    UsageBars(last));
+            }
+            Row(body, L.T("重置時跳通知總結"), L.T("週額度重置時桌寵會說那一期用掉多少；開啟後也會跳一則通知"),
+                Toggle(S.WeeklyReport, v => { S.WeeklyReport = v; SaveSoon(); }));
+        }
+
+        /// <summary>One bar per window: its height is the share used (green: used well, amber: some wasted, red: mostly wasted).</summary>
+        static Control UsageBars(List<WindowResult> windows)
+        {
+            const double H = 40;
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            foreach (var r in windows)
+            {
+                var color = Palette.Hex(r.Used >= 80 ? "#4ADE80" : r.Used >= 50 ? "#FBBF24" : "#F87171");
+                var col = new StackPanel { Width = 26, Margin = new Thickness(2, 0, 2, 0) };
+                var track = new Border { Height = H, Background = G.B(Colors.White, 0.06), CornerRadius = new CornerRadius(4), ClipToBounds = true };
+                track.Child = new Border
+                {
+                    Height = Math.Max(2, H * r.Used / 100), VerticalAlignment = VerticalAlignment.Bottom,
+                    Background = G.B(color, r.SeenToEnd ? 0.9 : 0.45), CornerRadius = new CornerRadius(4),
+                };
+                col.Children.Add(track);
+                var local = r.EndedAt.ToLocalTime();
+                col.Children.Add(new TextBlock { Text = local.Month + "/" + local.Day, FontSize = 9.5, Foreground = G.B(SubC), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 3, 0, 0) });
+                ToolTip.SetTip(col, L.F("{0} 重置：用掉 {1}", Fmt.When(r.EndedAt), Fmt.Pct(r.Used)) +
+                                    (r.SeenToEnd ? "" : "\n" + L.T("這一期最後一段 SentriPet 沒在執行，實際可能用得更多")) +
+                                    (r.NudgeLevel > 0 ? "\n" + L.T("這一期有催過你") : ""));
+                sp.Children.Add(col);
+            }
+            return sp;
+        }
+
+        /// <summary>Quiet hours (#17): on/off, from–to and the weekdays they apply to.</summary>
+        Control QuietHoursBox()
+        {
+            var box = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right, MaxWidth = 250 };
+            var details = new StackPanel { IsEnabled = S.QuietHours, Margin = new Thickness(0, 6, 0, 0) };
+            var onOff = Toggle(S.QuietHours, v => { S.QuietHours = v; details.IsEnabled = v; SaveSoon(); });
+            onOff.HorizontalAlignment = HorizontalAlignment.Right;
+            box.Children.Add(onOff);
+
+            var hint = Txt("", 11, Palette.Hex("#FCA5A5"), FontWeight.Normal);
+            hint.IsVisible = false;
+            var times = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            Func<string, Action<string>, TextBox> timeBox = (value, set) =>
+            {
+                var tb = new TextBox { Text = value, Width = 72, HorizontalContentAlignment = HorizontalAlignment.Center };
+                tb.TextChanged += (s, e) =>
+                {
+                    TimeSpan t;
+                    bool ok = Quiet.TryParseTime(tb.Text, out t);
+                    if (ok)
+                    {
+                        set(t.Hours.ToString("00") + ":" + t.Minutes.ToString("00"));
+                        SaveSoon();
+                    }
+                    hint.Text = L.T("時間看不懂，例如 22:00");
+                    hint.IsVisible = !ok;
+                };
+                return tb;
+            };
+            times.Children.Add(timeBox(S.QuietFrom, v => S.QuietFrom = v));
+            times.Children.Add(new TextBlock { Text = "–", Foreground = G.B(SubC), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) });
+            times.Children.Add(timeBox(S.QuietTo, v => S.QuietTo = v));
+            details.Children.Add(times);
+
+            // Monday first; each day on or off
+            var days = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, -4, 0) };
+            foreach (var d in new[] { 1, 2, 3, 4, 5, 6, 0 })
+            {
+                var day = (DayOfWeek)d;
+                var chip = new Avalonia.Controls.Primitives.ToggleButton
+                {
+                    Content = Fmt.WeekDay(day), IsChecked = Quiet.DayOn(S, day), FontSize = 11.5,
+                    Padding = new Thickness(7, 3), Margin = new Thickness(0, 0, 4, 4), CornerRadius = new CornerRadius(7),
+                };
+                chip.IsCheckedChanged += (s, e) =>
+                {
+                    string all = S.QuietDays ?? "0123456";
+                    char c = (char)('0' + d);
+                    all = chip.IsChecked == true ? (all.IndexOf(c) >= 0 ? all : all + c) : all.Replace(c.ToString(), "");
+                    S.QuietDays = new string(all.OrderBy(x => x).ToArray());
+                    SaveSoon();
+                };
+                days.Children.Add(chip);
+            }
+            details.Children.Add(days);
+            details.Children.Add(hint);
+            box.Children.Add(details);
+            return box;
         }
 
         Button LanguageChip(string code, string label)
