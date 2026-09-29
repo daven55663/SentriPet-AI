@@ -211,5 +211,8 @@ xplat/                新的跨平台版（.NET 10）
     開始選單捷徑由程式自己建立（通知需要）。Homebrew 安裝時移除隔離標記（沒有 Apple 開發者簽章）。
     新的 Package managers 流程在 Windows／macOS 上真的用 Scoop、Homebrew 安裝、跑自我測試、移除；
     發佈流程在發佈後自動更新這三種設定並觸發它。
+- 2026-09-29：**開發路線圖**（使用者要求把討論過的功能全部排進時程）：建立里程碑 2.2（陪你用 Claude Code）、
+  2.3（用量報告）、2.4（養成與自訂），13 個功能各開一個 issue（#14～#26），總覽在
+  [#27](https://github.com/daven55663/SentriPet-AI/issues/27)。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。
