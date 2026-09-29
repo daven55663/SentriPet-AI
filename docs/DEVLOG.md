@@ -254,5 +254,19 @@ xplat/                新的跨平台版（.NET 10）
 - 2026-09-29：發佈 v2.2.1（使用者要求）：右鍵選單整理、選單裡的額度利用率圖表、`--connect-agent-hooks`；版本說明同樣附上開發與測試環境。
 - 2026-09-29：開發環境整理成固定的一頁（`docs/environment.md`、`docs/environment.zh-TW.md`，含 CI 的系統映像：
   Windows Server 2025、macOS 26 Apple 晶片、Ubuntu 24.04），README 最上方加上連結徽章（使用者要求）。
+- 2026-09-29：**2.3 的功能**（使用者要求「開始執行 2.3 版本實作」）：
+  - #18 用量報告：核心 `TokenLedger` 讀 Claude Code 對話紀錄（`~/.claude/projects`）與 Codex 的 sessions，只取 token 數、模型、資料夾，
+    不碰對話內容。最近 31 天、每個檔案記住讀到哪裡（之後只讀新的行）；Claude 同一則回覆會寫好幾行，用訊息 id＋requestId 去重、留最大的；
+    Codex 的 token_count 是累計值，取相鄰兩筆的差。報告視窗：額度利用率、每天 token（7／30 天，依 AI 堆疊）、專案排行、模型。
+  - #19 API 等值費用：官方價格表（2026-09-29 查的 Anthropic、OpenAI 價格頁）存成內嵌的 `prices.json`，型號用最長前綴比對；
+    設定資料夾放一份 `prices.json` 就能更新價格。價格表上沒有的模型（例如 codex-auto-review）列出來、不計入。
+  - #20 週報圖：1200×675 PNG 存到「圖片／SentriPet」：這週 token、API 等值、最常用的模型、額度利用率、每天小圖表，加上桌寵。
+  - #21 系統匣顯示數字：圖示畫成最低的剩餘 %（顏色綠／黃／紅、沒資料是「?」、AI 工作中有藍點），縮到 16 px 也看得清楚；
+    「只顯示在系統匣」時桌寵收起來，點圖示再叫出來（沒有系統匣的 Linux 桌面忽略這個選項）。
+  - #22 給其他程式用：`usage.json`（有版本號；數字變了才寫、至少每分鐘寫一次，先寫暫存檔再換掉；關掉就刪除）；
+    本機網頁 `UsageServer` 只聽 127.0.0.1，只接受 Host 是 127.0.0.1／localhost／[::1] 的 GET（避免 DNS rebinding），不送 CORS 標頭；
+    `/` 是給 OBS 瀏覽器來源的透明網頁（用量條或桌寵，網址參數調整），`/usage.json`，`/pet.png`（桌寵現在的樣子；桌寵隱藏時自己推進動畫）。
+    格式與範例寫在 `docs/usage-json.md`。冒煙測試真的用 HTTP 取一次 JSON 與桌寵畫面。
+  - 測試：核心 480 → 556 項、桌寵自我測試 99 → 113 項、冒煙測試 7 → 9 項。版本 2.3.0。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。

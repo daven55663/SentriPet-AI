@@ -21,7 +21,10 @@ Runs on **Windows, macOS and Linux**.
 - **See what's left at a glance** — the big number is the shortest quota (e.g. 5 hours), the bars below are the weekly ones, with a reset countdown
 - **"Use it before it resets" nudges** — besides warning you when a quota runs low, SentriPet tells you when you're about to *waste* a weekly quota
 - **Knows when Claude Code or Codex is done** — or waiting for your OK — and hops up to tell you, so you can do something else meanwhile
-- **Forecast and report** — "at this pace it runs out around 15:40", and how much of every past weekly quota you actually used
+- **Forecast and reports** — "at this pace it runs out around 15:40", how much of every past weekly quota you actually used,
+  tokens per day, folder and model for the last 7 or 30 days with what they would cost through the API, and a weekly picture to share
+- **Fits into your setup** — the remaining % right in the tray / menu-bar icon, a `usage.json` for your scripts or Stream Deck,
+  and a transparent page for OBS
 - **Eight looks** to match your mood: jelly pets, frosted glass, pixel RPG, hacker terminal, race gauges, magic potions, neon city, sticky note
 - **Claude, Codex, Copilot, Ollama** out of the box, anything else through a small JSON plugin
 - **Private by design** — reads only the usage numbers the tools keep on your computer; never reads or sends your sign-in credentials
@@ -152,19 +155,20 @@ SentriPet looks for AI tools on your computer and every one it finds becomes a p
 | Drag | Move it (snaps to screen edges); the position is remembered |
 | Click | The pet answers |
 | Hover | Details: every quota, reset times, data source |
-| Right-click | Menu: change look (each look with its mood, or leave it to fate), quota use at a glance (bars of the last 8 weekly/monthly windows and the one in progress, with the numbers), size, opacity, move to screen, language, pause reminders. The switches you rarely change (always on top, click-through, talking, notifications, "use it" nudges, start at sign-in) are in the settings |
+| Right-click | Menu: change look (each look with its mood, or leave it to fate), quota use at a glance (bars of the last 8 weekly/monthly windows and the one in progress, with the numbers; *Make this week's summary picture*; *Full report…*), size, opacity, move to screen, language, pause reminders. The switches you rarely change (always on top, click-through, talking, notifications, "use it" nudges, start at sign-in) are in the settings |
 | Double-click | Settings |
-| Tray / menu-bar icon | Left click shows/hides the pet; right click opens the menu (turn click-through off here). The jelly in the icon is as full as your lowest quota; a blue dot means an AI is working |
+| Tray / menu-bar icon | Left click shows/hides the pet; right click opens the menu (turn click-through off here). The jelly in the icon is as full as your lowest quota — or, with *Show the remaining % in the tray / menu bar icon*, the icon is that number in its colour; a blue dot means an AI is working |
 
 ### Settings
 
 | Section | What you can do |
 |---|---|
 | Looks | Live previews of the eight looks; a random look every day |
-| Appearance | Size, opacity, always on top, hide in full screen, click-through, talking, power saving |
+| Appearance | Size, opacity, always on top, hide in full screen, click-through, talking, power saving, the remaining % in the tray icon, only in the tray (no pet on the desktop) |
 | AI services | What was detected for each AI and the numbers it reads; turn AIs on or off; Codex refresh rate; Claude weekly reset time, the Claude Code status line, "tell me when an AI is done or waiting", live estimate |
 | Reminders | Quota notifications, "nudge me to use up weekly quota", quiet hours, warning and critical thresholds |
-| Quota use | The last 8 weekly/monthly windows per quota and their average; a notification with the summary at each reset |
+| Quota use | The last 8 weekly/monthly windows per quota and their average; a notification with the summary at each reset; the usage report |
+| For other programs | `usage.json` for your scripts, the local page for OBS ([format and options](docs/usage-json.md)) |
 | General | Language, start at sign-in, open the settings / log / program folder |
 
 ### Reading the pets
@@ -205,6 +209,33 @@ for your reply — and when Codex finishes a turn. *Also notify* adds a notifica
   ("used 82%, only a little wasted!"). *Settings → Quota use* shows the last 8 windows per quota and the average.
 - **Quiet hours**: *Settings → Reminders* (e.g. 22:00–08:00, chosen weekdays), or *Pause reminders for 1 hour* in the
   right-click menu. No notifications and nothing said unprompted meanwhile; the pet still answers clicks.
+
+### Usage report and weekly picture
+
+Right-click → *Quota use* → *Full report…* (or *Settings → Quota use → Open the usage report*) opens a window with:
+
+- **Quota use** — each weekly/monthly quota's past windows and the one in progress.
+- **Tokens per day** for the last 7 or 30 days, from Claude Code's and Codex's local records (input, output and cache
+  reads/writes; only the numbers, the model and the folder name — never the conversation), stacked by AI.
+- **Busiest folders** and **models** for the same days.
+- **API-equivalent cost** — the tokens multiplied by the official API prices (the price list, with the date it was
+  checked and its sources, is built in; a `prices.json` in the settings folder replaces it). It is only a comparison:
+  plans and the API count differently, and models missing from the price list are listed, not guessed.
+
+*Make this week's summary picture* saves a 1200 × 675 PNG to `Pictures/SentriPet` — the week's tokens, API-equivalent
+cost, favourite model, quota use and a small chart, with your pets — ready to post.
+
+### In the tray, in scripts, on stream
+
+- **The number in the tray**: *Settings → Appearance → Show the remaining % in the tray / menu bar icon* draws the lowest
+  remaining % as the icon, green / yellow / red. *Only in the tray / menu bar* takes the pet off the desktop; click the
+  icon when you want it back.
+- **usage.json**: *Settings → For other programs → Write usage.json* keeps a file with every AI's remaining %, reset times
+  and whether it is working in the settings folder, versioned so scripts don't break.
+- **OBS**: *Live stream page (OBS)* serves a page with a transparent background on `http://127.0.0.1:47291/` — add it as
+  a Browser Source for usage bars, or `?view=pet` for the pet. Only this computer can reach it.
+
+The format of `usage.json`, the page's options and script examples are in [docs/usage-json.md](docs/usage-json.md).
 
 ### Languages
 
@@ -303,9 +334,9 @@ xplat/package.sh win-x64                                           package (also
 
 | Tests | What | Checks |
 |---|---|---|
-| `xplat/SentriPet.Tests` | Core, every data source (sample files and local fake servers, never your real data), reminders, quiet hours, forecast, report, translations, the Claude Code status line and hooks, Codex notify | 477 |
-| `SentriPet --selftest <file>` | The eight looks, the pets' faces, hover card and placement, bubble, menu, settings page, languages, tray icon, autostart, notifications, single instance, the demo GIF, scaled drawing, the hook command | 99 |
-| `SentriPet --dev --smoke-test <file>` | Runs the real app for 15 s: window shown, on screen, bottom-right on first start, animating, tray icon, no errors | 7 |
+| `xplat/SentriPet.Tests` | Core, every data source (sample files and local fake servers, never your real data), reminders, quiet hours, forecast, quota-use report, token ledger, API prices, usage.json and the local web server, translations, the Claude Code status line and hooks, Codex notify | 556 |
+| `SentriPet --selftest <file>` | The eight looks, the pets' faces, hover card and placement, bubble, menu, settings page, usage report, weekly picture, tray icons, the pet picture for OBS, languages, autostart, notifications, single instance, the demo GIF, scaled drawing, the hook command | 113 |
+| `SentriPet --dev --smoke-test <file>` | Runs the real app for 15 s: window shown, on screen, bottom-right on first start, animating, tray icon, the OBS page answering over HTTP, no errors | 9 |
 
 On every push, [CI](https://github.com/daven55663/SentriPet-AI/actions/workflows/ci.yml) builds and runs all tests on Windows,
 macOS and Linux (on Linux the smoke test runs on a virtual display), renders the screenshots and builds the packages.
@@ -325,7 +356,8 @@ The development log (in Chinese) is [docs/DEVLOG.md](docs/DEVLOG.md); the machin
 | Autostart | `SentriPet` in the registry key `HKCU\…\Run` | `~/Library/LaunchAgents/com.sentripet.app.plist` | `~/.config/autostart/sentripet.desktop` |
 | Menu entry | `SentriPet` in the Start menu | — | `~/.local/share/applications/sentripet.desktop` |
 
-The settings file is `settings.json`, the log `logs/app.log`.
+The settings file is `settings.json`, the log `logs/app.log`; `usage.json` when *Write usage.json* is on. Weekly pictures
+go to `Pictures/SentriPet`.
 
 ## License
 
