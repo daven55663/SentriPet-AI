@@ -28,4 +28,9 @@
   <ItemGroup>
     <AvaloniaResource Include="..\..\assets\app.ico" Link="Assets\app.ico" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- the example theme (#24), written to the themes folder the first time it is opened -->
+    <EmbeddedResource Include="..\..\examples\themes\cloud\*" LinkBase="ExampleTheme" LogicalName="SentriPet.ExampleTheme.%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

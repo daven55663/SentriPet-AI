@@ -34,6 +34,9 @@ namespace SentriPet
         /// <summary>Growing pets (#23): experience, level, achievements (null while starting).</summary>
         Progress Progress { get; }
         void ApplyGrowth();
+        /// <summary>The user's themes (#24): open their folder (with the example the first time), read them again.</summary>
+        void OpenThemesFolder();
+        void ReloadThemes();
     }
 
     /// <summary>
@@ -217,7 +220,7 @@ namespace SentriPet
         {
             var body = Section(root, L.T("造型"), L.T("依照今天的心情挑一個吧，在桌寵上按右鍵也能隨時換"));
             gallery.Margin = new Thickness(-6, 10, -6, 8);
-            foreach (var t in ThemeCatalog.All)
+            foreach (var t in ThemeCatalog.Choices)
             {
                 var info = t;
                 var preview = new Border
@@ -261,6 +264,24 @@ namespace SentriPet
                 SaveSoon();
             });
             Row(body, L.T("每天隨機換一個造型"), L.T("每天第一次見面時自動換成別的造型，給自己一點驚喜"), randomToggle);
+            // the user's own themes (#24)
+            var themeButtons = new StackPanel { Orientation = Orientation.Horizontal };
+            themeButtons.Children.Add(Btn(L.T("打開造型資料夾"), ctl.OpenThemesFolder));
+            themeButtons.Children.Add(Btn(L.T("重新載入"), ctl.ReloadThemes));
+            themeButtons.Children.Add(Btn(L.T("說明"), () => Integration.OpenPath(Docs("custom-themes"))));
+            Row(body, L.T("自訂造型"), L.T("在設定資料夾的 themes 裡放圖片和 theme.json 就能做自己的造型；第一次打開會附一個範例"), themeButtons);
+            var problems = new List<string>();
+            foreach (var spec in ThemeCatalog.CustomSpecs)
+            {
+                if (!spec.Usable) problems.Add(L.F("「{0}」不能用：{1}", spec.Name, spec.Problems.Count > 0 ? spec.Problems[spec.Problems.Count - 1] : "?"));
+                foreach (var p in (spec.Usable ? spec.Problems : spec.Problems.Take(spec.Problems.Count - 1)).Take(4)) problems.Add(L.F("「{0}」：{1}", spec.Name, p));
+            }
+            if (problems.Count > 0)
+            {
+                var list = Txt(L.Finish(string.Join("\n", problems.Take(8).Select(x => "⚠ " + x))), 11.5, Palette.Hex("#FCA5A5"), FontWeight.Normal);
+                list.Margin = new Thickness(0, -4, 0, 10);
+                body.Children.Add(list);
+            }
             OnThemeChanged();
         }
 
@@ -274,7 +295,7 @@ namespace SentriPet
         public void RenderPreviews()
         {
             var data = ctl.Views.Count > 0 ? ctl.Views : MockData.A();
-            foreach (var info in ThemeCatalog.All)
+            foreach (var info in ThemeCatalog.Choices)
             {
                 try
                 {

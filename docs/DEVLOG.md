@@ -290,5 +290,13 @@ xplat/                新的跨平台版（.NET 10）
     Lv 10 金色輪廓與光暈（都是靜態的，不增加每格的繪製）；懸停卡片顯示 Lv；設定頁「成長與成就」有經驗值條與成就列表、可以關掉。
     升級與成就在週報總結之後一則一則說，間隔 9 秒，勿擾時段不說。核心測試 581 → 621 項、自我測試 116 → 123 項；
     `--snapshot` 多畫 `pet_growth.png`（Lv 1～10）。
+  - #24 自訂造型：設定資料夾的 `themes/<資料夾>/theme.json`＋圖片。格式是「每個 AI 一張卡片，卡片上用座標擺元素」：
+    image（依心情各一張：great／good／worried／low／empty／unknown／working，可以 bob／breathe）、text（記號 {name} {pct} {reset}…）、
+    bar、ring、rect，還有 `when`（工作中／有資料…才顯示）和 `meter`（講哪個額度）；顏色可以寫 level／provider。
+    解析與檢查在 Core（`ThemeSpec`，可以寫核心測試），畫在桌面端（`CustomTheme`）。只有資料、不執行任何東西；
+    圖片只能在造型資料夾裡（擋掉 `..`、絕對路徑、非圖片副檔名）、最大 8 MB／4096×4096，讀取時再真的解碼一次，解不開的只略過那張。
+    theme.json 壞掉整個造型不能用、元素寫錯只略過那個元素，原因都列在設定頁，不會當掉。範例「小雲朵」（七種表情，用 System.Drawing 畫的）
+    放在 `examples/themes/cloud`，也內嵌在程式裡：第一次「打開造型資料夾」時寫進去。右鍵選單、設定頁、每天隨機都包含自訂造型；
+    `--snapshot` 畫出範例（`custom_cloud_*.png`）。核心測試 621 → 659 項、自我測試 123 → 133 項。說明 `docs/custom-themes.md`。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。

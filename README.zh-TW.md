@@ -16,7 +16,7 @@
 ## 特色
 
 - **一眼看到剩多少**：大數字是最短的額度（例如 5 小時），下面的小條是每週額度，還有重置倒數
-- **8 種造型**，依心情切換，也可以設定每天隨機換
+- **8 種造型**，依心情切換，也可以設定每天隨機換；還能用圖片和 JSON 做自己的造型
 - **會提醒**：用量越過門檻時提醒、額度重置時慶祝；每週額度快重置卻還剩很多時，桌寵會著急地催你用掉
 - **AI 做完會告訴你**：Claude Code、Codex 做完較長的任務或在等你確認時，桌寵會跳起來通知你，等待時可以放心去做別的事
 - **預測與報告**：「照目前速度約 15:40 用完」、每一期週額度實際用掉多少，最近 7／30 天每天、每個專案、每個模型的 token 數與換算成
@@ -167,7 +167,7 @@ SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一�
 
 | 分區 | 可以做什麼 |
 |---|---|
-| 造型 | 看 8 種造型的即時預覽並切換；每天隨機換一個 |
+| 造型 | 看 8 種造型與自訂造型的即時預覽並切換；每天隨機換一個；打開／重新載入自訂造型資料夾 |
 | 外觀 | 大小、不透明度、永遠在最上層、全螢幕時躲起來、滑鼠穿透、會說話、自訂台詞、省電模式、系統匣圖示顯示剩餘 %、只顯示在系統匣（桌面上不放桌寵） |
 | AI 服務 | 每個 AI 偵測到什麼、目前讀到的數字；開關個別 AI；Codex 即時查詢頻率；Claude 每週重置時間、Claude Code 狀態列、「AI 做完或在等你時提醒」、即時推算 |
 | 提醒 | 額度提醒通知、「催我用完週額度」、勿擾時段、提醒與緊急門檻 |
@@ -237,6 +237,13 @@ SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一�
   網址加上 `?view=pet` 則顯示桌寵。只有這台電腦連得到。
 
 `usage.json` 的格式、網頁的選項與腳本範例見 [docs/usage-json.zh-TW.md](docs/usage-json.zh-TW.md)。
+
+### 自訂造型
+
+用圖片和 `theme.json` 做自己的造型：每個 AI 一張卡片，放上圖片（依心情各一張：額度很多、擔心、快沒了、睡著、工作中……）、
+文字、進度條、圓環和方塊。設定 → 造型 → 自訂造型 →「打開造型資料夾」會打開 `themes` 資料夾，裡面附一個範例「小雲朵」；
+複製一份、換掉圖片和數字，按「重新載入」，就會出現在「換造型」。造型只有資料（不執行任何東西），可以把資料夾壓縮起來分享；
+寫錯的地方會列在設定頁，不會當掉。格式見 [docs/custom-themes.zh-TW.md](docs/custom-themes.zh-TW.md)。
 
 ### 養成與成就
 
@@ -375,6 +382,7 @@ xplat/package.sh win-x64                                           打包（osx-
 | 程式 | `%LOCALAPPDATA%\Programs\SentriPet\` | `/Applications/SentriPet.app` | `~/.local/share/sentripet/` |
 | 設定與記錄檔 | `%APPDATA%\SentriPet\` | `~/Library/Application Support/SentriPet/` | `~/.config/SentriPet/` |
 | 外掛 | `%APPDATA%\SentriPet\providers\` | `~/Library/Application Support/SentriPet/providers/` | `~/.config/SentriPet/providers/` |
+| 自訂造型 | `%APPDATA%\SentriPet\themes\` | `~/Library/Application Support/SentriPet/themes/` | `~/.config/SentriPet/themes/` |
 | 開機啟動 | 登錄檔 `HKCU\…\Run` 的 `SentriPet` | `~/Library/LaunchAgents/com.sentripet.app.plist` | `~/.config/autostart/sentripet.desktop` |
 | 選單捷徑 | 開始選單的 `SentriPet` | — | `~/.local/share/applications/sentripet.desktop` |
 

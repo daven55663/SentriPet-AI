@@ -1,0 +1,40 @@
+// SentriPet example theme (#24): a little cloud per AI whose face follows the quota.
+// Copy this folder, change the pictures and numbers, and it shows up in "Change look".
+// Format: https://github.com/daven55663/SentriPet-AI/blob/main/docs/custom-themes.md
+{
+  "version": 1,
+  "name": { "en": "Little Cloud", "zh-TW": "小雲朵", "zh-CN": "小云朵", "ja": "ちいさな雲", "ko": "작은 구름" },
+  "mood": { "en": "Floaty", "zh-TW": "輕飄飄", "zh-CN": "轻飘飘", "ja": "ふわふわ", "ko": "둥실둥실" },
+  "blurb": {
+    "en": "The example theme: a cloud per AI, its face follows the quota",
+    "zh-TW": "範例造型：每個 AI 一朵雲，表情跟著額度變",
+    "zh-CN": "示例造型：每个 AI 一朵云，表情跟着额度变",
+    "ja": "サンプルの見た目：AI ごとに雲がひとつ、枠に合わせて表情が変わります",
+    "ko": "예시 모습: AI마다 구름 하나, 한도에 따라 표정이 바뀌어요"
+  },
+  "layout": "row",
+  "gap": 6,
+  "card": {
+    "width": 132,
+    "height": 178,
+    "color": "#E6182235",
+    "radius": 18,
+    "border": "#40FFFFFF",
+    "elements": [
+      {
+        "type": "image", "x": 16, "y": 4, "width": 100, "height": 80, "animate": "bob",
+        "states": {
+          "great": "great.png", "good": "good.png", "worried": "worried.png", "low": "low.png",
+          "empty": "empty.png", "unknown": "unknown.png", "working": "working.png"
+        }
+      },
+      { "type": "text", "x": 8, "y": 88, "width": 116, "text": "{name}", "size": 13, "bold": true, "color": "#F8FAFC", "align": "center" },
+      { "type": "text", "x": 8, "y": 105, "width": 116, "text": "{pct}", "size": 22, "bold": true, "font": "number", "color": "level", "align": "center" },
+      { "type": "bar", "x": 14, "y": 138, "width": 104, "height": 6, "meter": "headline", "fill": "level", "when": "data" },
+      { "type": "bar", "x": 14, "y": 148, "width": 104, "height": 4, "meter": "secondary", "track": "#22FFFFFF", "fill": "provider-light", "when": "data" },
+      { "type": "text", "x": 8, "y": 157, "width": 116, "text": "↻ {reset}", "size": 10, "color": "#94A3B8", "align": "center", "when": "data" },
+      { "type": "text", "x": 8, "y": 132, "width": 116, "height": 40, "text": "{status}", "size": 10, "color": "#FCA5A5", "align": "center", "when": "nodata" },
+      { "type": "rect", "x": 112, "y": 10, "width": 9, "height": 9, "radius": 5, "color": "#60A5FA", "when": "working" }
+    ]
+  }
+}

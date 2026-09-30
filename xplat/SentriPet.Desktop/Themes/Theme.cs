@@ -121,10 +121,11 @@ namespace SentriPet
     {
         public string Id, Glyph;
         public Func<Theme> Create;
+        public bool Custom;         // made by the user (#24): its name is not a translation key
         string name, mood, blurb;
-        public string Name { get { return L.T(name); } set { name = value; } }
-        public string Mood { get { return L.T(mood); } set { mood = value; } }
-        public string Blurb { get { return L.T(blurb); } set { blurb = value; } }
+        public string Name { get { return Custom ? name : L.T(name); } set { name = value; } }
+        public string Mood { get { return Custom ? mood : L.T(mood); } set { mood = value; } }
+        public string Blurb { get { return Custom ? blurb : L.T(blurb); } set { blurb = value; } }
     }
 
     static class ThemeCatalog
@@ -141,9 +142,68 @@ namespace SentriPet
             new ThemeInfo { Id = "note", Name = L.N("手寫便利貼"), Mood = L.N("慢慢來"), Glyph = "✎", Blurb = L.N("貼在螢幕角落的手寫小紙條"), Create = () => new NoteTheme() },
         };
 
+        /// <summary>The user's own themes (#24) that can be used, and every theme folder read (with its problems).</summary>
+        public static List<ThemeInfo> Custom = new List<ThemeInfo>();
+        public static List<ThemeSpec> CustomSpecs = new List<ThemeSpec>();
+
+        /// <summary>The built-in themes, then the user's own.</summary>
+        public static List<ThemeInfo> Choices { get { return All.Concat(Custom).ToList(); } }
+
         public static ThemeInfo Get(string id)
         {
-            return All.FirstOrDefault(t => t.Id == id) ?? All[0];
+            return Choices.FirstOrDefault(t => t.Id == id) ?? All[0];
+        }
+
+        /// <summary>
+        /// Reads the user's themes (the settings folder's "themes", or <paramref name="dir"/>) and checks their pictures
+        /// can be decoded. A theme that can't be used stays in CustomSpecs with the reason.
+        /// </summary>
+        public static void LoadCustom(string dir = null)
+        {
+            var specs = ThemeSpec.LoadAll(dir ?? ThemeSpec.ThemesDir);
+            foreach (var s in specs.Where(x => x.Usable)) CheckPictures(s);
+            CustomSpecs = specs;
+            Custom = specs.Where(x => x.Usable).Select(s => new ThemeInfo
+            {
+                Id = s.Id, Name = s.Name, Mood = s.Mood, Blurb = s.Blurb, Glyph = "✦", Custom = true,
+                Create = () => new CustomTheme(s),
+            }).ToList();
+            if (specs.Count > 0) Log.Info("custom themes: " + string.Join(", ", specs.Select(s => s.Id + (s.Usable ? "" : " (not usable)") + (s.Problems.Count > 0 ? " " + s.Problems.Count + " problem(s)" : ""))));
+        }
+
+        /// <summary>Pictures that are not really pictures, or too big to keep in memory, are reported (and not shown).</summary>
+        static void CheckPictures(ThemeSpec s)
+        {
+            var files = s.Elements.SelectMany(e => e.States.Values.Concat(new[] { e.Image }))
+                         .Concat(new[] { s.Background != null ? s.Background.Image : null, s.Card != null ? s.Card.Image : null })
+                         .Where(f => f != null).Distinct().ToList();
+            var bad = new HashSet<string>();
+            foreach (var f in files)
+            {
+                try
+                {
+                    using (var b = new Avalonia.Media.Imaging.Bitmap(System.IO.Path.Combine(s.Folder, f)))
+                        if (b.PixelSize.Width > 4096 || b.PixelSize.Height > 4096)
+                        {
+                            s.Problems.Add(L.F("{0} 太大了（{1}×{2}，最大 4096×4096）", f, b.PixelSize.Width, b.PixelSize.Height));
+                            bad.Add(f);
+                        }
+                }
+                catch (Exception)
+                {
+                    s.Problems.Add(L.F("{0} 打不開，不是圖片或檔案壞掉了", f));
+                    bad.Add(f);
+                }
+            }
+            if (bad.Count == 0) return;
+            foreach (var e in s.Elements)
+            {
+                if (e.Image != null && bad.Contains(e.Image)) e.Image = null;
+                foreach (var k in e.States.Where(kv => bad.Contains(kv.Value)).Select(kv => kv.Key).ToList()) e.States.Remove(k);
+            }
+            s.Elements.RemoveAll(e => e.Type == "image" && e.Image == null && e.States.Count == 0);
+            foreach (var box in new[] { s.Background, s.Card }) if (box != null && box.Image != null && bad.Contains(box.Image)) box.Image = null;
+            if (s.Elements.Count == 0) { s.Usable = false; s.Problems.Add(L.T("沒有可以畫的元素")); }
         }
     }
 

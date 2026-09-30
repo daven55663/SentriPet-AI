@@ -122,6 +122,7 @@ namespace SentriPet
             Service = new UsageService(Settings);
             Service.Changed += () => Dispatcher.UIThread.Post(RefreshViews);
 
+            ThemeCatalog.LoadCustom();   // the user's own themes (#24)
             window = new PetWindow(this, Settings);
             window.SetTheme(ThemeCatalog.Get(Settings.Theme).Create());
             window.Show();
@@ -253,7 +254,7 @@ namespace SentriPet
         {
             string today = DateTime.Now.ToString("yyyy-MM-dd");
             if (Settings.RandomThemeDate == today) return;
-            var choices = ThemeCatalog.All.Where(t => t.Id != Settings.Theme).ToList();
+            var choices = ThemeCatalog.Choices.Where(t => t.Id != Settings.Theme).ToList();
             var pick = choices[rng.Next(choices.Count)];
             Settings.RandomThemeDate = today;
             Settings.Theme = pick.Id;
@@ -583,7 +584,7 @@ namespace SentriPet
             // one menu for the looks: each theme with its mood (the WPF version had a second, "mood" menu with the same themes)
             var themes = new MenuItem { Header = L.T("換造型") };
             var themeItems = new List<object>();
-            foreach (var t in ThemeCatalog.All)
+            foreach (var t in ThemeCatalog.Choices)
             {
                 var info = t;
                 var mi = Toggle(info.Name, Settings.Theme == t.Id, () =>
@@ -598,7 +599,7 @@ namespace SentriPet
             themeItems.Add(new Separator());
             themeItems.Add(Item(L.T("交給命運吧（隨機）"), () =>
             {
-                var choices = ThemeCatalog.All.Where(x => x.Id != Settings.Theme).ToList();
+                var choices = ThemeCatalog.Choices.Where(x => x.Id != Settings.Theme).ToList();
                 var pick = choices[rng.Next(choices.Count)];
                 ChangeTheme(pick.Id);
                 window.Say(null, L.F("命運選擇了「{0}」！", pick.Name));
@@ -888,23 +889,50 @@ namespace SentriPet
             Settings.Save();
             Program.UseLanguage(code);
             CustomLines.Reload();       // its messages are written in the language
+            ThemeCatalog.LoadCustom();  // the user's themes can have a name per language
             window.SetTheme(ThemeCatalog.Get(Settings.Theme).Create());
             Service.RefreshNow(null);   // provider texts (labels, notes, errors) are made in the new language
             RefreshViews();
             if (tray != null) tray.Menu = BuildTrayMenu();
-            if (settingsWindow != null)
-            {
-                var old = settingsWindow;
-                var pos = old.Position;
-                double height = old.Height;
-                settingsWindow = null;
-                old.Close();
-                OpenSettings();
-                settingsWindow.WindowStartupLocation = WindowStartupLocation.Manual;
-                settingsWindow.Position = pos;
-                settingsWindow.Height = height;
-            }
+            ReopenSettings();
             window.Say(null, L.T("好的！之後就用這個語言跟你聊天 ✦"));
+        }
+
+        /// <summary>Builds the open settings page again (after a language change, or new themes), where it was.</summary>
+        void ReopenSettings()
+        {
+            if (settingsWindow == null) return;
+            var old = settingsWindow;
+            var pos = old.Position;
+            double height = old.Height;
+            settingsWindow = null;
+            old.Close();
+            OpenSettings();
+            settingsWindow.WindowStartupLocation = WindowStartupLocation.Manual;
+            settingsWindow.Position = pos;
+            settingsWindow.Height = height;
+        }
+
+        /// <summary>The themes folder (#24), with the example theme in it when it has no theme yet.</summary>
+        public void OpenThemesFolder()
+        {
+            string dir = ThemeSpec.ThemesDir;
+            try
+            {
+                System.IO.Directory.CreateDirectory(dir);
+                if (!System.IO.Directory.EnumerateDirectories(dir).Any()) ExampleTheme.Install(System.IO.Path.Combine(dir, ExampleTheme.Folder));
+            }
+            catch (Exception ex) { Log.Error("themes folder", ex); }
+            Integration.OpenPath(dir);
+            ReloadThemes();
+        }
+
+        /// <summary>Reads the user's themes again (after changing them): the menu and the settings page show them.</summary>
+        public void ReloadThemes()
+        {
+            ThemeCatalog.LoadCustom();
+            if ((Settings.Theme ?? "").StartsWith("custom:")) window.SetTheme(ThemeCatalog.Get(Settings.Theme).Create());
+            ReopenSettings();
         }
 
         public void ToggleWidget()

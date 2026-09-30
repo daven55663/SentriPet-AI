@@ -26,7 +26,7 @@ Runs on **Windows, macOS and Linux**.
 - **Pets that grow** — use your quotas well (planned, not simply more) and the pets level up, put on accessories and unlock achievements
 - **Fits into your setup** — the remaining % right in the tray / menu-bar icon, a `usage.json` for your scripts or Stream Deck,
   and a transparent page for OBS
-- **Eight looks** to match your mood: jelly pets, frosted glass, pixel RPG, hacker terminal, race gauges, magic potions, neon city, sticky note
+- **Eight looks** to match your mood: jelly pets, frosted glass, pixel RPG, hacker terminal, race gauges, magic potions, neon city, sticky note — or make your own from pictures and a JSON file
 - **Claude, Codex, Copilot, Ollama** out of the box, anything else through a small JSON plugin
 - **Private by design** — reads only the usage numbers the tools keep on your computer; never reads or sends your sign-in credentials
 - **Five languages**: English, 繁體中文, 简体中文, 日本語, 한국어 (follows your system language)
@@ -164,7 +164,7 @@ SentriPet looks for AI tools on your computer and every one it finds becomes a p
 
 | Section | What you can do |
 |---|---|
-| Looks | Live previews of the eight looks; a random look every day |
+| Looks | Live previews of the eight looks and your own; a random look every day; open / reload your themes folder |
 | Appearance | Size, opacity, always on top, hide in full screen, click-through, talking, your own lines, power saving, the remaining % in the tray icon, only in the tray (no pet on the desktop) |
 | AI services | What was detected for each AI and the numbers it reads; turn AIs on or off; Codex refresh rate; Claude weekly reset time, the Claude Code status line, "tell me when an AI is done or waiting", live estimate |
 | Reminders | Quota notifications, "nudge me to use up weekly quota", quiet hours, warning and critical thresholds |
@@ -238,6 +238,14 @@ cost, favourite model, quota use and a small chart, with your pets — ready to 
   a Browser Source for usage bars, or `?view=pet` for the pet. Only this computer can reach it.
 
 The format of `usage.json`, the page's options and script examples are in [docs/usage-json.md](docs/usage-json.md).
+
+### Your own themes
+
+Make a look of your own from pictures and a `theme.json` — a card per AI with pictures (one per mood: plenty left,
+worried, running low, asleep, working…), texts, bars, rings and boxes. *Settings → Looks → Your own themes → Open themes
+folder* opens the `themes` folder with the example *Little Cloud* in it; copy it, change the pictures and numbers, press
+*Reload*, and it is in *Change look*. Themes are only data (nothing is run), so they can be shared as a zipped folder;
+mistakes are listed on the settings page instead of crashing. Format: [docs/custom-themes.md](docs/custom-themes.md).
 
 ### Growing pets and achievements
 
@@ -374,6 +382,7 @@ The development log (in Chinese) is [docs/DEVLOG.md](docs/DEVLOG.md); the machin
 | Program | `%LOCALAPPDATA%\Programs\SentriPet\` (Scoop: `~\scoop\apps\sentripet\`) | `/Applications/SentriPet.app` | `~/.local/share/sentripet/` |
 | Settings and log | `%APPDATA%\SentriPet\` | `~/Library/Application Support/SentriPet/` | `~/.config/SentriPet/` |
 | Plugins | `%APPDATA%\SentriPet\providers\` | `~/Library/Application Support/SentriPet/providers/` | `~/.config/SentriPet/providers/` |
+| Your themes | `%APPDATA%\SentriPet\themes\` | `~/Library/Application Support/SentriPet/themes/` | `~/.config/SentriPet/themes/` |
 | Autostart | `SentriPet` in the registry key `HKCU\…\Run` | `~/Library/LaunchAgents/com.sentripet.app.plist` | `~/.config/autostart/sentripet.desktop` |
 | Menu entry | `SentriPet` in the Start menu | — | `~/.local/share/applications/sentripet.desktop` |
 

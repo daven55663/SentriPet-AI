@@ -38,6 +38,7 @@ namespace SentriPet
             {
                 Themes(t);
                 PetFaces(t);
+                CustomThemes(t);
                 Placement(t);
                 Windows(t);
                 Speaking(t);
@@ -208,6 +209,58 @@ namespace SentriPet
                 show(MockData.A());
                 t.Equal("換資料重建後配件還在", 4, pet.GearOf("claude"));
                 pet.Detach();
+            });
+        }
+
+        static void CustomThemes(TestKit t)
+        {
+            t.Section("自訂造型（#24）");
+            Progress = "custom themes";
+            t.Run("custom themes", () =>
+            {
+                string dir = t.TempDir("themes");
+                ExampleTheme.Install(System.IO.Path.Combine(dir, ExampleTheme.Folder));
+                // two broken ones next to it: nothing may crash, each says why
+                Directory.CreateDirectory(System.IO.Path.Combine(dir, "broken"));
+                File.WriteAllText(System.IO.Path.Combine(dir, "broken", "theme.json"), "{ \"card\": ");
+                Directory.CreateDirectory(System.IO.Path.Combine(dir, "fake-picture"));
+                File.WriteAllText(System.IO.Path.Combine(dir, "fake-picture", "theme.json"),
+                    "{ \"card\": { \"elements\": [ { \"type\": \"image\", \"width\": 20, \"height\": 20, \"image\": \"face.png\" }, { \"type\": \"text\", \"text\": \"{name}\" } ] } }");
+                File.WriteAllText(System.IO.Path.Combine(dir, "fake-picture", "face.png"), "not a picture");
+                try
+                {
+                    ThemeCatalog.LoadCustom(dir);
+                    var cloud = ThemeCatalog.CustomSpecs.FirstOrDefault(s => s.Id == "custom:cloud");
+                    t.Check("範例造型（內建在程式裡）：寫得出來、讀得懂、沒有問題", cloud != null && cloud.Usable && cloud.Problems.Count == 0,
+                            cloud == null ? "missing" : string.Join(" | ", cloud.Problems));
+                    var broken = ThemeCatalog.CustomSpecs.FirstOrDefault(s => s.Id == "custom:broken");
+                    t.Check("壞掉的造型：不能用、說出原因、不在選單裡", broken != null && !broken.Usable && broken.Problems.Count > 0 && ThemeCatalog.Choices.All(c => c.Id != broken.Id));
+                    var fake = ThemeCatalog.CustomSpecs.FirstOrDefault(s => s.Id == "custom:fake-picture");
+                    t.Check("不是圖片的圖片：說出來、其他照樣用", fake != null && fake.Usable && fake.Problems.Any(p => p.Contains("face.png")) && fake.Elements.Count == 1,
+                            fake == null ? "missing" : string.Join(" | ", fake.Problems));
+                    t.Equal("選單：8 種內建＋可以用的自訂造型", 10, ThemeCatalog.Choices.Count);
+
+                    var theme = ThemeCatalog.Get("custom:cloud").Create();
+                    theme.Attach(new Snapshots.PreviewHost());
+                    theme.Update(MockData.A());
+                    for (int i = 0; i < 30; i++) theme.Tick(1 / 30.0);
+                    var bmp = Snapshots.RenderToBitmap(theme.Root, 1.0);
+                    t.Check("範例造型畫得出來（三張卡片、有圖）", bmp.PixelSize.Width > 300 && InkPixels(bmp) > 20000, bmp.PixelSize + ", " + InkPixels(bmp) + " px");
+                    var tags = theme.Root.GetLogicalDescendants().OfType<Control>().Select(c => c.Tag as string).Where(x => x != null && x.StartsWith("pv:")).ToList();
+                    t.Equal("每個 AI 一張卡片（懸停、點擊找得到）", "pv:claude,pv:codex,pv:copilot", string.Join(",", tags));
+                    var words = theme.Root.GetLogicalDescendants().OfType<TextBlock>().Where(x => x.IsVisible).Select(x => x.Text ?? "").ToList();
+                    t.Check("卡片上有名稱和剩餘 %", words.Contains("Claude") && words.Any(x => x.EndsWith("%")), string.Join(" | ", words.Take(6)));
+                    theme.Update(MockData.B());
+                    theme.Tick(1 / 30.0);
+                    t.Check("換資料也畫得出來（沒資料、用完）", InkPixels(Snapshots.RenderToBitmap(theme.Root, 1.0)) > 20000);
+                    theme.Detach();
+                    var fakeTheme = ThemeCatalog.Get("custom:fake-picture").Create();
+                    fakeTheme.Attach(new Snapshots.PreviewHost());
+                    fakeTheme.Update(MockData.A());
+                    t.Check("有問題的自訂造型也不會當掉", Snapshots.RenderToBitmap(fakeTheme.Root, 1.0).PixelSize.Width > 0);
+                    t.Equal("找不到的造型（資料夾被刪了）：用果凍桌寵", "pet", ThemeCatalog.Get("custom:gone").Id);
+                }
+                finally { ThemeCatalog.LoadCustom(System.IO.Path.Combine(dir, "none")); }
             });
         }
 
@@ -559,6 +612,8 @@ namespace SentriPet
             Progress progress;
             public Progress Progress { get { return progress ?? (progress = MockData.Growth(history)); } }
             public void ApplyGrowth() { Changed++; }
+            public void OpenThemesFolder() { Changed++; }
+            public void ReloadThemes() { Changed++; }
             public string UsageServerUrl { get; set; }
         }
 

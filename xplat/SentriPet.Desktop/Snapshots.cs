@@ -50,6 +50,8 @@ namespace SentriPet
             Progress progress;
             public Progress Progress { get { return progress ?? (progress = MockData.Growth(History)); } }
             public void ApplyGrowth() { }
+            public void OpenThemesFolder() { }
+            public void ReloadThemes() { }
             public string UsageServerUrl { get { return "http://127.0.0.1:" + settings.UsagePort + "/"; } }
             public void MakeShareCard() { }
         }
@@ -132,6 +134,41 @@ namespace SentriPet
                 {
                     failures++;
                     File.WriteAllText(Path.Combine(outDir, "pet_growth_error.txt"), ex.ToString());
+                }
+            }
+            // the example of the user's own themes (#24), read from a folder like the user's
+            if (only == null || only == "custom")
+            {
+                string tmp = Path.Combine(Path.GetTempPath(), "sentripet-themes-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                try
+                {
+                    ExampleTheme.Install(Path.Combine(tmp, ExampleTheme.Folder));
+                    ThemeCatalog.LoadCustom(tmp);
+                    var spec = ThemeCatalog.CustomSpecs.FirstOrDefault();
+                    if (spec == null || !spec.Usable || spec.Problems.Count > 0)
+                    {
+                        failures++;
+                        File.WriteAllText(Path.Combine(outDir, "custom_cloud_error.txt"), spec == null ? "not loaded" : string.Join("\n", spec.Problems));
+                    }
+                    else
+                        foreach (var set in sets)
+                        {
+                            var theme = ThemeCatalog.Custom[0].Create();
+                            theme.Attach(new PreviewHost());
+                            theme.Update(set.Value);
+                            for (int i = 0; i < 45; i++) theme.Tick(1 / 30.0);
+                            Render(theme.Root, Path.Combine(outDir, "custom_cloud_" + set.Key + ".png"), scale, true);
+                            theme.Detach();
+                        }
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "custom_cloud_error.txt"), ex.ToString());
+                }
+                finally
+                {
+                    try { Directory.Delete(tmp, true); } catch { }
                 }
             }
             // the hover card for the first provider of each set
