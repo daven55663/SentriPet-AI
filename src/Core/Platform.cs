@@ -6,7 +6,7 @@ namespace SentriPet
     static class AppInfo
     {
         public const string Name = "SentriPet";
-        public const string Version = "2.3.1";
+        public const string Version = "2.4.0";
     }
 
     /// <summary>Which operating system we run on.</summary>
