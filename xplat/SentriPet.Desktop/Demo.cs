@@ -44,8 +44,11 @@ namespace SentriPet
         {
             public string ThemeId, Caption;
             public List<ProviderView> Views;
-            public bool UseIt;
             public double Seconds;
+            public Func<ProviderView, string> Line;          // what the first pet says (default: a poke line)
+            public int Growth;                               // the pets' level (#23)
+            public string Picture;                           // a still picture instead of a theme (the weekly summary)
+            public List<KeyValuePair<double, Action<Theme>>> Script = new List<KeyValuePair<double, Action<Theme>>>();   // (seconds, what happens)
         }
 
         public static int Run(string[] args)
@@ -65,46 +68,127 @@ namespace SentriPet
                 .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                 .SetupWithoutStarting();
 
-            var scenes = new List<Scene>
+            // the example of the user's own themes (#24) and the weekly summary picture (#20) come from files
+            string tmp = Path.Combine(Path.GetTempPath(), "sentripet-demo-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+            ExampleTheme.Install(Path.Combine(tmp, "themes", ExampleTheme.Folder));
+            ThemeCatalog.LoadCustom(Path.Combine(tmp, "themes"));
+            string summary = ShareCard.Save(new Snapshots.SnapshotSettingsHost(), Path.Combine(tmp, "summary.png"), DateTime.Now);
+            try
             {
-                new Scene { ThemeId = "pet", Views = Calm(), Seconds = 3.4, Caption = L.T("AI 額度還剩多少，看桌寵就知道") },
-                new Scene { ThemeId = "pet", Views = MockData.C(), Seconds = 3.4, UseIt = true, Caption = L.T("額度快重置了還沒用完？牠們會提醒你") },
-            };
-            foreach (var t in ThemeCatalog.All)
-                if (t.Id != "pet")
-                    scenes.Add(new Scene { ThemeId = t.Id, Views = Calm(), Seconds = 1.7, Caption = L.F("{0} · {1}", t.Name, t.Mood) });
-
-            int w = (int)Math.Round(Width * scale), h = (int)Math.Round(Height * scale);
-            var gif = new GifWriter(w, h);
-            foreach (var scene in scenes)
-            {
-                var frames = new List<byte[]>();
-                var host = new DemoHost();
-                var theme = ThemeCatalog.Get(scene.ThemeId).Create();
-                theme.Attach(host);
-                theme.Update(scene.Views);
-                for (int i = 0; i < 45; i++) { host.Time += 1 / 30.0; theme.Tick(1 / 30.0); }
-                var first = scene.Views[0];
-                theme.Say(first.Id, scene.UseIt ? Lines.UseIt(first, new Random(4)) : Lines.Poke(first, new Random(3)));
-                for (int i = 0; i < 9; i++) { host.Time += 1 / 30.0; theme.Tick(1 / 30.0); }
-                // as large as fits (at most 1.5×), the same for the whole scene
-                theme.Root.Measure(Size.Infinity);
-                var size = theme.Root.DesiredSize;
-                double zoom = Math.Min(1.5, Math.Min((Width - 48) / size.Width, (Height - 110) / size.Height));
-                var stage = Stage(theme.Root, zoom, scene.Caption);
-                host.Stage = stage;
-                int count = (int)Math.Round(scene.Seconds * Fps);
-                for (int f = 0; f < count; f++)
+                var growing = new Scene { ThemeId = "pet", Views = Calm(), Seconds = 3.6, Growth = 1, Line = v => null, Caption = L.T("把額度用好，桌寵就會成長") };
+                foreach (var step in new[] { new KeyValuePair<double, int>(0.5, 4), new KeyValuePair<double, int>(1.5, 8), new KeyValuePair<double, int>(2.5, 10) })
                 {
-                    for (int i = 0; i < 3; i++) { host.Time += 1.0 / (3 * Fps); theme.Tick(1.0 / (3 * Fps)); }
-                    frames.Add(Pixels(stage, w, h, scale));
+                    int lv = step.Value;
+                    growing.Script.Add(new KeyValuePair<double, Action<Theme>>(step.Key, t =>
+                    {
+                        t.SetGrowth(lv);
+                        t.Celebrate("claude");
+                        string acc;
+                        t.Say("claude", Progress.Accessories.TryGetValue(lv, out acc)
+                            ? L.F("升級了！現在是 Lv {0}，果凍桌寵解鎖了「{1}」", lv, L.T(acc)) : L.F("升級了！現在是 Lv {0}", lv));
+                    }));
                 }
-                gif.AddScene(frames, 100 / Fps);
-                Console.WriteLine(scene.ThemeId + ": " + count + " frames");
+                // Claude Code finished a task (#14): the pet hops and says so
+                var done = new Scene { ThemeId = "pet", Views = Calm(), Seconds = 2.6, Caption = L.T("AI 做完或在等你，桌寵會跳起來告訴你"), Line = v => null };
+                done.Script.Add(new KeyValuePair<double, Action<Theme>>(0.1, t => t.Poke("claude")));
+                done.Script.Add(new KeyValuePair<double, Action<Theme>>(0.2, t => t.Say("claude", Lines.Agent(new AgentEvent { Kind = AgentEvent.Done, Seconds = 754, Project = "web-shop" }, "Claude"))));
+                var said = new Scene { ThemeId = "pet", Views = Calm(), Seconds = 2.2, Caption = L.T("桌寵說的話也能自己寫"), Line = v => null };
+                said.Script.Add(new KeyValuePair<double, Action<Theme>>(0.2, t =>
+                {
+                    CustomLines.Override = "{ \"" + L.Current + "\": { \"poke\": [\"" + L.T("今天的 bug 修完了嗎？") + "\"] } }";
+                    CustomLines.Reload();
+                    t.Poke("codex");
+                    CustomLines.Override = null;
+                    CustomLines.Reload();
+                }));
+
+                var scenes = new List<Scene>
+                {
+                    new Scene { ThemeId = "pet", Views = Calm(), Seconds = 3.0, Caption = L.T("AI 額度還剩多少，看桌寵就知道") },
+                    new Scene { ThemeId = "pet", Views = MockData.C(), Seconds = 3.0, Line = v => Lines.UseIt(v, new Random(4)), Caption = L.T("額度快重置了還沒用完？牠們會提醒你") },
+                    done,
+                    growing,
+                    new Scene { Picture = summary, Seconds = 2.4, Caption = L.T("每週一張可以分享的週報圖") },
+                    new Scene { ThemeId = "custom:" + ExampleTheme.Folder, Views = Calm(), Seconds = 2.6, Caption = L.T("用圖片和 JSON 做自己的造型") },
+                    new Scene { ThemeId = "pet", Views = Accounts(), Seconds = 2.4, Caption = L.T("公司和個人帳號，各有一隻桌寵") },
+                    said,
+                };
+                foreach (var t in ThemeCatalog.All)
+                    if (t.Id != "pet")
+                        scenes.Add(new Scene { ThemeId = t.Id, Views = Calm(), Seconds = 1.3, Caption = L.F("{0} · {1}", t.Name, t.Mood) });
+
+                int w = (int)Math.Round(Width * scale), h = (int)Math.Round(Height * scale);
+                var gif = new GifWriter(w, h);
+                foreach (var scene in scenes)
+                {
+                    var frames = new List<byte[]>();
+                    int count = (int)Math.Round(scene.Seconds * Fps);
+                    if (scene.Picture != null)
+                    {
+                        using (var bmp = new Bitmap(scene.Picture))
+                        {
+                            var img = new Image { Source = bmp, Width = bmp.PixelSize.Width, Height = bmp.PixelSize.Height };
+                            double z = Math.Min((Width - 48) / img.Width, (Height - 110) / img.Height);
+                            var still = Stage(new Border { Child = img, CornerRadius = new CornerRadius(16), ClipToBounds = true }, z, scene.Caption);
+                            var px = Pixels(still, w, h, scale);
+                            for (int f = 0; f < count; f++) frames.Add(px);
+                        }
+                        gif.AddScene(frames, 100 / Fps);
+                        Console.WriteLine("picture: " + count + " frames");
+                        continue;
+                    }
+                    var host = new DemoHost();
+                    var theme = ThemeCatalog.Get(scene.ThemeId).Create();
+                    theme.Attach(host);
+                    theme.SetGrowth(scene.Growth);
+                    theme.Update(scene.Views);
+                    for (int i = 0; i < 45; i++) { host.Time += 1 / 30.0; theme.Tick(1 / 30.0); }
+                    var first = scene.Views[0];
+                    string line = scene.Line != null ? scene.Line(first) : Lines.Poke(first, new Random(3));
+                    if (line != null) theme.Say(first.Id, line);
+                    for (int i = 0; i < 9; i++) { host.Time += 1 / 30.0; theme.Tick(1 / 30.0); }
+                    // as large as fits (at most 1.5×), the same for the whole scene — with the room the last level needs
+                    int lastGrowth = scene.Script.Count > 0 && scene.Growth > 0 ? 10 : scene.Growth;
+                    theme.SetGrowth(lastGrowth);
+                    theme.Root.Measure(Size.Infinity);
+                    var size = theme.Root.DesiredSize;
+                    theme.SetGrowth(scene.Growth);
+                    double zoom = Math.Min(1.5, Math.Min((Width - 48) / size.Width, (Height - 110) / size.Height));
+                    var stage = Stage(theme.Root, zoom, scene.Caption);
+                    host.Stage = stage;
+                    int next = 0;
+                    for (int f = 0; f < count; f++)
+                    {
+                        double at = (double)f / Fps;
+                        while (next < scene.Script.Count && scene.Script[next].Key <= at) scene.Script[next++].Value(theme);
+                        for (int i = 0; i < 3; i++) { host.Time += 1.0 / (3 * Fps); theme.Tick(1.0 / (3 * Fps)); }
+                        frames.Add(Pixels(stage, w, h, scale));
+                    }
+                    theme.Detach();
+                    gif.AddScene(frames, 100 / Fps);
+                    Console.WriteLine(scene.ThemeId + ": " + count + " frames");
+                }
+                gif.Save(file);
+                Console.WriteLine(file + "  " + new FileInfo(file).Length / 1024 + " KB");
+                return 0;
             }
-            gif.Save(file);
-            Console.WriteLine(file + "  " + new FileInfo(file).Length / 1024 + " KB");
-            return 0;
+            finally
+            {
+                ThemeCatalog.LoadCustom(Path.Combine(tmp, "none"));
+                try { Directory.Delete(tmp, true); } catch { }
+            }
+        }
+
+        /// <summary>A second Claude account (#26) next to the others.</summary>
+        static List<ProviderView> Accounts()
+        {
+            var list = Calm();
+            var work = new Account { Id = "claude-2", Kind = "claude", Folder = "~/.claude-work", Name = L.T("公司"), Color = AccountSetup.Colors[0] };
+            var snap = new Snapshot { Source = L.T("Claude Code 狀態列（官方）"), ObservedAt = DateTime.UtcNow.AddMinutes(-2) };
+            snap.Meters.Add(M("fh", L.T("5 小時"), "5h", 71, 1.4, false, 300));
+            snap.Meters.Add(M("sd", L.T("每週"), L.T("週"), 58, 60, false, 10080));
+            list.Insert(1, UsageService.MakeView(new ClaudeProvider(work), snap));
+            return list;
         }
 
         static Meter M(string key, string label, string shortLabel, double used, double hours, bool approx, int window)

@@ -11,7 +11,7 @@
 即時顯示還剩多少額度、多久後重置，不用再一直點開「設定 → 用量」；每週額度快重置卻還沒用完時，還會催你把它用掉。
 支援 **Windows、macOS、Linux**。
 
-<p align="center"><img src="docs/images/demo.zh-TW.gif" alt="示範動畫：果凍桌寵顯示 Claude、Codex、Copilot 的剩餘額度；額度快重置還沒用完時著急提醒；接著展示另外 7 種造型" width="720"></p>
+<p align="center"><img src="docs/images/demo.zh-TW.gif" alt="示範動畫：果凍桌寵顯示 Claude、Codex、Copilot 的剩餘額度；額度快重置還沒用完時著急提醒；Claude Code 做完時跳起來通知；升級戴上配件；週報圖；用圖片和 JSON 做的自訂造型；公司帳號；自訂台詞；接著展示另外 7 種造型" width="720"></p>
 
 ## 特色
 

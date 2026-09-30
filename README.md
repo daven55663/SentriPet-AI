@@ -14,7 +14,7 @@ that shows the quota left and when it resets, so you don't keep opening *Setting
 is about to reset with plenty left, the pets get nervous and remind you to use it instead of letting it go to waste.
 Runs on **Windows, macOS and Linux**.
 
-<p align="center"><img src="docs/images/demo.gif" alt="Demo: jelly pets showing the quota left on Claude, Codex and Copilot; getting nervous when quota is about to reset unused; then the other seven looks" width="720"></p>
+<p align="center"><img src="docs/images/demo.gif" alt="Demo: jelly pets showing the quota left on Claude, Codex and Copilot; getting nervous when quota is about to reset unused; hopping up when Claude Code is done; leveling up with accessories; the weekly summary picture; a theme made from pictures and JSON; a second account; your own lines; then the other seven looks" width="720"></p>
 
 ## Why SentriPet
 
