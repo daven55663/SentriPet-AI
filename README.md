@@ -164,7 +164,7 @@ SentriPet looks for AI tools on your computer and every one it finds becomes a p
 | Section | What you can do |
 |---|---|
 | Looks | Live previews of the eight looks; a random look every day |
-| Appearance | Size, opacity, always on top, hide in full screen, click-through, talking, power saving, the remaining % in the tray icon, only in the tray (no pet on the desktop) |
+| Appearance | Size, opacity, always on top, hide in full screen, click-through, talking, your own lines, power saving, the remaining % in the tray icon, only in the tray (no pet on the desktop) |
 | AI services | What was detected for each AI and the numbers it reads; turn AIs on or off; Codex refresh rate; Claude weekly reset time, the Claude Code status line, "tell me when an AI is done or waiting", live estimate |
 | Reminders | Quota notifications, "nudge me to use up weekly quota", quiet hours, warning and critical thresholds |
 | Quota use | The last 8 weekly/monthly windows per quota and their average; a notification with the summary at each reset; the usage report |
@@ -236,6 +236,14 @@ cost, favourite model, quota use and a small chart, with your pets — ready to 
   a Browser Source for usage bars, or `?view=pet` for the pet. Only this computer can reach it.
 
 The format of `usage.json`, the page's options and script examples are in [docs/usage-json.md](docs/usage-json.md).
+
+### Your own lines
+
+*Settings → Appearance → Your own lines → Open lines file* creates `lines.json` in the settings folder: write what the
+pets say when you click them, when a quota runs low, when Claude Code is done… per language, with the same placeholders
+as the built-in lines (`{name}`, `{pct}`, `{reset}`…). Events you leave out keep the built-in lines, and `"mix": true`
+uses both. A line with a mistyped placeholder is skipped and the settings page tells you which one. Events and
+placeholders: [docs/custom-lines.md](docs/custom-lines.md).
 
 ### Languages
 
@@ -356,7 +364,7 @@ The development log (in Chinese) is [docs/DEVLOG.md](docs/DEVLOG.md); the machin
 | Autostart | `SentriPet` in the registry key `HKCU\…\Run` | `~/Library/LaunchAgents/com.sentripet.app.plist` | `~/.config/autostart/sentripet.desktop` |
 | Menu entry | `SentriPet` in the Start menu | — | `~/.local/share/applications/sentripet.desktop` |
 
-The settings file is `settings.json`, the log `logs/app.log`; `usage.json` when *Write usage.json* is on. Weekly pictures
+The settings file is `settings.json`, the log `logs/app.log`; `usage.json` when *Write usage.json* is on, `lines.json` for your own lines. Weekly pictures
 go to `Pictures/SentriPet`.
 
 ## License

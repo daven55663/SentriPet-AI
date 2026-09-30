@@ -1,0 +1,38 @@
+// SentriPet: your own lines for the pets (#25). Saved changes are picked up within a few seconds.
+// 桌寵的自訂台詞。存檔後幾秒內就會生效。
+//
+// Group the lines by language ("zh-TW", "zh-CN", "en", "ja", "ko", or "all" for every language), then by event.
+// An event you write lines for uses them instead of the built-in ones; with "mix": true, both are used.
+// A line with a placeholder the event doesn't have is skipped (the settings page says which one).
+// 先依語言分組（"all" = 所有語言），再依事件分組。有寫的事件就用你的台詞；"mix": true 會和內建的混著說。
+// 用了該事件沒有的記號的那一句會被略過（設定頁會說是哪一句）。
+//
+// Events and their placeholders / 事件與可以用的記號:
+//   greeting                                   {names}
+//   poke                                       {name} {pct} {meter} {reset} {plan} {second} {secondpct}
+//   idleGreat idleGood idleWorried idleLow idleEmpty working stale warn critical reset
+//                                              {name} {pct} {meter} {reset}
+//   runsOut                                    {name} {pct} {meter} {reset} {time}
+//   useIt                                      {name} {pct} {meter} {reset} {quota} {left} {when} {upct}
+//   done                                       {name} {project} {time}
+//   waiting permission                         {name} {project}
+//   weekSummary                                {name} {quota} {used} {left}
+//
+// More: https://github.com/daven55663/SentriPet-AI/blob/main/docs/custom-lines.md
+{
+  "version": 1,
+  "mix": true,
+  "zh-TW": {
+    "poke": ["又來戳我！{name} 還有 {pct} 喔", "今天的 bug 修完了嗎？"],
+    "idleGreat": ["{meter}還有 {pct}，來開個大任務吧"],
+    "done": ["{name} 做完了，花了 {time}，快去看看！"]
+  },
+  "en": {
+    "poke": ["Hey! {name} still has {pct} left", "Fixed that bug yet?"],
+    "idleGreat": ["{pct} of the {meter} quota left: time for a big task"],
+    "done": ["{name} is done after {time}, go take a look!"]
+  },
+  "all": {
+    "greeting": ["(=^･ω･^=) {names}"]
+  }
+}

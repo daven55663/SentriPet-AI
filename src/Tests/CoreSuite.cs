@@ -24,6 +24,7 @@ namespace SentriPet
             AgentHookTests.Run(t);
             ReportTests.Run(t);
             ExportTests.Run(t);
+            CustomLinesTests.Run(t);
             CodexTests.Run(t);
             ProviderTests.Run(t);
             ServiceTests.Run(t);

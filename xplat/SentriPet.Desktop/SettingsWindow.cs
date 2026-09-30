@@ -93,7 +93,7 @@ namespace SentriPet
             saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
             saveTimer.Tick += (s, e) => { saveTimer.Stop(); S.Save(); };
             refresh = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            refresh.Tick += (s, e) => RefreshProviders();
+            refresh.Tick += (s, e) => { RefreshProviders(); ShowLinesStatus(); };
             refresh.Start();
             Closed += (s, e) => { refresh.Stop(); if (saveTimer.IsEnabled) { saveTimer.Stop(); S.Save(); } };
             Opened += (s, e) => Dispatcher.UIThread.Post(RenderPreviews, DispatcherPriority.Background);
@@ -296,6 +296,15 @@ namespace SentriPet
             if (Integration.CanClickThrough)
                 Row(body, L.T("滑鼠穿透"), L.T("桌寵不會擋住點擊（要關閉請從系統匣圖示按右鍵）"), Toggle(S.ClickThrough, v => { S.ClickThrough = v; ctl.ApplyWidgetSettings(); SaveSoon(); }));
             Row(body, L.T("會說話"), L.T("偶爾冒出一句話、點牠會回應"), Toggle(S.Chatty, v => { S.Chatty = v; SaveSoon(); }));
+            // your own lines (#25)
+            var linesButtons = new StackPanel { Orientation = Orientation.Horizontal };
+            linesButtons.Children.Add(Btn(L.T("開啟台詞檔"), () => { Integration.OpenPath(CustomLines.EnsureFile()); ShowLinesStatus(); }));
+            linesButtons.Children.Add(Btn(L.T("說明"), () => Integration.OpenPath(Docs("custom-lines"))));
+            Row(body, L.T("自訂台詞"), L.T("在設定資料夾的 lines.json 寫桌寵要說的話，依語言和事件分組；沒寫到的沿用內建台詞"), linesButtons);
+            linesStatus = Txt("", 11.5, SubC, FontWeight.Normal);
+            linesStatus.Margin = new Thickness(0, -4, 0, 8);
+            body.Children.Add(linesStatus);
+            ShowLinesStatus();
             Row(body, L.T("省電模式"), L.T("降低動畫幀率，筆電用電池時可以開"), Toggle(S.LowPower, v => { S.LowPower = v; ctl.ApplyWidgetSettings(); SaveSoon(); }));
             // (#21)
             Row(body, L.T("系統匣／選單列圖示顯示剩餘 %"), L.T("圖示直接畫出最低的剩餘額度，顏色跟著變"),
@@ -561,10 +570,35 @@ namespace SentriPet
                 Btn(L.T("打開用量報告"), ctl.OpenReportWindow));
         }
 
-        /// <summary>The format of usage.json and the OBS page's options (docs/usage-json.md, in Chinese for Chinese).</summary>
-        public static string UsageJsonDocs
+        /// <summary>A page in docs/ on GitHub, the Chinese one for Chinese.</summary>
+        public static string Docs(string name)
         {
-            get { return "https://github.com/daven55663/SentriPet-AI/blob/main/docs/usage-json" + (L.Current.StartsWith("zh") ? ".zh-TW" : "") + ".md"; }
+            return "https://github.com/daven55663/SentriPet-AI/blob/main/docs/" + name + (L.Current.StartsWith("zh") ? ".zh-TW" : "") + ".md";
+        }
+
+        /// <summary>The format of usage.json and the OBS page's options (docs/usage-json.md).</summary>
+        public static string UsageJsonDocs { get { return Docs("usage-json"); } }
+
+        TextBlock linesStatus;
+        string linesShown;
+
+        /// <summary>How many of the user's lines are in use, and what is wrong with lines.json (#25). Called again while the page is open.</summary>
+        void ShowLinesStatus()
+        {
+            if (linesStatus == null) return;
+            string text = "";
+            if (CustomLines.Exists)
+            {
+                text = L.F("目前的語言有 {0} 句自訂台詞", CustomLines.Count) + (CustomLines.Mix ? L.T("（和內建的台詞混著說）") : "");
+                foreach (var p in CustomLines.Problems.Take(5)) text += "\n⚠ " + p;
+                if (CustomLines.Problems.Count > 5) text += "\n" + L.F("……還有 {0} 個問題", CustomLines.Problems.Count - 5);
+                text = L.Finish(text);
+            }
+            if (text == linesShown) return;
+            linesShown = text;
+            linesStatus.Text = text;
+            linesStatus.IsVisible = text.Length > 0;
+            linesStatus.Foreground = G.B(CustomLines.Problems.Count > 0 ? Palette.Hex("#FCA5A5") : SubC);
         }
         StackPanel serverInfo;
 

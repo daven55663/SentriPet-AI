@@ -13,6 +13,8 @@
     <EmbeddedResource Include="..\..\src\Core\prices.json" Link="Core\prices.json" LogicalName="SentriPet.prices.json" />
     <!-- the page for OBS's browser source (#22), served by UsageServer -->
     <EmbeddedResource Include="..\..\src\Core\overlay.html" Link="Core\overlay.html" LogicalName="SentriPet.overlay.html" />
+    <!-- the example lines.json written when the user first opens it (#25) -->
+    <EmbeddedResource Include="..\..\src\Core\lines.example.json" Link="Core\lines.example.json" LogicalName="SentriPet.lines.example.json" />
   </ItemGroup>
 
   <ItemGroup>

@@ -167,7 +167,7 @@ SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一�
 | 分區 | 可以做什麼 |
 |---|---|
 | 造型 | 看 8 種造型的即時預覽並切換；每天隨機換一個 |
-| 外觀 | 大小、不透明度、永遠在最上層、全螢幕時躲起來、滑鼠穿透、會說話、省電模式、系統匣圖示顯示剩餘 %、只顯示在系統匣（桌面上不放桌寵） |
+| 外觀 | 大小、不透明度、永遠在最上層、全螢幕時躲起來、滑鼠穿透、會說話、自訂台詞、省電模式、系統匣圖示顯示剩餘 %、只顯示在系統匣（桌面上不放桌寵） |
 | AI 服務 | 每個 AI 偵測到什麼、目前讀到的數字；開關個別 AI；Codex 即時查詢頻率；Claude 每週重置時間、Claude Code 狀態列、「AI 做完或在等你時提醒」、即時推算 |
 | 提醒 | 額度提醒通知、「催我用完週額度」、勿擾時段、提醒與緊急門檻 |
 | 額度利用率 | 每個額度最近 8 期（週／月）用掉多少與平均；重置時跳通知總結；打開用量報告 |
@@ -235,6 +235,12 @@ SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一�
   網址加上 `?view=pet` 則顯示桌寵。只有這台電腦連得到。
 
 `usage.json` 的格式、網頁的選項與腳本範例見 [docs/usage-json.zh-TW.md](docs/usage-json.zh-TW.md)。
+
+### 自訂台詞
+
+設定 → 外觀 → 自訂台詞 →「開啟台詞檔」會在設定資料夾建立 `lines.json`：點桌寵、額度快用完、Claude Code 做完時……
+桌寵要說什麼都可以自己寫，依語言分組，記號和內建台詞一樣（`{name}`、`{pct}`、`{reset}`……）。沒寫到的事件沿用內建台詞，
+`"mix": true` 會兩種混著說。記號打錯的那一句會被略過，設定頁會說是哪一句。事件與記號見 [docs/custom-lines.zh-TW.md](docs/custom-lines.zh-TW.md)。
 
 ### 語言
 
@@ -361,7 +367,7 @@ xplat/package.sh win-x64                                           打包（osx-
 | 開機啟動 | 登錄檔 `HKCU\…\Run` 的 `SentriPet` | `~/Library/LaunchAgents/com.sentripet.app.plist` | `~/.config/autostart/sentripet.desktop` |
 | 選單捷徑 | 開始選單的 `SentriPet` | — | `~/.local/share/applications/sentripet.desktop` |
 
-設定檔是 `settings.json`，記錄檔是 `logs/app.log`；開啟「輸出 usage.json」時還有 `usage.json`。週報圖存在「圖片／SentriPet」。1.0 版叫「AI 用量桌寵」，資料在 `%APPDATA%\AIUsagePet`；升級時會自動把設定搬過來。
+設定檔是 `settings.json`，記錄檔是 `logs/app.log`；開啟「輸出 usage.json」時還有 `usage.json`，自訂台詞是 `lines.json`。週報圖存在「圖片／SentriPet」。1.0 版叫「AI 用量桌寵」，資料在 `%APPDATA%\AIUsagePet`；升級時會自動把設定搬過來。
 
 ## 授權
 

@@ -820,6 +820,7 @@ namespace SentriPet
             Settings.Language = code;
             Settings.Save();
             Program.UseLanguage(code);
+            CustomLines.Reload();       // its messages are written in the language
             window.SetTheme(ThemeCatalog.Get(Settings.Theme).Create());
             Service.RefreshNow(null);   // provider texts (labels, notes, errors) are made in the new language
             RefreshViews();

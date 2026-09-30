@@ -468,8 +468,15 @@ namespace SentriPet
             t.Run("settings", () =>
             {
                 var host = new TestHost();
+                // a lines.json with a mistake (#25): the page says which line is skipped
+                CustomLines.Override = "{ \"zh-TW\": { \"poke\": [\"好\", \"{bad} 壞掉\"] } }";
+                CustomLines.Reload();
                 var win = new SettingsWindow(host) { Width = 700, Height = 900 };
                 win.Show();
+                var linesText = win.GetVisualDescendants().OfType<TextBlock>().Select(tb => tb.Text ?? "").FirstOrDefault(s => s.Contains("{bad}"));
+                t.Check("設定頁：自訂台詞寫錯時說出是哪一句", linesText != null && linesText.Contains(L.F("目前的語言有 {0} 句自訂台詞", 1)), linesText ?? "(none)");
+                CustomLines.Override = null;
+                CustomLines.Reload();
                 for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
                 var switches = win.GetVisualDescendants().OfType<ToggleSwitch>().ToList();
                 var sliders = win.GetVisualDescendants().OfType<Slider>().ToList();
