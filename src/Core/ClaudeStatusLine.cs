@@ -44,29 +44,49 @@ namespace SentriPet
         }
         public static string ClaudeSettingsFile { get { return SettingsOverride ?? Path.Combine(AppPaths.Home, ".claude", "settings.json"); } }
 
+        /// <summary>Another account's folder (#26, CLAUDE_CONFIG_DIR): the numbers are kept next to its own settings.</summary>
+        public static string DataFileFor(string claudeDir)
+        {
+            if (string.IsNullOrEmpty(claudeDir)) return DataFile;
+            return Path.Combine(AppPaths.Expand(claudeDir), AppPaths.Dev ? "sentripet-status-dev.json" : "sentripet-status.json");
+        }
+
+        public static string SettingsFileFor(Account a)
+        {
+            return a == null ? ClaudeSettingsFile : Path.Combine(a.Home, "settings.json");
+        }
+
         // ------------------------------------------------------------------ the status-line command
 
         /// <summary>
         /// <c>SentriPet --statusline</c>: reads Claude Code's JSON from stdin, saves the plan usage, and prints the user's
         /// own status line (or a short usage line when they had none).
         /// </summary>
-        public static int Run(TextReader stdin, TextWriter stdout, AppSettings settings)
+        public static int Run(TextReader stdin, TextWriter stdout, AppSettings settings, string claudeDir = null)
         {
             string input = stdin.ReadToEnd();
+            string file = DataFileFor(claudeDir);
             var data = Extract(Json.TryParse(input), DateTime.UtcNow);
             if (data != null)
             {
-                try { Save(data); }
+                try { Save(data, file); }
                 catch (Exception ex) { Log.Warn("status line: " + ex.Message); }
             }
-            string chained = ChainedCommand(settings);
+            // another account (#26): its own status line was kept with the account
+            var account = string.IsNullOrEmpty(claudeDir) ? null : settings.Accounts.FirstOrDefault(a => a.Kind == "claude" && AccountSetup.SameFolder(a.Folder, claudeDir));
+            string chained = account != null ? CommandOf(account.StatusLineChain) : string.IsNullOrEmpty(claudeDir) ? ChainedCommand(settings) : null;
             if (!string.IsNullOrWhiteSpace(chained))
             {
                 string output = RunChained(chained, input);
                 if (output != null) { stdout.Write(output); return 0; }
             }
-            stdout.WriteLine(OwnLine(data ?? Load()));
+            stdout.WriteLine(OwnLine(data ?? Load(file)));
             return 0;
+        }
+
+        static string CommandOf(string chain)
+        {
+            return string.IsNullOrEmpty(chain) ? null : Json.Str(Json.Get(Json.TryParse(chain), "command"));
         }
 
         /// <summary>The plan usage in Claude Code's status-line input, or null when it has none (API key, first message not answered yet).</summary>
@@ -99,14 +119,14 @@ namespace SentriPet
 
         // ------------------------------------------------------------------ the saved numbers
 
-        public static void Save(Data d)
+        public static void Save(Data d, string path = null)
         {
             var o = new Dictionary<string, object>();
             o["observedAt"] = d.ObservedAt;
             if (d.Model != null) o["model"] = d.Model;
             if (d.FiveHour != null) o["fiveHour"] = WindowJson(d.FiveHour);
             if (d.SevenDay != null) o["sevenDay"] = WindowJson(d.SevenDay);
-            string path = DataFile;
+            path = path ?? DataFile;
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             string tmp = path + ".tmp";
             File.WriteAllText(tmp, Json.Serialize(o, true), new UTF8Encoding(false));
@@ -122,11 +142,11 @@ namespace SentriPet
         }
 
         /// <summary>The numbers the status line saved last, or null.</summary>
-        public static Data Load()
+        public static Data Load(string path = null)
         {
             try
             {
-                string path = DataFile;
+                path = path ?? DataFile;
                 if (!File.Exists(path)) return null;
                 var o = Json.TryParse(AppPaths.ReadShared(path));
                 var at = Json.Date(Json.Get(o, "observedAt"));
@@ -223,6 +243,12 @@ namespace SentriPet
 
         internal static string CommandFor(string exe) { return ExeCommand(exe) + " --statusline"; }
 
+        /// <summary>Another account's status line: the same command with its folder (#26).</summary>
+        internal static string CommandFor(string exe, Account a)
+        {
+            return a == null ? CommandFor(exe) : CommandFor(exe) + " --claude-dir " + ExeCommand(a.Home);
+        }
+
         internal static bool IsOurs(string command)
         {
             return command != null && command.Contains("--statusline") && command.IndexOf(AppInfo.Name, StringComparison.OrdinalIgnoreCase) >= 0;
@@ -294,6 +320,60 @@ namespace SentriPet
             }
             s.ClaudeStatusLineChain = null;
             s.ClaudeStatusBridge = false;
+        }
+
+        // ------------------------------------------------------------------ other accounts (#26)
+
+        /// <summary>Is SentriPet the status line in this account's folder?</summary>
+        public static bool IsConnected(Account a)
+        {
+            try { return IsOurs(Json.Str(Json.Get(Json.Get(ReadClaudeSettings(SettingsFileFor(a)), "statusLine"), "command"))); }
+            catch { return false; }
+        }
+
+        /// <summary>Makes SentriPet the status line in this account's folder (its own status line is kept with the account).</summary>
+        public static void Connect(Account a, string exe)
+        {
+            string path = SettingsFileFor(a);
+            var root = ReadClaudeSettings(path);
+            var existing = Json.Obj(Json.Get(root, "statusLine"));
+            if (existing != null && !IsOurs(Json.Str(Json.Get(existing, "command")))) a.StatusLineChain = Json.Serialize(existing, false);
+            else if (existing == null) a.StatusLineChain = null;
+            var line = new Dictionary<string, object>();
+            if (existing != null) foreach (var kv in existing) line[kv.Key] = kv.Value;
+            line["type"] = "command";
+            line["command"] = CommandFor(exe, a);
+            root["statusLine"] = line;
+            WriteClaudeSettings(path, root);
+            a.StatusLine = true;
+        }
+
+        public static void Disconnect(Account a)
+        {
+            string path = SettingsFileFor(a);
+            var root = ReadClaudeSettings(path);
+            if (IsOurs(Json.Str(Json.Get(Json.Get(root, "statusLine"), "command"))))
+            {
+                var original = string.IsNullOrEmpty(a.StatusLineChain) ? null : Json.Obj(Json.TryParse(a.StatusLineChain));
+                if (original != null) root["statusLine"] = original;
+                else root.Remove("statusLine");
+                WriteClaudeSettings(path, root);
+            }
+            a.StatusLineChain = null;
+            a.StatusLine = false;
+        }
+
+        /// <summary>At start, for every account whose status line is connected (like <see cref="Repair(AppSettings, string)"/>).</summary>
+        public static void Repair(Account a, string exe)
+        {
+            if (!a.StatusLine) return;
+            try
+            {
+                string cmd = Json.Str(Json.Get(Json.Get(ReadClaudeSettings(SettingsFileFor(a)), "statusLine"), "command"));
+                if (!IsOurs(cmd)) { a.StatusLine = false; a.StatusLineChain = null; Log.Info("status line bridge was removed in " + a.Id); return; }
+                if (cmd != CommandFor(exe, a)) { Connect(a, exe); Log.Info("status line bridge " + a.Id + " -> " + CommandFor(exe, a)); }
+            }
+            catch (Exception ex) { Log.Warn("status line bridge " + a.Id + ": " + ex.Message); }
         }
 
         /// <summary>At start: follows the program when it moved, and notices when the user removed the status line in Claude.</summary>

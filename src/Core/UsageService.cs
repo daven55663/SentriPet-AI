@@ -27,11 +27,12 @@ namespace SentriPet
         public event Action Changed;
 
         /// <summary>Where the providers come from (the self-test swaps in stubs).</summary>
-        internal Func<List<Provider>> Factory = ProviderRegistry.CreateAll;
+        internal Func<List<Provider>> Factory;
 
         public UsageService(AppSettings settings)
         {
             this.settings = settings;
+            Factory = () => ProviderRegistry.CreateAll(settings);
         }
 
         public void Start()

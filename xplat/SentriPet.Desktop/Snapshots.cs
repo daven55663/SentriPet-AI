@@ -32,7 +32,11 @@ namespace SentriPet
         /// <summary>The settings page without a running app: sample data, a service that is never started.</summary>
         internal class SnapshotSettingsHost : ISettingsHost, IReportHost
         {
-            readonly AppSettings settings = new AppSettings();
+            // with another account (#26), so the settings page shows that part
+            readonly AppSettings settings = new AppSettings
+            {
+                Accounts = { new Account { Id = "claude-2", Kind = "claude", Folder = "~/.claude-work", Name = "Claude (work)", Color = AccountSetup.Colors[0] } },
+            };
             UsageService service;
             public AppSettings Settings { get { return settings; } }
             public UsageService Service { get { return service ?? (service = new UsageService(settings)); } }
@@ -52,6 +56,10 @@ namespace SentriPet
             public void ApplyGrowth() { }
             public void OpenThemesFolder() { }
             public void ReloadThemes() { }
+            public string AddAccount(string kind, string folder) { return null; }
+            public void RemoveAccount(Account a) { }
+            public void AccountChanged() { }
+            public string SetAccountStatusLine(Account a, bool on) { return null; }
             public string UsageServerUrl { get { return "http://127.0.0.1:" + settings.UsagePort + "/"; } }
             public void MakeShareCard() { }
         }
@@ -169,6 +177,7 @@ namespace SentriPet
                 finally
                 {
                     try { Directory.Delete(tmp, true); } catch { }
+                    ThemeCatalog.LoadCustom(tmp);   // (gone now: no custom themes for the rest of the snapshots)
                 }
             }
             // the hover card for the first provider of each set

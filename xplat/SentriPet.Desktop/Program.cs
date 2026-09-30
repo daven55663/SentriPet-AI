@@ -37,7 +37,8 @@ namespace SentriPet
                     L.Use(settings.Language);
                     Console.OutputEncoding = new System.Text.UTF8Encoding(false);
                     var stdin = new System.IO.StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false));
-                    return ClaudeStatusLine.Run(stdin, Console.Out, settings);
+                    int dir = Array.IndexOf(args, "--claude-dir");   // another account's folder (#26)
+                    return ClaudeStatusLine.Run(stdin, Console.Out, settings, dir >= 0 && dir + 1 < args.Length ? args[dir + 1] : null);
                 }
                 catch (Exception ex) { Log.Error("status line", ex); Console.WriteLine(AppInfo.Name); return 0; }
             }
@@ -74,8 +75,12 @@ namespace SentriPet
             if (mode == "--snapshot")
             {
                 AppPaths.UseDevProfile();
+                // the settings page it draws saves its sample settings: into a throwaway folder, not the dev profile
+                string scratch = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sentripet-snapshot-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                AppPaths.DataDirOverride = scratch;
                 UseLanguage(LanguageOverride ?? L.Source);
-                return Snapshots.Run(args);
+                try { return Snapshots.Run(args); }
+                finally { try { System.IO.Directory.Delete(scratch, true); } catch { } }
             }
             if (mode == "--demo")
             {

@@ -287,7 +287,7 @@ namespace SentriPet
     /// <summary>Codex: the session logs and the official app-server protocol (against a fake server).</summary>
     static class CodexTests
     {
-        static string RateLine(DateTime at, string limitId, string limitName, double used5, DateTime reset5, double usedWeek, DateTime resetWeek, string extras)
+        internal static string RateLine(DateTime at, string limitId, string limitName, double used5, DateTime reset5, double usedWeek, DateTime resetWeek, string extras)
         {
             return "{\"timestamp\":\"" + TestKit.Iso(at) + "\",\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":null,\"rate_limits\":{" +
                    (limitId != null ? "\"limit_id\":\"" + limitId + "\"," : "") + (limitName != null ? "\"limit_name\":\"" + limitName + "\"," : "") +

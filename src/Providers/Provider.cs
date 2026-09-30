@@ -137,7 +137,10 @@ namespace SentriPet
 
     static class ProviderRegistry
     {
-        public static List<Provider> CreateAll()
+        public static List<Provider> CreateAll() { return CreateAll(null); }
+
+        /// <summary>The built-in providers, the plugins, and (with the settings) the other accounts (#26).</summary>
+        public static List<Provider> CreateAll(AppSettings settings)
         {
             var list = new List<Provider>
             {
@@ -146,6 +149,9 @@ namespace SentriPet
                 new CopilotProvider(),
                 new OllamaProvider(),
             };
+            if (settings != null)
+                foreach (var a in settings.Accounts)
+                    list.Add(a.Kind == "claude" ? (Provider)new ClaudeProvider(a) : new CodexProvider(a));
             foreach (var cp in CustomProvider.LoadAll())
             {
                 list.RemoveAll(p => p.Id == cp.Id);   // a plugin may override a built-in

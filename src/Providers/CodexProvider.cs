@@ -62,6 +62,8 @@ namespace SentriPet
         /// <summary>Set by the self-test to talk to a fake app-server instead of the installed codex.</summary>
         internal static string ExeOverride, ArgsOverride;
 
+        readonly Account account;   // another account (#26): its CODEX_HOME folder
+
         public CodexProvider()
         {
             Id = "codex";
@@ -69,6 +71,21 @@ namespace SentriPet
             Mascot = "prompt";
             Color = Rgba.Hex("#6C7BFF");
         }
+
+        /// <summary>
+        /// Another Codex account (#26): the app-server is started with CODEX_HOME set to its folder, so Codex answers for
+        /// the account signed in there (SentriPet itself never reads the sign-in), and its session logs are read.
+        /// </summary>
+        public CodexProvider(Account a) : this()
+        {
+            account = a;
+            Id = a.Id;
+            Name = a.Name;
+            Rgba c;
+            if (a.Color != null && Rgba.TryParse(a.Color, out c)) Color = c;
+        }
+
+        string Home { get { return account != null ? account.Home : CodexHome(); } }
 
         public override int IntervalSeconds { get { return 15; } }
 
@@ -82,6 +99,13 @@ namespace SentriPet
         {
             var d = new Detection();
             if (DesktopApp() != null) d.Evidence.Add(L.T("Codex 桌面版"));
+            if (account != null)
+            {
+                if (Directory.Exists(Home)) d.Evidence.Add(L.F("Codex 資料夾 {0}", AppPaths.ShortPath(Home)));
+                d.Installed = d.Evidence.Count > 0;
+                d.Hint = !d.Installed ? L.T("找不到這個資料夾") : FindCodexExe() == null ? L.T("找不到 codex 執行檔，只能讀本機紀錄") : null;
+                return d;
+            }
             if (Directory.Exists(CodexHome())) d.Evidence.Add(L.T("Codex 資料夾"));
             if (AppPaths.EditorExtensions("openai.chatgpt-").Count > 0) d.Evidence.Add(L.T("VS Code 擴充"));
             if (AppPaths.Which("codex") != null) d.Evidence.Add(L.T("codex 指令"));
@@ -94,7 +118,7 @@ namespace SentriPet
         {
             if (activity == null)
             {
-                activity = new ActivityWatcher(Path.Combine(CodexHome(), "sessions"), "*.jsonl");
+                activity = new ActivityWatcher(Path.Combine(Home, "sessions"), "*.jsonl");
                 activity.Changed += path => { hotFiles[path] = true; logsDirty = true; };
             }
             activity.Ensure();
@@ -235,7 +259,7 @@ namespace SentriPet
 
         RateSnap ScanLogs()
         {
-            string root = Path.Combine(CodexHome(), "sessions");
+            string root = Path.Combine(Home, "sessions");
             if (!Directory.Exists(root)) return null;
             var cutoff = DateTime.UtcNow.AddDays(-10);
             var files = new DirectoryInfo(root).EnumerateFiles("*.jsonl", SearchOption.AllDirectories)
@@ -388,6 +412,7 @@ namespace SentriPet
                     psi.Arguments = ArgsOverride ?? "app-server";
                 }
                 psi.UseShellExecute = false;
+                if (account != null) psi.Environment["CODEX_HOME"] = Home;   // (#26) the other account's folder
                 psi.CreateNoWindow = true;
                 psi.RedirectStandardInput = true;
                 psi.RedirectStandardOutput = true;

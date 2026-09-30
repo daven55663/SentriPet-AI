@@ -26,7 +26,8 @@ namespace SentriPet
         internal static string HistoryOverride;
 
         ActivityWatcher activity;
-        readonly ClaudeCodeUsage usage = new ClaudeCodeUsage();
+        readonly ClaudeCodeUsage usage;
+        readonly Account account;   // another account (#26): only its folder's status line and transcripts
         string cachedFile;
         DateTime cachedMtime;
         long cachedLen;
@@ -41,6 +42,18 @@ namespace SentriPet
             Name = "Claude";
             Mascot = "sparkle";
             Color = Rgba.Hex("#D97757");
+            usage = new ClaudeCodeUsage();
+        }
+
+        /// <summary>Another Claude Code account (#26): its CLAUDE_CONFIG_DIR folder.</summary>
+        public ClaudeProvider(Account a) : this()
+        {
+            account = a;
+            Id = a.Id;
+            Name = a.Name;
+            Rgba c;
+            if (a.Color != null && Rgba.TryParse(a.Color, out c)) Color = c;
+            usage = new ClaudeCodeUsage(Path.Combine(a.Home, "projects"));
         }
 
         public override int IntervalSeconds { get { return 10; } }
@@ -74,6 +87,14 @@ namespace SentriPet
         public override Detection Detect()
         {
             var d = new Detection();
+            if (account != null)
+            {
+                if (Directory.Exists(account.Home)) d.Evidence.Add(L.F("Claude Code 資料夾 {0}", AppPaths.ShortPath(account.Home)));
+                d.Installed = d.Evidence.Count > 0;
+                if (!d.Installed) d.Hint = L.T("找不到這個資料夾");
+                else if (!account.StatusLine) d.Hint = L.T("在設定頁連接這個帳號的 Claude Code 狀態列，才讀得到它的用量");
+                return d;
+            }
             if (Directory.Exists(Path.Combine(AppPaths.AppData, "Claude")) || AppPaths.MsixInstalled("Claude"))
                 d.Evidence.Add(L.T("Claude 桌面版"));
             if (Directory.Exists(Path.Combine(AppPaths.Home, ".claude"))) d.Evidence.Add("Claude Code");
@@ -87,10 +108,11 @@ namespace SentriPet
 
         public override Snapshot Fetch(bool force, AppSettings settings)
         {
-            if (activity == null) activity = new ActivityWatcher(ClaudeCodeUsage.Root, "*.jsonl");
+            if (activity == null) activity = new ActivityWatcher(account != null ? Path.Combine(account.Home, "projects") : ClaudeCodeUsage.Root, "*.jsonl");
             activity.Ensure();
 
             var now = DateTime.UtcNow;
+            if (account != null) return FetchAccount(settings, now);
             // official numbers from Claude Code's status line (when the bridge is on), ignored once a week old
             var bridge = settings.ClaudeStatusBridge ? ClaudeStatusLine.Load() : null;
             if (bridge != null && (now - bridge.ObservedAt).TotalDays > 7) bridge = null;
@@ -262,6 +284,25 @@ namespace SentriPet
             }
             snap.Active = activity.ActiveWithin(90);
             return snap;
+        }
+
+        /// <summary>
+        /// Another account (#26): the Claude desktop app only records the account it is signed in to, so the numbers come
+        /// from the status line connected in this account's folder (and its transcripts fill the gap after a reset).
+        /// </summary>
+        Snapshot FetchAccount(AppSettings settings, DateTime now)
+        {
+            var bridge = account.StatusLine ? ClaudeStatusLine.Load(ClaudeStatusLine.DataFileFor(account.Home)) : null;
+            if (bridge != null && (now - bridge.ObservedAt).TotalDays > 7) bridge = null;
+            if (bridge == null)
+                return Snapshot.Fail(account.StatusLine ? L.T("還沒有這個帳號的用量：用這個帳號的 Claude Code 問一句話就會出現")
+                                                        : L.T("在設定頁連接這個帳號的 Claude Code 狀態列，才讀得到它的用量"));
+            if (settings.ClaudeEstimate)
+            {
+                try { usage.Update(); }
+                catch (Exception ex) { Log.Warn("claude transcripts " + account.Id + ": " + ex.Message); }
+            }
+            return FromBridge(bridge, settings.ClaudeEstimate ? usage : null, now);
         }
 
         /// <summary>Only the status line's numbers (no desktop app, e.g. Linux).</summary>

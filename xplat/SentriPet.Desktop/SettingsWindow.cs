@@ -37,6 +37,11 @@ namespace SentriPet
         /// <summary>The user's themes (#24): open their folder (with the example the first time), read them again.</summary>
         void OpenThemesFolder();
         void ReloadThemes();
+        /// <summary>Other accounts (#26): add one (null, or why not), remove one, its name or colour changed, its status line.</summary>
+        string AddAccount(string kind, string folder);
+        void RemoveAccount(Account a);
+        void AccountChanged();
+        string SetAccountStatusLine(Account a, bool on);
     }
 
     /// <summary>
@@ -452,7 +457,145 @@ namespace SentriPet
                 hookBox);
             Row(body, L.T("Claude 即時推算"), L.T("Claude 桌面版約每 15 分鐘才記錄一次用量。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算這段空檔的用量，數字前面會標「≈」"),
                 Toggle(S.ClaudeEstimate, v => { S.ClaudeEstimate = v; SaveSoon(); ctl.Service.RefreshNow("claude"); }));
+            BuildAccounts(body);
             RefreshProviders();
+        }
+
+        StackPanel accountList;
+        TextBlock accountError;
+
+        /// <summary>Other accounts (#26): a Claude Code or Codex settings folder per extra pet, with its name and colour.</summary>
+        void BuildAccounts(StackPanel body)
+        {
+            var add = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, MaxWidth = 270 };
+            add.Children.Add(Btn(L.T("新增 Claude Code 帳號"), () => PickAccount("claude")));
+            add.Children.Add(Btn(L.T("新增 Codex 帳號"), () => PickAccount("codex")));
+            Row(body, L.T("其他帳號"),
+                L.T("同時有公司和個人帳號時，選另一個 Claude Code 設定資料夾（CLAUDE_CONFIG_DIR）或 Codex 資料夾（CODEX_HOME），每個資料夾會是一隻獨立的桌寵。SentriPet 不讀任何登入資料"),
+                add);
+            accountError = Txt("", 11.5, Palette.Hex("#FCA5A5"), FontWeight.Normal);
+            accountError.IsVisible = false;
+            accountError.Margin = new Thickness(0, -4, 0, 8);
+            body.Children.Add(accountError);
+            accountList = new StackPanel();
+            body.Children.Add(accountList);
+            FillAccounts();
+        }
+
+        async void PickAccount(string kind)
+        {
+            try
+            {
+                var picked = await StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
+                {
+                    Title = kind == "claude" ? L.T("選 Claude Code 的設定資料夾（CLAUDE_CONFIG_DIR）") : L.T("選 Codex 的資料夾（CODEX_HOME）"),
+                    AllowMultiple = false,
+                });
+                var folder = picked.FirstOrDefault();
+                if (folder == null) return;
+                string path = Avalonia.Platform.Storage.StorageProviderExtensions.TryGetLocalPath(folder);
+                ShowAccountProblem(path == null ? L.T("找不到這個資料夾") : ctl.AddAccount(kind, path));
+                FillAccounts();
+                providerSig = null;
+            }
+            catch (Exception ex) { Log.Error("add account", ex); ShowAccountProblem(ex.Message); }
+        }
+
+        void ShowAccountProblem(string problem)
+        {
+            accountError.Text = problem ?? "";
+            accountError.IsVisible = problem != null;
+        }
+
+        void FillAccounts()
+        {
+            accountList.Children.Clear();
+            foreach (var a in S.Accounts.ToList())
+            {
+                var acct = a;
+                var box = new StackPanel();
+                var top = new Grid();
+                top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                Rgba color;
+                if (a.Color == null || !Rgba.TryParse(a.Color, out color)) color = Rgba.Hex(a.Kind == "claude" ? "#D97757" : "#6C7BFF");
+                var dot = new Avalonia.Controls.Shapes.Ellipse { Width = 12, Height = 12, Fill = G.B(color.ToColor()), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
+                top.Children.Add(dot);
+                var name = new TextBox { Text = a.Name, Width = 200, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
+                Action commit = () =>
+                {
+                    string n = (name.Text ?? "").Trim();
+                    if (n.Length == 0 || n == acct.Name) { name.Text = acct.Name; return; }
+                    acct.Name = n;
+                    ctl.AccountChanged();
+                    providerSig = null;
+                };
+                name.LostFocus += (s, e) => commit();
+                name.KeyDown += (s, e) => { if (e.Key == Avalonia.Input.Key.Enter) commit(); };
+                Grid.SetColumn(name, 1);
+                top.Children.Add(name);
+                var remove = Btn(L.T("移除"), () => { ctl.RemoveAccount(acct); FillAccounts(); providerSig = null; });
+                remove.Margin = new Thickness(8, 0, 0, 0);
+                Grid.SetColumn(remove, 2);
+                top.Children.Add(remove);
+                box.Children.Add(top);
+
+                var where = Txt(L.F("{0}：{1}", a.Kind == "claude" ? "Claude Code" : "Codex", AppPaths.ShortPath(a.Home)), 11.5, SubC, FontWeight.Normal);
+                where.Margin = new Thickness(22, 4, 0, 4);
+                box.Children.Add(where);
+
+                var chips = new WrapPanel { Margin = new Thickness(22, 2, 0, 4) };
+                foreach (var c in AccountSetup.Colors)
+                {
+                    string hex = c;
+                    var chip = new Button
+                    {
+                        Width = 20, Height = 20, Padding = new Thickness(0), Margin = new Thickness(0, 0, 6, 0), CornerRadius = new CornerRadius(10),
+                        Background = G.B(Palette.Hex(hex)),
+                        BorderBrush = G.B(string.Equals(a.Color, hex, StringComparison.OrdinalIgnoreCase) ? Colors.White : Colors.Transparent),
+                        BorderThickness = new Thickness(2),
+                    };
+                    chip.Click += (s, e) => { acct.Color = hex; ctl.AccountChanged(); FillAccounts(); providerSig = null; };
+                    chips.Children.Add(chip);
+                }
+                box.Children.Add(chips);
+
+                if (a.Kind == "claude")
+                {
+                    var err = Txt("", 11, Palette.Hex("#FCA5A5"), FontWeight.Normal);
+                    err.IsVisible = false;
+                    ToggleSwitch sl = null;
+                    sl = Toggle(a.StatusLine && ClaudeStatusLine.IsConnected(a), v =>
+                    {
+                        if (v == (acct.StatusLine && ClaudeStatusLine.IsConnected(acct))) return;
+                        string problem = ctl.SetAccountStatusLine(acct, v);
+                        err.Text = problem == null ? "" : L.F("沒辦法修改 Claude 的設定：{0}", problem);
+                        err.IsVisible = problem != null;
+                        if (problem != null) sl.IsChecked = !v;
+                    });
+                    var line = new Grid { Margin = new Thickness(22, 4, 0, 0) };
+                    line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                    var lt = new StackPanel { Margin = new Thickness(0, 0, 14, 0) };
+                    lt.Children.Add(Txt(L.T("連接這個帳號的 Claude Code 狀態列"), 12, TextC, FontWeight.SemiBold));
+                    lt.Children.Add(Txt(L.T("Claude 桌面版只記錄登入的那個帳號，其他帳號的用量要靠它的狀態列（在這個資料夾的 settings.json 加上設定，原本的狀態列照常顯示，關掉時還原）"), 11, SubC, FontWeight.Normal));
+                    lt.Children.Add(err);
+                    line.Children.Add(lt);
+                    Grid.SetColumn(sl, 1);
+                    sl.VerticalAlignment = VerticalAlignment.Center;
+                    line.Children.Add(sl);
+                    box.Children.Add(line);
+                }
+                accountList.Children.Add(new Border
+                {
+                    Child = box,
+                    Background = G.B(Palette.Hex("#20242E")),
+                    CornerRadius = new CornerRadius(10),
+                    Padding = new Thickness(12, 10, 12, 10),
+                    Margin = new Thickness(0, 0, 0, 10),
+                });
+            }
         }
 
         void OpenPluginFolder()

@@ -27,7 +27,7 @@ Runs on **Windows, macOS and Linux**.
 - **Fits into your setup** — the remaining % right in the tray / menu-bar icon, a `usage.json` for your scripts or Stream Deck,
   and a transparent page for OBS
 - **Eight looks** to match your mood: jelly pets, frosted glass, pixel RPG, hacker terminal, race gauges, magic potions, neon city, sticky note — or make your own from pictures and a JSON file
-- **Claude, Codex, Copilot, Ollama** out of the box, anything else through a small JSON plugin
+- **Claude, Codex, Copilot, Ollama** out of the box — a work and a personal account side by side — anything else through a small JSON plugin
 - **Private by design** — reads only the usage numbers the tools keep on your computer; never reads or sends your sign-in credentials
 - **Five languages**: English, 繁體中文, 简体中文, 日本語, 한국어 (follows your system language)
 - Drag it to any screen; starts at sign-in; hides itself while you watch videos or play in full screen
@@ -166,7 +166,7 @@ SentriPet looks for AI tools on your computer and every one it finds becomes a p
 |---|---|
 | Looks | Live previews of the eight looks and your own; a random look every day; open / reload your themes folder |
 | Appearance | Size, opacity, always on top, hide in full screen, click-through, talking, your own lines, power saving, the remaining % in the tray icon, only in the tray (no pet on the desktop) |
-| AI services | What was detected for each AI and the numbers it reads; turn AIs on or off; Codex refresh rate; Claude weekly reset time, the Claude Code status line, "tell me when an AI is done or waiting", live estimate |
+| AI services | What was detected for each AI and the numbers it reads; turn AIs on or off; Codex refresh rate; Claude weekly reset time, the Claude Code status line, "tell me when an AI is done or waiting", live estimate; other accounts |
 | Reminders | Quota notifications, "nudge me to use up weekly quota", quiet hours, warning and critical thresholds |
 | Quota use | The last 8 weekly/monthly windows per quota and their average; a notification with the summary at each reset; the usage report |
 | Growth and achievements | Growing pets on or off, the level and its experience, the ten achievements and how far you are |
@@ -238,6 +238,18 @@ cost, favourite model, quota use and a small chart, with your pets — ready to 
   a Browser Source for usage bars, or `?view=pet` for the pet. Only this computer can reach it.
 
 The format of `usage.json`, the page's options and script examples are in [docs/usage-json.md](docs/usage-json.md).
+
+### Several accounts
+
+With a work and a personal account, *Settings → AI services → Other accounts* adds the other account's folder: Claude
+Code's `CLAUDE_CONFIG_DIR` or Codex's `CODEX_HOME`. Each folder becomes a pet of its own, with a name and colour you choose.
+
+- **Codex**: SentriPet starts the official `codex app-server` with `CODEX_HOME` set to that folder, so Codex answers for
+  the account signed in there, and reads that folder's session logs.
+- **Claude Code**: the Claude desktop app only records the account signed in to it, so the other account's numbers come
+  from its status line — turn on *Connect this account's Claude Code status line* on its card (it edits that folder's
+  `settings.json` the same way as for the default account, keeps your own status line and puts it back when turned off).
+- SentriPet still never reads a sign-in. The usage report and "done or waiting" cover the default accounts.
 
 ### Your own themes
 

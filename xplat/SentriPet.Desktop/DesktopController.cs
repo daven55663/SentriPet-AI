@@ -72,6 +72,7 @@ namespace SentriPet
             if (!AppPaths.Dev)
             {
                 ClaudeStatusLine.Repair(Settings, Environment.ProcessPath);
+                foreach (var a in Settings.Accounts) if (a.Kind == "claude") ClaudeStatusLine.Repair(a, Environment.ProcessPath);   // (#26)
                 AgentHooks.Repair(Settings, Environment.ProcessPath);
             }
             // --connect-claude-statusline / --disconnect-claude-statusline: the settings switch, for scripts and helpers
@@ -911,6 +912,55 @@ namespace SentriPet
             settingsWindow.WindowStartupLocation = WindowStartupLocation.Manual;
             settingsWindow.Position = pos;
             settingsWindow.Height = height;
+        }
+
+        /// <summary>Another Claude Code or Codex account (#26): null when added, otherwise why not.</summary>
+        public string AddAccount(string kind, string folder)
+        {
+            string problem = AccountSetup.Problem(Settings, kind, folder);
+            if (problem != null) return problem;
+            var a = AccountSetup.Add(Settings, kind, folder);
+            Log.Info("account added: " + a.Id + " " + AppPaths.ShortPath(a.Home));
+            Settings.Save();
+            Service.ReloadProviders();
+            return null;
+        }
+
+        public void RemoveAccount(Account a)
+        {
+            if (a.StatusLine)
+            {
+                try { ClaudeStatusLine.Disconnect(a); }
+                catch (Exception ex) { Log.Warn("status line " + a.Id + ": " + ex.Message); }
+            }
+            Settings.Accounts.Remove(a);
+            Settings.Enabled.Remove(a.Id);
+            Log.Info("account removed: " + a.Id);
+            Settings.Save();
+            Service.ReloadProviders();
+        }
+
+        public void AccountChanged()
+        {
+            Settings.Save();
+            Service.ReloadProviders();
+        }
+
+        public string SetAccountStatusLine(Account a, bool on)
+        {
+            try
+            {
+                if (on) ClaudeStatusLine.Connect(a, Environment.ProcessPath);
+                else ClaudeStatusLine.Disconnect(a);
+                Settings.Save();
+                Service.ReloadProviders();
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("status line " + a.Id, ex);
+                return ex.Message;
+            }
         }
 
         /// <summary>The themes folder (#24), with the example theme in it when it has no theme yet.</summary>

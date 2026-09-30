@@ -13,7 +13,7 @@ namespace SentriPet
             var sb = new StringBuilder();
             var settings = AppSettings.Load();
             sb.AppendLine(AppInfo.Name + " " + AppInfo.Version + " probe on " + Os.Name + " @ " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-            foreach (var p in ProviderRegistry.CreateAll())
+            foreach (var p in ProviderRegistry.CreateAll(settings))   // (with the other accounts, #26)
             {
                 sb.AppendLine();
                 Detection d;

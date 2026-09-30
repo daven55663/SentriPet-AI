@@ -46,6 +46,7 @@ namespace SentriPet
         public bool AgentHookNotify;          // …also as a notification
         public string CodexNotifyChain;       // the notify array the user had in Codex's config.toml (still run)
         public string ClaudeStatusLineChain;  // the user's own statusLine object (JSON), shown through SentriPet and restored when turned off
+        public List<Account> Accounts = new List<Account>();   // other Claude Code / Codex accounts (#26)
         public Dictionary<string, bool> Enabled = new Dictionary<string, bool>();
         public List<string> Order = new List<string>();
         public bool FirstRunDone;
@@ -115,6 +116,8 @@ namespace SentriPet
                 s.Language = Json.Str(Json.Get(o, "language")) ?? "auto";
                 var en = Json.Obj(Json.Get(o, "enabled"));
                 if (en != null) foreach (var kv in en) s.Enabled[kv.Key] = Json.Bool(kv.Value) ?? true;
+                var accounts = Json.Arr(Json.Get(o, "accounts"));
+                if (accounts != null) foreach (var x in accounts) { var a = Account.FromJson(x); if (a != null && !s.Accounts.Any(y => y.Id == a.Id)) s.Accounts.Add(a); }
                 var ord = Json.Arr(Json.Get(o, "order"));
                 if (ord != null) s.Order = ord.Cast<object>().Select(x => Json.Str(x)).Where(x => x != null).ToList();
             }
@@ -175,6 +178,7 @@ namespace SentriPet
                 o["language"] = Language;
                 o["enabled"] = Enabled.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
                 o["order"] = Order.ToList();
+                if (Accounts.Count > 0) o["accounts"] = Accounts.Select(a => (object)a.ToJson()).ToList();
                 string tmp = AppPaths.SettingsFile + ".tmp";
                 File.WriteAllText(tmp, Json.Serialize(o, true), new UTF8Encoding(false));
                 if (File.Exists(AppPaths.SettingsFile)) File.Replace(tmp, AppPaths.SettingsFile, null);

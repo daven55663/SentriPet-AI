@@ -534,6 +534,8 @@ namespace SentriPet
             t.Run("settings", () =>
             {
                 var host = new TestHost();
+                // another account (#26): its own card with name, folder, colours and its status line
+                host.Settings.Accounts.Add(new Account { Id = "claude-2", Kind = "claude", Folder = t.TempDir("account"), Name = "Work", Color = AccountSetup.Colors[0] });
                 // a lines.json with a mistake (#25): the page says which line is skipped
                 CustomLines.Override = "{ \"zh-TW\": { \"poke\": [\"好\", \"{bad} 壞掉\"] } }";
                 CustomLines.Reload();
@@ -548,6 +550,12 @@ namespace SentriPet
                 t.Check("設定頁：10 個成就，有的已解鎖", stars.Count == 10 && stars.Any(x => x.Text == "★") && stars.Any(x => x.Text == "☆"),
                         stars.Count(x => x.Text == "★") + " / " + stars.Count);
                 t.Check("設定頁：顯示等級", win.GetVisualDescendants().OfType<TextBlock>().Any(tb => tb.Text == "Lv " + host.Progress.Level));
+                t.Check("設定頁：其他帳號有名稱和狀態列開關", win.GetVisualDescendants().OfType<TextBox>().Any(b => b.Text == "Work") &&
+                        win.GetVisualDescendants().OfType<TextBlock>().Any(tb => tb.Text == L.T("連接這個帳號的 Claude Code 狀態列")));
+                var removeBtn = win.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => Equals(b.Content, L.T("移除")));
+                if (removeBtn != null) removeBtn.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                for (int i = 0; i < 2; i++) Dispatcher.UIThread.RunJobs();
+                t.Check("設定頁：移除帳號", removeBtn != null && host.Settings.Accounts.Count == 0 && !win.GetVisualDescendants().OfType<TextBox>().Any(b => b.Text == "Work"));
                 for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
                 var switches = win.GetVisualDescendants().OfType<ToggleSwitch>().ToList();
                 var sliders = win.GetVisualDescendants().OfType<Slider>().ToList();
@@ -614,6 +622,10 @@ namespace SentriPet
             public void ApplyGrowth() { Changed++; }
             public void OpenThemesFolder() { Changed++; }
             public void ReloadThemes() { Changed++; }
+            public string AddAccount(string kind, string folder) { Changed++; return AccountSetup.Problem(settings, kind, folder) ?? (AccountSetup.Add(settings, kind, folder) == null ? "?" : null); }
+            public void RemoveAccount(Account a) { settings.Accounts.Remove(a); Changed++; }
+            public void AccountChanged() { Changed++; }
+            public string SetAccountStatusLine(Account a, bool on) { Changed++; return null; }
             public string UsageServerUrl { get; set; }
         }
 

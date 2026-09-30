@@ -43,6 +43,11 @@ namespace SentriPet
             }
         }
 
+        readonly string root;
+
+        /// <summary>The transcripts of the default account, or of another account's folder (#26).</summary>
+        public ClaudeCodeUsage(string root = null) { this.root = root; }
+
         public int Count { get { lock (gate) return events.Count; } }
 
         /// <summary>
@@ -59,7 +64,7 @@ namespace SentriPet
         /// <summary>Reads what was appended since the last call. Cheap when nothing changed.</summary>
         public void Update()
         {
-            string root = Root;
+            string root = this.root ?? Root;
             if (!Directory.Exists(root)) return;
             var cutoff = DateTime.UtcNow - Keep;
             lock (gate)
