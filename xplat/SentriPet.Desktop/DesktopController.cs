@@ -26,6 +26,9 @@ namespace SentriPet
         readonly UseItTracker useIt = new UseItTracker();
         readonly HashSet<string> runsOutAnnounced = new HashSet<string>();
         readonly List<WindowResult> pendingSummaries = new List<WindowResult>();
+        readonly List<string> pendingGrowth = new List<string>();   // level-ups and achievements to announce (#23)
+        DateTime nextGrowthNews;
+        Progress progress;
         readonly AgentHooks.Reader claudeEvents = new AgentHooks.Reader(AgentHooks.ClaudeEventsFile);
         readonly AgentHooks.Reader codexEvents = new AgentHooks.Reader(AgentHooks.CodexEventsFile);
         readonly Random rng = new Random();
@@ -107,6 +110,15 @@ namespace SentriPet
             }
             catch (Exception ex) { Log.Error("agent hooks", ex); }
             History = new UsageHistory(UsageHistory.DefaultFile);
+            progress = new Progress(Progress.DefaultFile);
+            if (!progress.Existed)
+            {
+                // the first start with growing pets (#23): the windows already in the report count
+                int lv = progress.Backfill(History.Results);
+                progress.Save();
+                Log.Info("growing pets: level " + lv + " from " + History.Results.Count + " past window(s)");
+                if (lv >= 2 && Settings.Growth) pendingGrowth.Add(L.F("照過去的紀錄，大家已經是 Lv {0} 了！", lv));
+            }
             Service = new UsageService(Settings);
             Service.Changed += () => Dispatcher.UIThread.Post(RefreshViews);
 
@@ -120,6 +132,7 @@ namespace SentriPet
             CreateTray();
             ApplyTrayMode();
             ApplyExportSettings();
+            ApplyGrowth();
             if (Array.IndexOf(args, "--autostart") >= 0)
             {
                 // give the desktop a moment to settle after sign-in
@@ -267,6 +280,7 @@ namespace SentriPet
                     {
                         Log.Info("window ended: " + r.Key + " used " + r.Used + "%" + (r.SeenToEnd ? "" : " (last seen earlier)"));
                         pendingSummaries.Add(r);
+                        if (progress != null) Grow(progress.Window(r, History.Results));
                     }
                     History.Annotate(views, now);
                 }
@@ -290,11 +304,13 @@ namespace SentriPet
                 Greet();
             }
             CheckAgentEvents();
+            if (progress != null && views.Any(v => v.HasData)) Grow(progress.Day(DateTime.Now.Date));
             if (greeted && (DateTime.UtcNow - greetedAt).TotalSeconds > 8)
             {
                 CheckUseIt();
                 CheckRunsOut(now);
                 SayWindowSummary();
+                SayGrowth();
             }
         }
 
@@ -346,6 +362,57 @@ namespace SentriPet
             string text = Lines.WindowSummary(r);
             window.Say(views.Any(v => v.Id == r.Provider) ? r.Provider : null, text);
             if (Settings.Notifications && Settings.WeeklyReport) Integration.Notify(AppInfo.Name + " · " + L.T("額度利用率"), text);
+        }
+
+        /// <summary>The pets' level on the widget and in the hover card (growing pets, #23), 0 when turned off.</summary>
+        public int GrowthLevel { get { return Settings != null && Settings.Growth && progress != null ? progress.Level : 0; } }
+
+        public Progress Progress { get { return progress; } }
+
+        /// <summary>Shows the level (or hides it when growing pets are turned off).</summary>
+        public void ApplyGrowth()
+        {
+            DetailCardView.GrowthLevel = GrowthLevel;
+            if (window != null && window.CurrentTheme != null) window.CurrentTheme.SetGrowth(GrowthLevel);
+            if (settingsWindow != null) settingsWindow.OnGrowthChanged();
+        }
+
+        /// <summary>Experience was earned: save, and queue what is worth saying (a level, an achievement).</summary>
+        void Grow(List<ProgressEvent> events)
+        {
+            if (progress.Dirty) progress.Save();
+            if (events.Count == 0) return;
+            foreach (var e in events)
+            {
+                if (e.Achievement != null)
+                {
+                    Log.Info("achievement " + e.Achievement.Id);
+                    pendingGrowth.Add(L.F("解鎖成就「{0}」（+{1} XP）：{2}", L.T(e.Achievement.Name), e.Achievement.Xp, L.T(e.Achievement.Description)));
+                }
+                else
+                {
+                    Log.Info("level " + e.Level);
+                    string acc;
+                    pendingGrowth.Add(Progress.Accessories.TryGetValue(e.Level, out acc)
+                        ? L.F("升級了！現在是 Lv {0}，果凍桌寵解鎖了「{1}」", e.Level, L.T(acc))
+                        : L.F("升級了！現在是 Lv {0}", e.Level));
+                }
+            }
+            ApplyGrowth();
+        }
+
+        /// <summary>One piece of growing-pets news at a time, after the window summaries, a few seconds apart.</summary>
+        void SayGrowth()
+        {
+            if (!Settings.Growth) { pendingGrowth.Clear(); return; }
+            if (pendingGrowth.Count == 0 || pendingSummaries.Count > 0 || DateTime.UtcNow < nextGrowthNews) return;
+            if (IsQuiet || !window.IsVisible || menuOpen) return;
+            string text = pendingGrowth[0];
+            pendingGrowth.RemoveAt(0);
+            nextGrowthNews = DateTime.UtcNow.AddSeconds(9);
+            if (window.CurrentTheme != null) foreach (var v in views) window.CurrentTheme.Celebrate(v.Id);
+            window.Say(null, text);
+            if (Settings.Notifications) Integration.Notify(AppInfo.Name + " · " + L.T("成長與成就"), text);
         }
 
         bool IsInstalled(string id)

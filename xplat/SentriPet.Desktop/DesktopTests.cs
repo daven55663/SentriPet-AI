@@ -201,6 +201,12 @@ namespace SentriPet
                 show(quiet);
                 t.Check("關掉提醒：沒有鬧鐘、不閃、不著急",
                     !pet.HasClock("claude") && pet.UrgentBarOf("claude") == null && !pet.ExpressionOf("claude").StartsWith("hurry"), pet.ExpressionOf("claude"));
+                // growing pets (#23): one more accessory at levels 2, 4, 6, 8 and 10, on every pet, changed in place
+                var worn = new[] { 1, 2, 4, 6, 8, 10, 12, 0 }.Select(lv => { pet.SetGrowth(lv); return pet.GearOf("claude") + "/" + pet.GearOf("copilot"); });
+                t.Equal("升級配件：Lv 1、2、4、6、8、10、12、關掉", "0/0 1/1 2/2 3/3 4/4 5/5 5/5 0/0", string.Join(" ", worn));
+                pet.SetGrowth(8);
+                show(MockData.A());
+                t.Equal("換資料重建後配件還在", 4, pet.GearOf("claude"));
                 pet.Detach();
             });
         }
@@ -310,6 +316,13 @@ namespace SentriPet
                 c.Meters[0].RunsOutAt = null;
                 cv.Update(c);
                 t.Equal("預測消失：那一行也消失", "", cv.Forecasts);
+                // growing pets (#23): the level next to the name, and the card is built again when it changes
+                DetailCardView.GrowthLevel = 3;
+                t.Check("升級後卡片會重建", !cv.Matches(c));
+                var lvTexts = DetailCardView.Build(c).Root.GetLogicalDescendants().OfType<TextBlock>().Select(x => x.Text).ToList();
+                DetailCardView.GrowthLevel = 0;
+                t.Check("卡片上顯示 Lv 3", lvTexts.Contains("Lv 3"));
+                t.Check("關掉養成：不顯示等級", !DetailCardView.Build(c).Root.GetLogicalDescendants().OfType<TextBlock>().Any(x => (x.Text ?? "").StartsWith("Lv ")));
             });
             Progress = "speech bubble";
             t.Run("speech", () =>
@@ -477,6 +490,11 @@ namespace SentriPet
                 t.Check("設定頁：自訂台詞寫錯時說出是哪一句", linesText != null && linesText.Contains(L.F("目前的語言有 {0} 句自訂台詞", 1)), linesText ?? "(none)");
                 CustomLines.Override = null;
                 CustomLines.Reload();
+                // growing pets (#23): the level and the ten achievements (the sample report unlocks some)
+                var stars = win.GetVisualDescendants().OfType<TextBlock>().Where(tb => tb.Text == "★" || tb.Text == "☆").ToList();
+                t.Check("設定頁：10 個成就，有的已解鎖", stars.Count == 10 && stars.Any(x => x.Text == "★") && stars.Any(x => x.Text == "☆"),
+                        stars.Count(x => x.Text == "★") + " / " + stars.Count);
+                t.Check("設定頁：顯示等級", win.GetVisualDescendants().OfType<TextBlock>().Any(tb => tb.Text == "Lv " + host.Progress.Level));
                 for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
                 var switches = win.GetVisualDescendants().OfType<ToggleSwitch>().ToList();
                 var sliders = win.GetVisualDescendants().OfType<Slider>().ToList();
@@ -538,6 +556,9 @@ namespace SentriPet
             public void RefreshViews() { Changed++; }
             public void OpenReportWindow() { Changed++; }
             public void ApplyExportSettings() { Changed++; }
+            Progress progress;
+            public Progress Progress { get { return progress ?? (progress = MockData.Growth(history)); } }
+            public void ApplyGrowth() { Changed++; }
             public string UsageServerUrl { get; set; }
         }
 

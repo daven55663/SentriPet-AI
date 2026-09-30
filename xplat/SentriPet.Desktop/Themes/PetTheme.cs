@@ -61,6 +61,8 @@ namespace SentriPet
             public TextBlock NameText, PctText, ResetText, ErrorText;
             public List<MeterRow> Rows = new List<MeterRow>();
             public Control Clock;           // alarm clock next to the pet while there is quota to use up
+            public Canvas Gear;             // what it wears for its level (#23)
+            public Control Aura;
             public RotateTransform ClockTilt;
             public int UseItLevel;
             public double NextGlance, GlanceUntil = -1, LastRing = -1, JumpHeight = 20;
@@ -291,7 +293,89 @@ namespace SentriPet
                 IsVisible = false,
             };
             c.Level.Value = c.Level.Target = v.HasData ? (v.Unlimited ? 100 : v.HeadlineRemaining) : 0;
+            ApplyGrowth(c);
             return c;
+        }
+
+        /// <summary>For the self-test: how many level accessories a pet wears (#23).</summary>
+        internal int GearOf(string id)
+        {
+            var c = cards.FirstOrDefault(x => x.Id == id);
+            return c == null ? -1 : (c.Gear == null ? 0 : c.Gear.Children.Count(x => x.Tag as string == "gear")) + (c.Aura != null ? 1 : 0);
+        }
+
+        protected override void GrowthChanged()
+        {
+            foreach (var c in cards) ApplyGrowth(c);
+        }
+
+        /// <summary>
+        /// Growing pets (#23): what a pet wears for its level — a bow tie (2), a star badge (4), a flower (6), a crown (8)
+        /// and a golden glow (10). Kept clear of the mascot accessory on top of the head; all static (no extra drawing per frame).
+        /// </summary>
+        void ApplyGrowth(Card c)
+        {
+            if (c.Gear != null) c.Body.Children.Remove(c.Gear);
+            if (c.Aura != null) c.Stage.Children.Remove(c.Aura);
+            c.Gear = null;
+            c.Aura = null;
+            int lv = GrowthLevel;
+            // Lv 10: a golden outline and glow
+            c.Outline.Stroke = lv >= 10 ? G.Vertical(Palette.Hex("#FDE68A"), Palette.Hex("#D97706")) : G.B(Palette.Darken(c.Color, 0.4));
+            if (lv < 2) return;
+            var gear = new Canvas { IsHitTestVisible = false };
+            Action<Control> add = e => { e.Tag = "gear"; gear.Children.Add(e); };
+            var gold = G.Vertical(Palette.Hex("#FDE68A"), Palette.Hex("#F59E0B"));
+            var goldEdge = G.B(Palette.Hex("#B45309"));
+            if (lv >= 2)
+            {
+                var bow = new Canvas();
+                var red = G.Vertical(Palette.Hex("#F87171"), Palette.Hex("#DC2626"));
+                var redEdge = G.B(Palette.Hex("#7F1D1D"));
+                bow.Children.Add(G.P("M 40,58 L 31,53.5 Q 28.5,58 31,62.5 Z", red, redEdge, 1.2));
+                bow.Children.Add(G.P("M 40,58 L 49,53.5 Q 51.5,58 49,62.5 Z", red, redEdge, 1.2));
+                bow.Children.Add(G.Circle(40, 58, 2.5, G.B(Palette.Hex("#EF4444")), redEdge, 1.1));
+                add(bow);
+            }
+            if (lv >= 4)
+            {
+                var badge = new Canvas();
+                badge.Children.Add(G.Circle(15, 53, 5.6, gold, goldEdge, 1.1));
+                badge.Children.Add(new Path { Data = G.Star(new Point(15, 53), 3.6, 1.5, 5, -90), Fill = G.B(Colors.White) });
+                add(badge);
+            }
+            if (lv >= 6)
+            {
+                var flower = new Canvas();
+                var petal = G.B(Palette.Hex("#F9A8D4"));
+                var petalEdge = G.B(Palette.Hex("#DB2777"));
+                for (int i = 0; i < 5; i++)
+                {
+                    double a = (i * 72 - 90) * Math.PI / 180;
+                    flower.Children.Add(G.Circle(9 + 3.3 * Math.Cos(a), 16 + 3.3 * Math.Sin(a), 2.6, petal, petalEdge, 0.8));
+                }
+                flower.Children.Add(G.Circle(9, 16, 2.1, G.B(Palette.Hex("#FDE047")), G.B(Palette.Hex("#CA8A04")), 0.8));
+                add(flower);
+            }
+            if (lv >= 8)
+            {
+                var crown = new Canvas { RenderTransform = new RotateTransform(16, 61, 2) };
+                crown.Children.Add(G.P("M 51,8 L 51,-2.5 L 56,2 L 61,-5.5 L 66,2 L 71,-2.5 L 71,8 Z", gold, goldEdge, 1.3));
+                crown.Children.Add(G.Circle(61, 3.5, 1.8, G.B(Palette.Hex("#EF4444")), null, 0));
+                crown.Children.Add(G.Circle(55.5, 5, 1.1, G.B(Palette.Hex("#3B82F6")), null, 0));
+                crown.Children.Add(G.Circle(66.5, 5, 1.1, G.B(Palette.Hex("#3B82F6")), null, 0));
+                add(crown);
+            }
+            c.Body.Children.Add(gear);
+            c.Gear = gear;
+            if (lv >= 10)
+            {
+                var aura = G.Oval(CardW / 2, StageH - 10 - BodyH / 2, 116, 98,
+                                  G.Radial(Palette.A(Palette.Hex("#FDE68A"), 0.85), Palette.A(Palette.Hex("#FDE68A"), 0), 0.5, 0.5, 0.5, 0.5));
+                aura.IsHitTestVisible = false;
+                c.Stage.Children.Insert(1, aura);   // behind the pet, in front of its shadow
+                c.Aura = aura;
+            }
         }
 
         /// <summary>

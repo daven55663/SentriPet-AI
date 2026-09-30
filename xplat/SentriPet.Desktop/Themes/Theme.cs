@@ -86,6 +86,18 @@ namespace SentriPet
         public virtual void Celebrate(string providerId) { }
         public virtual void Detach() { }
 
+        /// <summary>The pets' level (growing pets, #23; 0 = turned off). A theme can dress its pets up for it.</summary>
+        protected int GrowthLevel { get; private set; }
+
+        public void SetGrowth(int level)
+        {
+            if (level == GrowthLevel) return;
+            GrowthLevel = level;
+            GrowthChanged();
+        }
+
+        protected virtual void GrowthChanged() { }
+
         /// <summary>The visible part of the widget in the coordinates of <paramref name="relativeTo"/> (null if not laid out).</summary>
         public virtual Rect? ContentBounds(Visual relativeTo)
         {

@@ -97,9 +97,12 @@ namespace SentriPet
         /// What the card is built from: when it changes the card is built again, otherwise its numbers are updated in
         /// place. The language and the quota names are part of it — they are written once, when the card is built.
         /// </summary>
+        /// <summary>The pets' level shown next to the name (growing pets, #23; 0 = not shown).</summary>
+        public static int GrowthLevel;
+
         public static string SignatureOf(ProviderView v)
         {
-            return v.Id + "|" + v.HasData + "|" + (v.Plan ?? "") + "|" + L.Current + "|" +
+            return v.Id + "|" + v.HasData + "|" + (v.Plan ?? "") + "|" + L.Current + "|" + GrowthLevel + "|" +
                    string.Join(",", v.Meters.Select(m => m.Key + (m.Unlimited ? "*" : "") + "=" + m.Label));
         }
 
@@ -123,6 +126,13 @@ namespace SentriPet
             var name = new StackPanel { Orientation = Orientation.Horizontal };
             name.Children.Add(new Ellipse { Width = 9, Height = 9, Fill = G.B(accent), Margin = new Thickness(0, 1, 7, 0), VerticalAlignment = VerticalAlignment.Center });
             name.Children.Add(G.T(v.Name, 14.5, Text, FontWeight.Bold, G.Ui));
+            if (GrowthLevel > 0)
+            {
+                var lv = G.T("Lv " + GrowthLevel, 10.5, Palette.Hex("#FCD34D"), FontWeight.Bold, G.Num);
+                lv.Margin = new Thickness(7, 1, 0, 0);
+                lv.VerticalAlignment = VerticalAlignment.Center;
+                name.Children.Add(lv);
+            }
             d.busy = G.Pill(G.T(L.T("工作中"), 9.5, Palette.Hex("#93C5FD"), FontWeight.SemiBold, G.Ui), G.B(Palette.Hex("#3B82F6"), 0.2), 6, new Thickness(6, 1, 6, 1));
             d.busy.Margin = new Thickness(8, 1, 0, 0);
             d.busy.VerticalAlignment = VerticalAlignment.Center;

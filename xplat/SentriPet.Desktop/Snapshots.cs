@@ -5,6 +5,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -46,6 +47,9 @@ namespace SentriPet
             public void RefreshViews() { }
             public void OpenReportWindow() { }
             public void ApplyExportSettings() { }
+            Progress progress;
+            public Progress Progress { get { return progress ?? (progress = MockData.Growth(History)); } }
+            public void ApplyGrowth() { }
             public string UsageServerUrl { get { return "http://127.0.0.1:" + settings.UsagePort + "/"; } }
             public void MakeShareCard() { }
         }
@@ -101,6 +105,33 @@ namespace SentriPet
                         failures++;
                         File.WriteAllText(Path.Combine(outDir, info.Id + "_" + set.Key + "_error.txt"), ex.ToString());
                     }
+                }
+            }
+            // growing pets (#23): the jelly pets at level 1, 2, 4, 6, 8 and 10
+            if (only == null || only == "pet")
+            {
+                try
+                {
+                    var levels = new[] { 1, 2, 4, 6, 8, 10 };
+                    var strip = new StackPanel { Orientation = Orientation.Horizontal };
+                    foreach (int lv in levels)
+                    {
+                        var theme = new PetTheme();
+                        theme.Attach(new PreviewHost());
+                        theme.SetGrowth(lv);
+                        theme.Update(MockData.A().Take(1).ToList());
+                        for (int i = 0; i < 45; i++) theme.Tick(1 / 30.0);
+                        var cell = new StackPanel { Margin = new Thickness(4, 0, 4, 0) };
+                        cell.Children.Add(theme.Root);
+                        cell.Children.Add(new TextBlock { Text = "Lv " + lv, HorizontalAlignment = HorizontalAlignment.Center, Foreground = Brushes.White, FontWeight = FontWeight.Bold });
+                        strip.Children.Add(cell);
+                    }
+                    Render(strip, Path.Combine(outDir, "pet_growth.png"), scale, true);
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "pet_growth_error.txt"), ex.ToString());
                 }
             }
             // the hover card for the first provider of each set

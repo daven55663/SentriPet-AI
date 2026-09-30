@@ -75,6 +75,16 @@ namespace SentriPet
             return h;
         }
 
+        /// <summary>Growing pets (#23) from a sample report, with a 5-day streak (settings page snapshot, self-test), not saved.</summary>
+        public static Progress Growth(UsageHistory h)
+        {
+            var p = new Progress(null);
+            p.Backfill(h.Results);
+            var today = DateTime.Now.Date;
+            for (int d = 4; d >= 0; d--) p.Day(today.AddDays(-d));
+            return p;
+        }
+
         /// <summary>A month of token counts (the report window's snapshot and self-test), always the same.</summary>
         public static TokenLedger Tokens()
         {

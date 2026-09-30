@@ -23,6 +23,7 @@ Runs on **Windows, macOS and Linux**.
 - **Knows when Claude Code or Codex is done** — or waiting for your OK — and hops up to tell you, so you can do something else meanwhile
 - **Forecast and reports** — "at this pace it runs out around 15:40", how much of every past weekly quota you actually used,
   tokens per day, folder and model for the last 7 or 30 days with what they would cost through the API, and a weekly picture to share
+- **Pets that grow** — use your quotas well (planned, not simply more) and the pets level up, put on accessories and unlock achievements
 - **Fits into your setup** — the remaining % right in the tray / menu-bar icon, a `usage.json` for your scripts or Stream Deck,
   and a transparent page for OBS
 - **Eight looks** to match your mood: jelly pets, frosted glass, pixel RPG, hacker terminal, race gauges, magic potions, neon city, sticky note
@@ -168,6 +169,7 @@ SentriPet looks for AI tools on your computer and every one it finds becomes a p
 | AI services | What was detected for each AI and the numbers it reads; turn AIs on or off; Codex refresh rate; Claude weekly reset time, the Claude Code status line, "tell me when an AI is done or waiting", live estimate |
 | Reminders | Quota notifications, "nudge me to use up weekly quota", quiet hours, warning and critical thresholds |
 | Quota use | The last 8 weekly/monthly windows per quota and their average; a notification with the summary at each reset; the usage report |
+| Growth and achievements | Growing pets on or off, the level and its experience, the ten achievements and how far you are |
 | For other programs | `usage.json` for your scripts, the local page for OBS ([format and options](docs/usage-json.md)) |
 | General | Language, start at sign-in, open the settings / log / program folder |
 
@@ -236,6 +238,17 @@ cost, favourite model, quota use and a small chart, with your pets — ready to 
   a Browser Source for usage bars, or `?view=pet` for the pet. Only this computer can reach it.
 
 The format of `usage.json`, the page's options and script examples are in [docs/usage-json.md](docs/usage-json.md).
+
+### Growing pets and achievements
+
+Using your quotas well makes the pets grow. Each weekly or monthly quota that ends earns experience — the most for using
+90% or more **without running out long before the reset**; running out early (and being blocked for a day) earns less than
+using 70–90%, so the point is planning, not using as much as possible. Opening SentriPet on a day adds a little, and there
+are ten achievements (*Well planned*, *No waste* — four quotas in a row at 80% or more, *Comeback*, *Every day*…).
+
+The level shows in the hover card; the jelly pets put on a bow tie (Lv 2), a star badge (4), a flower (6), a crown (8)
+and a golden glow (10). *Settings → Growth and achievements* shows the experience bar and every achievement; turn it off
+there. On the first start of 2.4 the quotas already in the report count.
 
 ### Your own lines
 
@@ -364,7 +377,7 @@ The development log (in Chinese) is [docs/DEVLOG.md](docs/DEVLOG.md); the machin
 | Autostart | `SentriPet` in the registry key `HKCU\…\Run` | `~/Library/LaunchAgents/com.sentripet.app.plist` | `~/.config/autostart/sentripet.desktop` |
 | Menu entry | `SentriPet` in the Start menu | — | `~/.local/share/applications/sentripet.desktop` |
 
-The settings file is `settings.json`, the log `logs/app.log`; `usage.json` when *Write usage.json* is on, `lines.json` for your own lines. Weekly pictures
+The settings file is `settings.json`, the log `logs/app.log`; `usage.json` when *Write usage.json* is on, `lines.json` for your own lines, `report.json` and `progress.json` for the quota-use report and the growing pets. Weekly pictures
 go to `Pictures/SentriPet`.
 
 ## License

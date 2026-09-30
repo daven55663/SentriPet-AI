@@ -31,6 +31,9 @@ namespace SentriPet
         void ApplyExportSettings();
         /// <summary>The local web page's address while it runs, null otherwise.</summary>
         string UsageServerUrl { get; }
+        /// <summary>Growing pets (#23): experience, level, achievements (null while starting).</summary>
+        Progress Progress { get; }
+        void ApplyGrowth();
     }
 
     /// <summary>
@@ -85,6 +88,7 @@ namespace SentriPet
             BuildProviders(root);
             BuildAlerts(root);
             BuildReport(root);
+            BuildGrowth(root);
             BuildExport(root);
             BuildGeneral(root);
             Page = root;
@@ -568,6 +572,116 @@ namespace SentriPet
                 Toggle(S.WeeklyReport, v => { S.WeeklyReport = v; SaveSoon(); }));
             Row(body, L.T("用量報告"), L.T("每天用了多少 token、專案排行、模型，最近 7 或 30 天（右鍵選單 → 額度利用率 → 查看完整報告 也能打開）"),
                 Btn(L.T("打開用量報告"), ctl.OpenReportWindow));
+        }
+
+        StackPanel growthBody;
+
+        /// <summary>The level changed or growing pets were turned on or off: show it again.</summary>
+        public void OnGrowthChanged()
+        {
+            if (growthBody != null) FillGrowth();
+        }
+
+        /// <summary>Growing pets (#23): on/off, the level with its experience bar, and the achievements.</summary>
+        void BuildGrowth(StackPanel root)
+        {
+            var body = Section(root, L.T("成長與成就"), L.T("把額度用好、每天打開，桌寵就會升級；重點是有計畫地用完，不是用越多越好"));
+            Row(body, L.T("養成與成就"), L.T("顯示等級、升級時換上新配件（果凍桌寵）、解鎖成就時說一聲"),
+                Toggle(S.Growth, v => { S.Growth = v; SaveSoon(); ctl.ApplyGrowth(); }));
+            growthBody = new StackPanel();
+            body.Children.Add(growthBody);
+            FillGrowth();
+        }
+
+        void FillGrowth()
+        {
+            growthBody.Children.Clear();
+            var p = ctl.Progress;
+            growthBody.IsVisible = S.Growth && p != null;
+            if (!growthBody.IsVisible) return;
+            growthBody.Children.Add(new Border { Height = 1, Background = G.B(LineC) });
+
+            // the level and its experience bar
+            int lv = p.Level, from = Progress.XpFor(lv), to = Progress.XpFor(lv + 1);
+            var head = new Grid { Margin = new Thickness(0, 12, 0, 0) };
+            head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var big = Txt("Lv " + lv, 26, Palette.Hex("#FCD34D"), FontWeight.Black);
+            big.FontFamily = G.Num;
+            big.Margin = new Thickness(0, 0, 16, 0);
+            big.VerticalAlignment = VerticalAlignment.Center;
+            head.Children.Add(big);
+            var bars = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            Border fill;
+            var bar = G.Bar(360, 8, G.B(Colors.White, 0.1), out fill);
+            fill.Background = G.Lg(Palette.Hex("#FDE68A"), Palette.Hex("#F59E0B"), 0);
+            fill.Width = Math.Max(4, 360.0 * (p.Xp - from) / Math.Max(1, to - from));
+            bar.HorizontalAlignment = HorizontalAlignment.Left;
+            bars.Children.Add(bar);
+            var next = p.NextAccessory;
+            string line = L.F("{0} XP · 再 {1} XP 升到 Lv {2}", p.Xp, to - p.Xp, lv + 1);
+            if (next.HasValue) line = L.Finish(line + " · " + L.F("Lv {0} 解鎖「{1}」", next.Value.Key, L.T(next.Value.Value)));
+            var info = Txt(line, 11.5, SubC, FontWeight.Normal);
+            info.Margin = new Thickness(0, 5, 0, 0);
+            bars.Children.Add(info);
+            Grid.SetColumn(bars, 1);
+            head.Children.Add(bars);
+            growthBody.Children.Add(head);
+            var how = Txt(L.F("連續 {0} 天（最長 {1} 天）。經驗值：每期週／月額度結束時，用到 90% 以上而且沒有太早用完 +30、70% 以上 +20、40% 以上 +10；每天打開 +{2}；解鎖成就另外加分",
+                              p.Streak, p.BestStreak, Progress.DailyXp), 11.5, SubC, FontWeight.Normal);
+            how.Margin = new Thickness(0, 8, 0, 10);
+            growthBody.Children.Add(how);
+
+            // the achievements, two to a row
+            var grid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var history = ctl.History != null ? ctl.History.Results : new List<WindowResult>();
+            for (int i = 0; i < Progress.All.Count; i++)
+            {
+                if (i % 2 == 0) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                var tile = AchievementTile(Progress.All[i], p, history);
+                Grid.SetRow(tile, i / 2);
+                Grid.SetColumn(tile, i % 2);
+                grid.Children.Add(tile);
+            }
+            growthBody.Children.Add(grid);
+        }
+
+        Control AchievementTile(Achievement a, Progress p, List<WindowResult> history)
+        {
+            DateTime when;
+            bool got = p.Unlocked.TryGetValue(a.Id, out when);
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var star = Txt(got ? "★" : "☆", 20, got ? Palette.Hex("#FCD34D") : Palette.Hex("#4B5263"), FontWeight.Bold);   // i18n-ignore
+            star.Margin = new Thickness(0, 0, 9, 0);
+            star.VerticalAlignment = VerticalAlignment.Top;
+            g.Children.Add(star);
+            var text = new StackPanel();
+            text.Children.Add(Txt(L.Finish(L.T(a.Name) + "  +" + a.Xp + " XP"), 12.5, got ? TextC : SubC, FontWeight.SemiBold));
+            text.Children.Add(Txt(L.T(a.Description), 11, SubC, FontWeight.Normal));
+            string state = got ? L.F("{0} 解鎖", when.ToLocalTime().ToString("yyyy-MM-dd")) : p.ProgressOf(a, history);
+            if (state != null)
+            {
+                var st = Txt(state, 11, got ? Palette.Hex("#86EFAC") : Palette.Hex("#93C5FD"), FontWeight.SemiBold);
+                st.Margin = new Thickness(0, 2, 0, 0);
+                text.Children.Add(st);
+            }
+            Grid.SetColumn(text, 1);
+            g.Children.Add(text);
+            return new Border
+            {
+                Child = g,
+                Margin = new Thickness(0, 0, 8, 8),
+                Padding = new Thickness(10, 8, 10, 9),
+                CornerRadius = new CornerRadius(10),
+                Background = G.B(got ? Palette.Hex("#2A2616") : Palette.Hex("#20232C")),
+                BorderBrush = G.B(got ? Palette.Hex("#5C4A1A") : LineC),
+                BorderThickness = new Thickness(1),
+                Opacity = got ? 1 : 0.85,
+            };
         }
 
         /// <summary>A page in docs/ on GitHub, the Chinese one for Chinese.</summary>

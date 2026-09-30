@@ -33,6 +33,7 @@ namespace SentriPet
         public string QuietDays = "0123456";  // weekdays with quiet hours (Sunday = 0)
         public DateTime? PausedUntil;         // "pause reminders" from the menu (UTC)
         public bool WeeklyReport = true;      // a notification with the summary when a weekly/monthly window ends (#16)
+        public bool Growth = true;            // growing pets: experience, levels, accessories, achievements (#23)
         public int WarnAt = 80;               // used %
         public int CriticalAt = 95;           // used %
         public bool AutoStart = true;
@@ -88,6 +89,7 @@ namespace SentriPet
                 var un = Json.Obj(Json.Get(o, "useItNotified"));
                 if (un != null) foreach (var kv in un) { var str = Json.Str(kv.Value); if (str != null) s.UseItNotified[kv.Key] = str; }
                 s.WeeklyReport = Json.Bool(Json.Get(o, "weeklyReport")) ?? true;
+                s.Growth = Json.Bool(Json.Get(o, "growth")) ?? true;
                 s.QuietHours = Json.Bool(Json.Get(o, "quietHours")) ?? false;
                 s.QuietFrom = Json.Str(Json.Get(o, "quietFrom")) ?? s.QuietFrom;
                 s.QuietTo = Json.Str(Json.Get(o, "quietTo")) ?? s.QuietTo;
@@ -149,6 +151,7 @@ namespace SentriPet
                 o["useItReminder"] = UseItReminder;
                 o["useItNotified"] = UseItNotified.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
                 o["weeklyReport"] = WeeklyReport;
+                o["growth"] = Growth;
                 o["quietHours"] = QuietHours;
                 o["quietFrom"] = QuietFrom;
                 o["quietTo"] = QuietTo;

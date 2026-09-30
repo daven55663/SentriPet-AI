@@ -15,6 +15,7 @@ namespace SentriPet
         public double Used;           // % used when last seen before the reset
         public int NudgeLevel;        // highest "use it before it resets" level announced in that window (0 = none)
         public bool SeenToEnd;        // the widget was running until shortly before the reset (otherwise Used may be low)
+        public double EmptyHours;     // how long before the reset it was used up (0 = never, or only at the very end) — planning (#23)
 
         public double Wasted { get { return Math.Max(0, 100 - Used); } }
         public string Key { get { return Provider + "|" + Meter; } }
@@ -41,6 +42,7 @@ namespace SentriPet
             public DateTime? ResetsAt;
             public double LastUsed;
             public DateTime LastSeen;
+            public DateTime? EmptySince;   // first seen used up in this window (#23)
             public readonly List<Point> Points = new List<Point>();
         }
 
@@ -95,6 +97,7 @@ namespace SentriPet
                                 Used = Math.Round(Math.Max(0, Math.Min(100, t.LastUsed)), 1),
                                 NudgeLevel = UseItTracker.AnnouncedLevel(s, key, t.ResetsAt.Value),
                                 SeenToEnd = (t.ResetsAt.Value - t.LastSeen).TotalMinutes <= 90,
+                                EmptyHours = t.EmptySince.HasValue ? Math.Round(Math.Max(0, (t.ResetsAt.Value - t.EmptySince.Value).TotalHours), 1) : 0,
                             };
                             if (!results.Any(x => x.Key == r.Key && Math.Abs((x.EndedAt - r.EndedAt).TotalHours) < 12))
                             {
@@ -103,6 +106,7 @@ namespace SentriPet
                             }
                         }
                         t.Points.Clear();
+                        t.EmptySince = null;
                         dirty = true;
                     }
                     t.ResetsAt = m.ResetsAt;   // (estimated reset times move a little)
@@ -112,6 +116,11 @@ namespace SentriPet
                         t.Points.Add(new Point { At = now, Used = m.Used });
                     t.Points.RemoveAll(p => (now - p.At).TotalHours > 12);
                     if (t.WindowMinutes >= ReportWindowMinutes && (Math.Abs(t.LastUsed - m.Used) >= 0.5 || (now - t.LastSeen).TotalMinutes >= 10)) dirty = true;
+                    if (m.Used >= 99.5 && !t.EmptySince.HasValue)
+                    {
+                        t.EmptySince = now;
+                        if (t.WindowMinutes >= ReportWindowMinutes) dirty = true;
+                    }
                     t.LastUsed = m.Used;
                     t.LastSeen = now;
                 }
@@ -195,6 +204,7 @@ namespace SentriPet
                             ResetsAt = Date(Json.Get(x, "resetsAt")),
                             LastUsed = Json.Num(Json.Get(x, "lastUsed")) ?? 0,
                             LastSeen = Date(Json.Get(x, "lastSeen")) ?? DateTime.MinValue,
+                            EmptySince = Date(Json.Get(x, "emptySince")),
                         };
                     }
                 var ws = Json.Arr(Json.Get(o, "windows"));
@@ -214,6 +224,7 @@ namespace SentriPet
                             Used = Json.Num(Json.Get(x, "used")) ?? 0,
                             NudgeLevel = (int)(Json.Num(Json.Get(x, "nudge")) ?? 0),
                             SeenToEnd = Json.Bool(Json.Get(x, "seenToEnd")) ?? true,
+                            EmptyHours = Json.Num(Json.Get(x, "emptyHours")) ?? 0,
                         });
                     }
             }
@@ -234,15 +245,19 @@ namespace SentriPet
 
                 var tr = new Dictionary<string, object>();
                 foreach (var kv in tracks.Where(kv => kv.Value.WindowMinutes >= ReportWindowMinutes && kv.Value.ResetsAt.HasValue))
-                    tr[kv.Key] = new Dictionary<string, object>
+                {
+                    var x = new Dictionary<string, object>
                     {
                         { "name", kv.Value.Name }, { "label", kv.Value.Label }, { "window", kv.Value.WindowMinutes },
                         { "resetsAt", Iso(kv.Value.ResetsAt.Value) }, { "lastUsed", Math.Round(kv.Value.LastUsed, 2) }, { "lastSeen", Iso(kv.Value.LastSeen) },
                     };
+                    if (kv.Value.EmptySince.HasValue) x["emptySince"] = Iso(kv.Value.EmptySince.Value);
+                    tr[kv.Key] = x;
+                }
                 var ws = results.OrderBy(r => r.EndedAt).Select(r => (object)new Dictionary<string, object>
                 {
                     { "provider", r.Provider }, { "name", r.Name }, { "meter", r.Meter }, { "label", r.Label }, { "endedAt", Iso(r.EndedAt) },
-                    { "used", r.Used }, { "nudge", r.NudgeLevel }, { "seenToEnd", r.SeenToEnd },
+                    { "used", r.Used }, { "nudge", r.NudgeLevel }, { "seenToEnd", r.SeenToEnd }, { "emptyHours", r.EmptyHours },
                 }).ToList();
                 var o = new Dictionary<string, object> { { "version", 1 }, { "tracks", tr }, { "windows", ws } };
                 Directory.CreateDirectory(Path.GetDirectoryName(file));

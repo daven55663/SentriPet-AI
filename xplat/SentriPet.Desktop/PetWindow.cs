@@ -94,6 +94,7 @@ namespace SentriPet
             }
             theme = t;
             t.Attach(this);
+            t.SetGrowth(ctl.GrowthLevel);   // (#23) before its pets are made
             host.Children.Add(t.Root);
             t.Update(ctl.Views);
             Lively(3);   // start-up animations (gauge sweep, rings filling up)
