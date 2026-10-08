@@ -1,9 +1,9 @@
 cask "sentripet" do
   arch arm: "arm64", intel: "x64"
 
-  version "2.5.0"
-  sha256 arm:   "56d7fb62fcea6c17382c5fe2da0a0f2dc25059e3719a71231738b3d04adb3730",
-         intel: "707b34c7a43a71c49cba5e3043a2e09fd81c267dbe4cfca7487bffe6e61102fd"
+  version "2.5.1"
+  sha256 arm:   "29343c9ab6c291582e333bba65ba6407a85b0095fadf9fd07735c234bccd4dd6",
+         intel: "66872858b961dcfaf1d61c4f0b52e9db879c13c8bdee381e7af4363f003a02e1"
 
   url "https://github.com/daven55663/SentriPet-AI/releases/download/v#{version}/SentriPet-#{version}-osx-#{arch}.zip"
   name "SentriPet"
