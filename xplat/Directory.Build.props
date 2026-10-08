@@ -8,7 +8,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <!-- SYSLIB0014: WebRequest (the HTTP plugin code still uses it) -->
     <NoWarn>$(NoWarn);SYSLIB0014;CS0618</NoWarn>
-    <Version>2.4.1</Version>
+    <Version>2.5.0</Version>
     <Authors>歐育典</Authors>
     <Copyright>Copyright © 2026 歐育典 · MIT License</Copyright>
     <InvariantGlobalization>false</InvariantGlobalization>
