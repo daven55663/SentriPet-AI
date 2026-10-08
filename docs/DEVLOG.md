@@ -345,5 +345,16 @@ xplat/                新的跨平台版（.NET 10）
   版本說明 `docs/releases/v2.5.0.md` 附上開發與測試環境（版本沒變）。核心測試 721 項、自我測試 139 項。
   - 發佈 v2.5.0：CI、四個安裝檔的自我測試、Scoop／Homebrew／winget 安裝測試都通過。這台電腦更新到 2.5.0，記錄檔無錯誤。
     winget 的 2.4.0 PR（microsoft/winget-pkgs#443980）還在等合併；合併後直接送 2.5.0（略過 2.4.1）。
+- 2026-10-08：**#29 Codex 更新後串接的通知程式找不到**。這台電腦的記錄檔 10/1～10/8 有 41 行
+  `chained codex notify: … codex-computer-use.exe … 系統找不到指定的檔案`。
+  - 原因：連接時記下的 Codex 桌面版 notify 是 `…\OpenAI\Codex\runtimes\cua_node\b63ee7ee40c23b77\…\codex-computer-use.exe turn-ended`，
+    Codex 更新把版本資料夾換成 `3dd31cfff853001c`。10/8 16:36 Codex 又改寫了 config.toml：自己的新版程式放最前面，
+    用 `--previous-notify ["…SentriPet.exe","--hook","codex"]` 執行 SentriPet。SentriPet 認不得：設定頁以為沒連接，
+    再開一次開關會把包著 SentriPet 的那串記成原本的程式，兩邊互相呼叫。
+  - 修正（`AgentHooks`）：認得被包住（`WrappedAt`，算已連接；搬家只改裡面那段；關閉只拿掉 SentriPet）；Codex 自己會執行的同一個程式
+    （檔名和參數相同、版本不同）不再串接也不再記著；記下的程式的版本資料夾被換掉時到最新的那個找（`FindMoved`），
+    找不到就不執行、設定頁提示（`MissingChain`）；串接的程式帶 `SENTRIPET_CODEX_CHAINED`，再叫起 SentriPet 時什麼都不做。
+    hook 每次執行都重讀 config.toml 決定要不要串接；啟動時 `Repair` 整理記下的程式。沒有動使用者的 config.toml。
+  - 核心測試 721 → 738 項（照 Codex 寫的格式）、自我測試 139 項。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。

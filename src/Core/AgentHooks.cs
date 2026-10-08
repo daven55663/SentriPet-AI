@@ -96,28 +96,88 @@ namespace SentriPet
             return e;
         }
 
+        /// <summary>Set for the notify program SentriPet starts: a SentriPet started from inside it has already been run.</summary>
+        const string ChainedVariable = "SENTRIPET_CODEX_CHAINED";
+
         /// <summary>
         /// <c>SentriPet --hook codex JSON</c>: Codex puts the event as the last argument. A notify program the user had
-        /// before is started with the same argument.
+        /// before is started with the same argument (see <see cref="ChainToRun"/>).
         /// </summary>
         public static int RunCodex(string[] args, AppSettings s, DateTime now)
         {
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(ChainedVariable))) return 0;   // (called again by our own chain: no loop, no second event)
             string json = args.Length > 0 ? args[args.Length - 1] : "";
             var e = FromCodex(Json.TryParse(json), now, CodexHome);
             if (e != null) Append(CodexEventsFile, e);
-            var chain = ParseTomlArray(s.CodexNotifyChain);
-            if (chain != null && chain.Count > 0)
+            var chain = ChainToRun(s.CodexNotifyChain, ReadCodexNotify());
+            if (chain != null)
             {
                 try
                 {
                     var psi = new ProcessStartInfo { FileName = chain[0], UseShellExecute = false, CreateNoWindow = true };
                     foreach (var a in chain.Skip(1)) psi.ArgumentList.Add(a);
                     psi.ArgumentList.Add(json);
+                    psi.Environment[ChainedVariable] = "1";
                     Process.Start(psi);
                 }
                 catch (Exception ex) { Log.Warn("chained codex notify: " + ex.Message); }
             }
             return 0;
+        }
+
+        /// <summary>
+        /// What <c>--hook codex</c> runs after itself: the notify program the user had (<paramref name="remembered"/>), as
+        /// it is now. Nothing when Codex runs that program itself — the Codex app puts its own notify first and calls the
+        /// one before it (SentriPet) with <c>--previous-notify</c> — or when it would call SentriPet again. A program inside
+        /// a version folder that a Codex update replaced is found in the new one; gone for good → nothing (and a warning).
+        /// </summary>
+        internal static List<string> ChainToRun(string remembered, List<string> notify)
+        {
+            var chain = ParseTomlArray(remembered);
+            if (chain == null || chain.Count == 0 || IsOurs(chain) || WrappedAt(chain) > 0) return null;
+            if (notify != null && !IsOurs(notify) && SameProgram(chain, notify)) return null;
+            string missing = Missing(chain[0]);
+            if (missing == null) return chain;
+            string moved = FindMoved(missing);
+            if (moved == null) { Log.Warn("chained codex notify is gone: " + missing); return null; }
+            chain[0] = moved;
+            return chain;
+        }
+
+        /// <summary>The notify program SentriPet should still run but cannot find (for the settings page), or null.</summary>
+        public static string MissingChain(AppSettings s)
+        {
+            var chain = ParseTomlArray(s.CodexNotifyChain);
+            if (chain == null || chain.Count == 0 || Missing(chain[0]) == null) return null;
+            var notify = ReadCodexNotify();
+            if (notify != null && !IsOurs(notify) && SameProgram(chain, notify)) return null;   // (Codex runs it)
+            return FindMoved(chain[0]) == null ? chain[0] : null;
+        }
+
+        /// <summary>A program given by its full path that is not there (a bare name is looked up in PATH: never "missing").</summary>
+        static string Missing(string program)
+        {
+            return Path.IsPathFullyQualified(program) && !File.Exists(program) ? program : null;
+        }
+
+        /// <summary>
+        /// A program inside a version folder an update replaced (…\runtimes\cua_node\&lt;version&gt;\bin\…\x.exe): the same
+        /// file in the newest folder next to the one that is gone, or null.
+        /// </summary>
+        internal static string FindMoved(string path)
+        {
+            try
+            {
+                string dir = Path.GetDirectoryName(path);
+                var rest = new List<string> { Path.GetFileName(path) };
+                while (dir != null && !Directory.Exists(dir)) { rest.Insert(0, Path.GetFileName(dir)); dir = Path.GetDirectoryName(dir); }
+                // only a folder that is gone (not the file itself), and not one right under a drive
+                if (dir == null || Path.GetDirectoryName(dir) == null || rest.Count < 2) return null;
+                string tail = Path.Combine(rest.Skip(1).ToArray());
+                return Directory.GetDirectories(dir).Take(200).Where(d => File.Exists(Path.Combine(d, tail)))
+                                .OrderByDescending(Directory.GetLastWriteTimeUtc).Select(d => Path.Combine(d, tail)).FirstOrDefault();
+            }
+            catch { return null; }
         }
 
         internal static AgentEvent FromCodex(object input, DateTime now, string codexHome)
@@ -441,16 +501,79 @@ namespace SentriPet
             return "notify = [" + TomlString(exe) + ", '--hook', 'codex']";
         }
 
-        static bool IsOurNotify(TomlKey k)
+        static string NotifyLine(List<string> notify)
         {
-            var arr = k == null ? null : ParseTomlArray(k.Value);
-            return arr != null && arr.Count >= 2 && arr[0].IndexOf(AppInfo.Name, StringComparison.OrdinalIgnoreCase) >= 0 && arr.Contains("--hook");
+            return "notify = [" + string.Join(", ", notify.Select(TomlString)) + "]";
         }
 
+        /// <summary>SentriPet's command as the Codex app writes it after <c>--previous-notify</c> (a JSON array).</summary>
+        static string OurJson(string exe)
+        {
+            return Json.Serialize(new List<object> { exe, "--hook", "codex" }, false);
+        }
+
+        /// <summary>A notify command that is SentriPet's.</summary>
+        static bool IsOurs(List<string> notify)
+        {
+            return notify != null && notify.Count >= 2 && notify[0].IndexOf(AppInfo.Name, StringComparison.OrdinalIgnoreCase) >= 0 && notify.Contains("--hook");
+        }
+
+        /// <summary>
+        /// Where in another program's notify command SentriPet's own command is, as a JSON array — the Codex app's
+        /// <c>[codex-computer-use.exe, "turn-ended", "--previous-notify", "[\"…SentriPet.exe\",\"--hook\",\"codex\"]"]</c>
+        /// runs the notify program that was there before it — or -1.
+        /// </summary>
+        static int WrappedAt(List<string> notify)
+        {
+            if (notify == null) return -1;
+            for (int i = 1; i < notify.Count; i++)
+            {
+                if (!notify[i].TrimStart().StartsWith("[")) continue;
+                var inner = Json.Arr(Json.TryParse(notify[i]));
+                if (inner != null && inner.Cast<object>().All(x => x is string) && IsOurs(inner.Cast<string>().ToList())) return i;
+            }
+            return -1;
+        }
+
+        static List<string> Unwrapped(List<string> notify, int at)
+        {
+            var list = notify.ToList();
+            list.RemoveAt(at);
+            if (at >= 2 && list[at - 1].StartsWith("--")) list.RemoveAt(at - 1);   // (the --previous-notify before it)
+            return list;
+        }
+
+        /// <summary>
+        /// The same notify program, perhaps of another version: the same file name and arguments (what one of them runs
+        /// before or after itself aside). <c>…\b63ee…\codex-computer-use.exe turn-ended</c> is the program the Codex app
+        /// now runs as <c>…\3dd31…\codex-computer-use.exe turn-ended --previous-notify […SentriPet…]</c>.
+        /// </summary>
+        static bool SameProgram(List<string> a, List<string> b)
+        {
+            int wa = WrappedAt(a), wb = WrappedAt(b);
+            if (wa > 0) a = Unwrapped(a, wa);
+            if (wb > 0) b = Unwrapped(b, wb);
+            Func<string, string> name = p => Path.GetFileName(p.Replace('\\', '/'));
+            return a.Count > 0 && a.Count == b.Count && string.Equals(name(a[0]), name(b[0]), StringComparison.OrdinalIgnoreCase) && a.Skip(1).SequenceEqual(b.Skip(1));
+        }
+
+        /// <summary>Codex's notify command now, or null.</summary>
+        internal static List<string> ReadCodexNotify()
+        {
+            try
+            {
+                if (!File.Exists(CodexConfigFile)) return null;
+                var k = FindNotify(File.ReadAllText(CodexConfigFile, Encoding.UTF8));
+                return k == null ? null : ParseTomlArray(k.Value);
+            }
+            catch { return null; }
+        }
+
+        /// <summary>SentriPet is Codex's notify program, or the one the Codex app's notify program runs after itself.</summary>
         public static bool IsCodexConnected()
         {
-            try { return File.Exists(CodexConfigFile) && IsOurNotify(FindNotify(File.ReadAllText(CodexConfigFile, Encoding.UTF8))); }
-            catch { return false; }
+            var notify = ReadCodexNotify();
+            return IsOurs(notify) || WrappedAt(notify) > 0;
         }
 
         const string OurComment = "# SentriPet: \"done / waiting for you\" (turn off in SentriPet's settings)";
@@ -466,15 +589,35 @@ namespace SentriPet
             File.Move(tmp, path, true);
         }
 
+        /// <summary>The SentriPet program inside the Codex app's notify command (see <see cref="WrappedAt"/>).</summary>
+        static string WrappedExe(List<string> notify, int at)
+        {
+            return Json.Str(Json.Arr(Json.TryParse(notify[at]))[0]);
+        }
+
         static void ConnectCodex(AppSettings s, string exe)
         {
             string path = CodexConfigFile;
             string text = File.Exists(path) ? File.ReadAllText(path, Encoding.UTF8) : "";
             var k = FindNotify(text);
+            var notify = k == null ? null : ParseTomlArray(k.Value);
+            int at = WrappedAt(notify);
+            if (at > 0)
+            {
+                // the Codex app runs its own notify program and then SentriPet: stay there, only follow a move (never
+                // remember that program — it would run SentriPet again)
+                if (WrappedExe(notify, at) != exe)
+                {
+                    notify[at] = OurJson(exe);
+                    WriteCodexConfig(text.Substring(0, k.Start) + NotifyLine(notify) + "\n" + text.Substring(k.End));
+                }
+                TidyChain(s, notify);
+                return;
+            }
             string line = NotifyLine(exe) + "\n";
             if (k != null)
             {
-                if (!IsOurNotify(k)) s.CodexNotifyChain = k.Value;   // the user's own notify program keeps running
+                if (!IsOurs(notify)) s.CodexNotifyChain = k.Value;   // the user's own notify program keeps running
                 text = text.Substring(0, k.Start) + line + text.Substring(k.End);
             }
             else
@@ -483,6 +626,28 @@ namespace SentriPet
                 text = OurComment + "\n" + line + (text.Length > 0 && !text.StartsWith("\n") ? "\n" : "") + text;
             }
             WriteCodexConfig(text);
+            TidyChain(s, new List<string> { exe, "--hook", "codex" });
+        }
+
+        /// <summary>
+        /// The notify program SentriPet remembers: forgotten when Codex runs it itself now (the Codex app put its own
+        /// notify first) or it would run SentriPet; followed into the new version folder when a Codex update moved it.
+        /// </summary>
+        static void TidyChain(AppSettings s, List<string> notify)
+        {
+            var chain = ParseTomlArray(s.CodexNotifyChain);
+            if (chain == null || chain.Count == 0) return;
+            if (IsOurs(chain) || WrappedAt(chain) > 0 || (notify != null && !IsOurs(notify) && SameProgram(chain, notify)))
+            {
+                s.CodexNotifyChain = null;
+                Log.Info("SentriPet no longer chains codex notify " + chain[0] + " (Codex runs it itself, or it would run SentriPet)");
+                return;
+            }
+            string missing = Missing(chain[0]), moved = missing == null ? null : FindMoved(missing);
+            if (moved == null) return;
+            chain[0] = moved;
+            s.CodexNotifyChain = "[" + string.Join(", ", chain.Select(TomlString)) + "]";
+            Log.Info("codex notify program moved -> " + moved);
         }
 
         static void DisconnectCodex(AppSettings s)
@@ -491,13 +656,29 @@ namespace SentriPet
             if (!File.Exists(path)) { s.CodexNotifyChain = null; return; }
             string text = File.ReadAllText(path, Encoding.UTF8);
             var k = FindNotify(text);
-            if (IsOurNotify(k))
+            var notify = k == null ? null : ParseTomlArray(k.Value);
+            int at = WrappedAt(notify);
+            if (IsOurs(notify))
             {
                 string original = string.IsNullOrEmpty(s.CodexNotifyChain) ? "" : "notify = " + s.CodexNotifyChain + "\n";
                 text = text.Substring(0, k.Start) + original + text.Substring(k.End);
                 text = text.Replace(OurComment + "\n", "");
                 if (original.Length == 0 && text.StartsWith("\n")) text = text.Substring(1);
                 WriteCodexConfig(text);
+            }
+            else if (at > 0)
+            {
+                // the Codex app's notify runs SentriPet after itself: it runs the program SentriPet ran instead, or nothing
+                var chain = ParseTomlArray(s.CodexNotifyChain);
+                List<string> rest;
+                if (chain != null && chain.Count > 0 && !IsOurs(chain) && WrappedAt(chain) < 0 && !SameProgram(chain, notify))
+                {
+                    rest = notify.ToList();
+                    rest[at] = Json.Serialize(chain.Cast<object>().ToList(), false);
+                }
+                else rest = Unwrapped(notify, at);
+                text = text.Substring(0, k.Start) + NotifyLine(rest) + "\n" + text.Substring(k.End);
+                WriteCodexConfig(text.Replace(OurComment + "\n", ""));
             }
             s.CodexNotifyChain = null;
         }
@@ -525,7 +706,10 @@ namespace SentriPet
         public static bool HasClaude { get { return Directory.Exists(ClaudeDir); } }
         public static bool HasCodex { get { return Directory.Exists(CodexHome); } }
 
-        /// <summary>At start: follows the program when it moved; notices when the user took SentriPet out of both.</summary>
+        /// <summary>
+        /// At start: follows the program when it moved; notices when the user took SentriPet out of both; tidies the
+        /// notify program SentriPet runs after itself for Codex (<see cref="TidyChain"/>).
+        /// </summary>
         public static void Repair(AppSettings s, string exe)
         {
             if (!s.AgentHooks) return;
@@ -534,7 +718,13 @@ namespace SentriPet
                 bool claude = IsClaudeConnected(), codex = IsCodexConnected();
                 if (!claude && !codex) { s.AgentHooks = false; s.CodexNotifyChain = null; Log.Info("agent hooks were removed in Claude Code and Codex"); return; }
                 if (claude && !ClaudeHookCommands().Contains(HookCommand(exe, "claude"))) { SetClaudeHooks(exe); Log.Info("claude hooks -> " + exe); }
-                if (codex && ParseTomlArray(FindNotify(File.ReadAllText(CodexConfigFile, Encoding.UTF8)).Value)[0] != exe) { ConnectCodex(s, exe); Log.Info("codex notify -> " + exe); }
+                if (codex)
+                {
+                    var notify = ReadCodexNotify();
+                    int at = WrappedAt(notify);
+                    if ((at > 0 ? WrappedExe(notify, at) : notify[0]) != exe) { ConnectCodex(s, exe); Log.Info("codex notify -> " + exe); }
+                    else TidyChain(s, notify);
+                }
             }
             catch (Exception ex) { Log.Warn("agent hooks: " + ex.Message); }
         }

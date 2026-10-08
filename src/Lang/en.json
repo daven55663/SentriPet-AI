@@ -560,5 +560,6 @@
   "Claude 桌面版只偶爾記錄用量（新版大多在啟動時）。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算之後的用量，數字前面會標「≈」": "The Claude desktop app records the usage only now and then (recent versions mostly when they start). With this on, SentriPet reads the token counts in Claude Code's local transcripts (never the content) to estimate the usage since; estimates are marked \"≈\"",
   "資料來源：Claude 讀取桌面版自己記錄的用量，加上 Claude Code 的 token 數推算（重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證。": "Sources: Claude — the usage the desktop app records itself, plus estimates from Claude Code's token counts (reset times estimated); Codex — the official codex app-server, live, plus the local session logs; Copilot — the CLI's quota cache. SentriPet never reads or sends any sign-in credentials.",
   "讀不到 lines.json：{0}": "Can't read lines.json: {0}",
-  "目前的造型附帶 {0} 句台詞": "The current look brings {0} lines of its own"
+  "目前的造型附帶 {0} 句台詞": "The current look brings {0} lines of its own",
+  "Codex 原本的通知程式找不到了（可能是 Codex 更新過），先不執行：{0}": "Codex's own notify program is missing (Codex was probably updated), so it isn't run: {0}"
 }

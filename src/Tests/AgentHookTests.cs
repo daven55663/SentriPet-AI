@@ -26,6 +26,7 @@ namespace SentriPet
                 Toml(t);
                 ClaudeSettings(t);
                 CodexConfig(t, root);
+                CodexApp(t, root);
             }
             finally
             {
@@ -248,6 +249,97 @@ namespace SentriPet
                 var r = AppSettings.Load();
                 t.Check("設定檔：讀回開關與原本的 notify", r.AgentHooks && r.AgentHookNotify && r.CodexNotifyChain == "[\"a\"]");
                 File.Delete(AppPaths.SettingsFile);
+            });
+        }
+
+        static string Basic(string s) { return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""; }
+
+        /// <summary>
+        /// The Codex app's own notify program (codex-computer-use) lives in a version folder that its updates replace, and
+        /// the app puts it first in notify again, running the one that was there (SentriPet) with --previous-notify.
+        /// </summary>
+        static void CodexApp(TestKit t, string root)
+        {
+            t.Run("Codex app notify", () =>
+            {
+                string file = AgentHooks.CodexConfigFile;
+                string exe = Path.Combine(root, "bin", "SentriPet.exe");
+                string runtimes = Path.Combine(root, "OpenAI", "Codex", "runtimes", "cua_node");
+                string tail = Path.Combine("bin", "node_modules", "@oai", "sky", "bin", "windows", "codex-computer-use.exe");
+                string old = Path.Combine(runtimes, "b63ee7ee40c23b77", tail), now1 = Path.Combine(runtimes, "3dd31cfff853001c", tail), now2 = Path.Combine(runtimes, "4aa0000000000000", tail);
+                foreach (var f in new[] { now1, now2 }) { Directory.CreateDirectory(Path.GetDirectoryName(f)); File.WriteAllText(f, ""); }
+                Directory.SetLastWriteTimeUtc(Path.Combine(runtimes, "3dd31cfff853001c"), new DateTime(2026, 10, 8, 0, 0, 0, DateTimeKind.Utc));
+                Directory.SetLastWriteTimeUtc(Path.Combine(runtimes, "4aa0000000000000"), new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc));
+
+                t.Equal("換掉的版本資料夾：在最新的那個裡找到同一個程式", now1, AgentHooks.FindMoved(old));
+                t.Check("只是檔案不見了、或沒有類似的資料夾：找不到", AgentHooks.FindMoved(Path.Combine(runtimes, "3dd31cfff853001c", "bin", "gone.exe")) == null &&
+                                                                AgentHooks.FindMoved(Path.Combine(root, "nowhere", "v1", "x.exe")) == null);
+
+                string ours = Json.Serialize(new List<object> { exe, "--hook", "codex" }, false);
+                // what the Codex app wrote (basic strings, its own spacing)
+                string wrapped = "model = \"gpt-6\"\nnotify = [ " + Basic(now1) + ", \"turn-ended\", \"--previous-notify\", " + Basic(ours) + " ]\n\n[features]\nx = true\n";
+                File.WriteAllText(file, wrapped);
+                var notify = AgentHooks.ReadCodexNotify();
+                t.Check("Codex 桌面版把 SentriPet 包在裡面（--previous-notify）：還算開著", notify != null && notify.Count == 4 && notify[3] == ours && AgentHooks.IsCodexConnected());
+
+                string stale = "[" + Basic(old) + ", \"turn-ended\"]";
+                t.Check("記下的舊版程式：Codex 自己會先執行它，SentriPet 不再執行（不會重複、也不會找不到）", AgentHooks.ChainToRun(stale, notify) == null);
+                var mine = new List<string> { exe, "--hook", "codex" };
+                var follow = AgentHooks.ChainToRun(stale, mine);
+                t.Check("SentriPet 在最前面時：換到新版資料夾裡的同一個程式、參數不變", follow != null && follow[0] == now1 && follow[1] == "turn-ended" && follow.Count == 2,
+                    follow == null ? "null" : string.Join(" ", follow));
+                t.Check("程式真的不見了：先不執行", AgentHooks.ChainToRun("[" + Basic(Path.Combine(root, "nowhere", "v1", "x.exe")) + "]", mine) == null);
+                t.Check("會再呼叫 SentriPet 的程式：不執行（不會互相呼叫）", AgentHooks.ChainToRun("[" + Basic(now1) + ", \"turn-ended\", \"--previous-notify\", " + Basic(ours) + "]", mine) == null &&
+                                                                      AgentHooks.ChainToRun("[" + Basic(exe) + ", \"--hook\", \"codex\"]", mine) == null);
+                var chime = AgentHooks.ChainToRun("[\"python3\", \"/x/chime.py\"]", notify);
+                t.Check("使用者自己的其他程式：照樣執行（程式名稱不是完整路徑就不檢查）", chime != null && chime[0] == "python3");
+
+                // turning it on while the Codex app runs SentriPet: stays inside, never remembers the app's program (it would run SentriPet again)
+                var s = new AppSettings { CodexNotifyChain = stale };
+                AgentHooks.Connect(s, exe, false, true);
+                t.Check("開啟：Codex 桌面版的 notify 不動、舊版程式不再記著", File.ReadAllText(file) == wrapped && s.CodexNotifyChain == null && s.AgentHooks, s.CodexNotifyChain);
+                string moved = Path.Combine(root, "new place", "SentriPet.exe");
+                AgentHooks.Repair(s, moved);
+                var after = AgentHooks.ReadCodexNotify();
+                var inner = after != null && after.Count == 4 ? Json.Arr(Json.TryParse(after[3])) : null;
+                t.Check("程式搬家：只改 --previous-notify 裡的 SentriPet", after != null && after[0] == now1 && after[2] == "--previous-notify" && inner != null && Json.Str(inner[0]) == moved &&
+                                                          File.ReadAllText(file).Contains("[features]\nx = true"), after == null ? "null" : string.Join(" | ", after));
+                File.WriteAllText(file, wrapped);
+
+                s = new AppSettings { AgentHooks = true, CodexNotifyChain = stale };
+                AgentHooks.Repair(s, exe);
+                t.Check("啟動時：Codex 自己執行的程式就不再記著；開關維持開著", s.AgentHooks && s.CodexNotifyChain == null && File.ReadAllText(file) == wrapped);
+
+                s = new AppSettings { AgentHooks = true, CodexNotifyChain = stale };
+                AgentHooks.Disconnect(s);
+                var off = AgentHooks.ReadCodexNotify();
+                t.Check("關閉：只拿掉 SentriPet，Codex 桌面版的 notify 留著", off != null && off.Count == 2 && off[0] == now1 && off[1] == "turn-ended" && !AgentHooks.IsCodexConnected() &&
+                                                                     File.ReadAllText(file).StartsWith("model = \"gpt-6\"\nnotify = ") && File.ReadAllText(file).EndsWith("\n\n[features]\nx = true\n"),
+                    off == null ? "null" : string.Join(" | ", off));
+                File.WriteAllText(file, wrapped);
+                s = new AppSettings { AgentHooks = true, CodexNotifyChain = "[\"python3\", \"/x/chime.py\"]" };
+                AgentHooks.Disconnect(s);
+                off = AgentHooks.ReadCodexNotify();
+                t.Check("關閉：SentriPet 原本執行的其他程式交還給 Codex 桌面版執行", off != null && off.Count == 4 && off[3] == "[\"python3\",\"/x/chime.py\"]", off == null ? "null" : string.Join(" | ", off));
+
+                // SentriPet first, the app's program in an old version folder: Repair follows it into the new one
+                File.WriteAllText(file, "notify = [" + Basic(old) + ", \"turn-ended\"]\n");
+                s = new AppSettings();
+                AgentHooks.Connect(s, exe, false, true);
+                var remembered = AgentHooks.ParseTomlArray(s.CodexNotifyChain);
+                t.Check("開啟時記下的程式已經被換掉：記成新版資料夾裡的", remembered != null && remembered[0] == now1 && remembered[1] == "turn-ended", s.CodexNotifyChain);
+                s.CodexNotifyChain = stale;
+                t.Check("找得到新版：設定頁不提示", AgentHooks.MissingChain(s) == null);
+                s.CodexNotifyChain = "[" + Basic(Path.Combine(root, "nowhere", "v1", "x.exe")) + "]";
+                t.Equal("找不到：設定頁提示是哪個程式", Path.Combine(root, "nowhere", "v1", "x.exe"), AgentHooks.MissingChain(s));
+
+                // a SentriPet started by its own chain does nothing (no loop, no second event)
+                string events = AgentHooks.CodexEventsFile;
+                try { File.Delete(events); } catch { }
+                Environment.SetEnvironmentVariable("SENTRIPET_CODEX_CHAINED", "1");
+                try { AgentHooks.RunCodex(new[] { "--hook", "codex", "{\"type\":\"agent-turn-complete\",\"cwd\":\"/w/site\"}" }, new AppSettings(), DateTime.UtcNow); }
+                finally { Environment.SetEnvironmentVariable("SENTRIPET_CODEX_CHAINED", null); }
+                t.Check("被自己串接的程式再叫起來：什麼都不做", !File.Exists(events));
             });
         }
     }

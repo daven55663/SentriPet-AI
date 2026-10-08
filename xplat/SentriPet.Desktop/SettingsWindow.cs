@@ -452,6 +452,16 @@ namespace SentriPet
             hookBox.Children.Add(hooks);
             hookBox.Children.Add(hookNotifyRow);
             hookBox.Children.Add(hookError);
+            // the notify program Codex had is gone (a Codex update replaced its folder) and SentriPet cannot find it
+            string missingChain = S.AgentHooks ? AgentHooks.MissingChain(S) : null;
+            if (missingChain != null)
+            {
+                var note = Txt(L.F("Codex 原本的通知程式找不到了（可能是 Codex 更新過），先不執行：{0}", Path.GetFileName(missingChain.Replace('\\', '/'))), 11, Palette.Hex("#FCD34D"), FontWeight.Normal);
+                note.MaxWidth = 200;
+                note.Margin = new Thickness(0, 6, 0, 0);
+                ToolTip.SetTip(note, missingChain);
+                hookBox.Children.Add(note);
+            }
             Row(body, L.T("AI 做完或在等你時提醒"),
                 L.T("Claude Code 做完較長的任務（超過 30 秒）、要你確認或在等你回覆時，那隻桌寵會跳起來告訴你；Codex 做完也會。會在 ~/.claude/settings.json 加上 hooks、在 ~/.codex/config.toml 設定 notify（修改前先備份，原本的設定都保留，關掉時還原）"),
                 hookBox);
