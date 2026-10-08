@@ -174,7 +174,8 @@ namespace SentriPet
         /// <summary>Pictures that are not really pictures, or too big to keep in memory, are reported (and not shown).</summary>
         static void CheckPictures(ThemeSpec s)
         {
-            var files = s.Elements.SelectMany(e => e.States.Values.Concat(new[] { e.Image }))
+            var pictures = s.Elements.Where(e => e.Type == "image").ToList();   // (a text's States are texts, #28)
+            var files = pictures.SelectMany(e => e.States.Values.Concat(new[] { e.Image }))
                          .Concat(new[] { s.Background != null ? s.Background.Image : null, s.Card != null ? s.Card.Image : null })
                          .Where(f => f != null).Distinct().ToList();
             var bad = new HashSet<string>();
@@ -196,7 +197,7 @@ namespace SentriPet
                 }
             }
             if (bad.Count == 0) return;
-            foreach (var e in s.Elements)
+            foreach (var e in pictures)
             {
                 if (e.Image != null && bad.Contains(e.Image)) e.Image = null;
                 foreach (var k in e.States.Where(kv => bad.Contains(kv.Value)).Select(kv => kv.Key).ToList()) e.States.Remove(k);

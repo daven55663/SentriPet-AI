@@ -227,6 +227,10 @@ namespace SentriPet
                 File.WriteAllText(System.IO.Path.Combine(dir, "fake-picture", "theme.json"),
                     "{ \"card\": { \"elements\": [ { \"type\": \"image\", \"width\": 20, \"height\": 20, \"image\": \"face.png\" }, { \"type\": \"text\", \"text\": \"{name}\" } ] } }");
                 File.WriteAllText(System.IO.Path.Combine(dir, "fake-picture", "face.png"), "not a picture");
+                // a text per state (#28): texts, not picture files
+                Directory.CreateDirectory(System.IO.Path.Combine(dir, "words"));
+                File.WriteAllText(System.IO.Path.Combine(dir, "words", "theme.json"),
+                    "{ \"card\": { \"elements\": [ { \"type\": \"text\", \"text\": \"{name}\", \"states\": { \"great\": \"好耶\", \"low\": { \"en\": \"low\", \"zh-TW\": \"快沒了\" } } } ] } }");
                 try
                 {
                     ThemeCatalog.LoadCustom(dir);
@@ -238,7 +242,10 @@ namespace SentriPet
                     var fake = ThemeCatalog.CustomSpecs.FirstOrDefault(s => s.Id == "custom:fake-picture");
                     t.Check("不是圖片的圖片：說出來、其他照樣用", fake != null && fake.Usable && fake.Problems.Any(p => p.Contains("face.png")) && fake.Elements.Count == 1,
                             fake == null ? "missing" : string.Join(" | ", fake.Problems));
-                    t.Equal("選單：8 種內建＋可以用的自訂造型", 10, ThemeCatalog.Choices.Count);
+                    var texts = ThemeCatalog.CustomSpecs.FirstOrDefault(s => s.Id == "custom:words");
+                    t.Check("依狀態換的文字不會被當成圖片檢查", texts != null && texts.Usable && texts.Problems.Count == 0 && texts.Elements[0].States.Count == 2,
+                            texts == null ? "missing" : string.Join(" | ", texts.Problems));
+                    t.Equal("選單：8 種內建＋可以用的自訂造型", 11, ThemeCatalog.Choices.Count);
 
                     var theme = ThemeCatalog.Get("custom:cloud").Create();
                     theme.Attach(new Snapshots.PreviewHost());
