@@ -455,7 +455,7 @@ namespace SentriPet
             Row(body, L.T("AI 做完或在等你時提醒"),
                 L.T("Claude Code 做完較長的任務（超過 30 秒）、要你確認或在等你回覆時，那隻桌寵會跳起來告訴你；Codex 做完也會。會在 ~/.claude/settings.json 加上 hooks、在 ~/.codex/config.toml 設定 notify（修改前先備份，原本的設定都保留，關掉時還原）"),
                 hookBox);
-            Row(body, L.T("Claude 即時推算"), L.T("Claude 桌面版約每 15 分鐘才記錄一次用量。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算這段空檔的用量，數字前面會標「≈」"),
+            Row(body, L.T("Claude 即時推算"), L.T("Claude 桌面版只偶爾記錄用量（新版大多在啟動時）。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算之後的用量，數字前面會標「≈」"),
                 Toggle(S.ClaudeEstimate, v => { S.ClaudeEstimate = v; SaveSoon(); ctl.Service.RefreshNow("claude"); }));
             BuildAccounts(body);
             RefreshProviders();
@@ -1000,7 +1000,7 @@ namespace SentriPet
             buttons.Children.Add(Btn(L.T("程式資料夾"), () => Integration.OpenPath(AppPaths.ExeDir)));
             body.Children.Add(new Border { Height = 1, Background = G.B(LineC) });
             body.Children.Add(buttons);
-            var about = Txt(L.T("資料來源：Claude 讀取桌面版自己寫的用量快取（每 15 分鐘更新，重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證。"),
+            var about = Txt(L.T("資料來源：Claude 讀取桌面版自己記錄的用量，加上 Claude Code 的 token 數推算（重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證。"),
                 11.5, SubC, FontWeight.Normal);
             about.Margin = new Thickness(0, 4, 0, 12);
             body.Children.Add(about);

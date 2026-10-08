@@ -141,8 +141,8 @@ cd SentriPet-<version>-linux-x64
 
 SentriPet looks for AI tools on your computer and every one it finds becomes a pet that says hello. To read the usage it needs:
 
-- **Claude** — the Claude desktop app running (it records the usage every 15 minutes; while you use Claude Code, SentriPet
-  estimates the usage in between), or *Settings → AI services → Connect the Claude Code status line* for the official
+- **Claude** — the Claude desktop app (it records the usage now and then — recent versions mostly when they start; while
+  you use Claude Code, SentriPet estimates the usage since from its token counts), or *Settings → AI services → Connect the Claude Code status line* for the official
   numbers straight from Claude Code (the only way on Linux)
 - **Codex** — the Codex app, the VS Code extension or the `codex` CLI, signed in with a ChatGPT account
 - **Copilot** — Copilot CLI used at least once (it leaves a quota cache)
@@ -331,7 +331,7 @@ Everything stays on your computer. SentriPet never reads or sends sign-in creden
 
 | AI | Source | How often |
 |---|---|---|
-| Claude | The Claude desktop app's own `plan-usage-history.json` (the same numbers as *Settings → Usage*), plus the token counts in Claude Code's local transcripts (numbers only, never the content); with the status line connected, the official usage and reset times Claude Code hands to it | The desktop app writes about every 15 minutes; in between, SentriPet estimates from Claude Code's tokens (calibrated on your own history, about 1 percentage point off in tests); the status line updates after every Claude Code reply |
+| Claude | The Claude desktop app's own `plan-usage-history.json` (the same numbers as *Settings → Usage*), plus the token counts in Claude Code's local transcripts (numbers only, never the content); with the status line connected, the official usage and reset times Claude Code hands to it | The desktop app writes a sample now and then (it used to be every 15 minutes; recent versions write one mostly when they start); after it, SentriPet estimates from Claude Code's tokens, calibrated on your own samples of the last 8 days and kept for when there are no new ones (on the development machine about 1 percentage point off the official numbers); the status line updates after every Claude Code reply |
 | Codex | The official `codex app-server` (`account/rateLimits/read`), plus the rate limits in `~/.codex/sessions` | Every 5 minutes by default; the local records update live while you use Codex |
 | Copilot | Copilot CLI's quota cache | When you use Copilot CLI |
 | Ollama | `http://127.0.0.1:11434` (no quota, shows the loaded models) | 30 seconds |
@@ -375,7 +375,7 @@ xplat/package.sh win-x64                                           package (also
 
 | Tests | What | Checks |
 |---|---|---|
-| `xplat/SentriPet.Tests` | Core, every data source (sample files and local fake servers, never your real data), reminders, quiet hours, forecast, quota-use report, token ledger, API prices, usage.json and the local web server, your own lines, growing pets, theme files, other accounts, translations, the Claude Code status line and hooks, Codex notify | 684 |
+| `xplat/SentriPet.Tests` | Core, every data source (sample files and local fake servers, never your real data), reminders, quiet hours, forecast, quota-use report, token ledger, API prices, usage.json and the local web server, your own lines, growing pets, theme files, other accounts, translations, the Claude Code status line and hooks, Codex notify | 692 |
 | `SentriPet --selftest <file>` | The eight looks, the pets' faces, hover card and placement, bubble, menu, settings page, usage report, weekly picture, tray icons, the pet picture for OBS, the jelly pets' accessories, your own themes (the example and broken ones), languages, autostart, notifications, single instance, the demo GIF, scaled drawing, the hook command | 135 |
 | `SentriPet --dev --smoke-test <file>` | Runs the real app for 15 s: window shown, on screen, bottom-right on first start, animating, tray icon, the OBS page answering over HTTP, no errors | 9 |
 

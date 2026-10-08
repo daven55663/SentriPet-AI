@@ -25,7 +25,7 @@ namespace SentriPet
             public double W;
         }
 
-        static readonly TimeSpan Keep = TimeSpan.FromDays(3);
+        static readonly TimeSpan Keep = TimeSpan.FromDays(ClaudeProvider.CalibrationDays);   // (the calibration looks as far back)
         readonly object gate = new object();
         readonly Dictionary<string, FileState> files = new Dictionary<string, FileState>(StringComparer.OrdinalIgnoreCase);
         readonly Dictionary<string, Event> byKey = new Dictionary<string, Event>();   // message id|request id → reply

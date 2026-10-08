@@ -86,7 +86,7 @@ namespace SentriPet
                     "{\"type\":\"user\",\"timestamp\":\"" + TestKit.Iso(now.AddMinutes(-50)) + "\",\"message\":{\"role\":\"user\",\"content\":\"\\\"usage\\\":{\\\"input_tokens\\\":999999}\"}}",
                     Reply("msg_syn", "req_syn", now.AddMinutes(-45), "<synthetic>", 5000, 0, 0, 0, null),
                     Reply("msg_a2", "req_a2", now.AddMinutes(-30), "claude-sonnet-4-5", 10000, 0, 0, 0, null),
-                    Reply("msg_old", "req_old", now.AddDays(-4), "claude-opus-4-1", 70000, 0, 0, 0, "older than three days"),
+                    Reply("msg_old", "req_old", now.AddDays(-ClaudeProvider.CalibrationDays - 1), "claude-opus-4-1", 70000, 0, 0, 0, "older than the calibration looks"),
                     Reply("msg_big", "req_big", now.AddMinutes(-20), "claude-haiku-4-5", 5000, 0, 0, 0, new string('x', 200000)),
                     Reply(null, null, now.AddMinutes(-10), "claude-opus-4-1", 300, 0, 0, 0, "no ids"),
                     "not json at all",
@@ -114,9 +114,9 @@ namespace SentriPet
                 WriteLines(file2, new[] { Reply("msg_b1", "req_b1", now.AddMinutes(-15), "claude-opus-4-1", 111, 0, 0, 0, null) });
                 string stale = Path.Combine(root, "projects", "D--proj-c", "session-3.jsonl");
                 WriteLines(stale, new[] { Reply("msg_c1", "req_c1", now.AddMinutes(-15), "claude-opus-4-1", 5000, 0, 0, 0, null) });
-                File.SetLastWriteTimeUtc(stale, now.AddDays(-4));
+                File.SetLastWriteTimeUtc(stale, now.AddDays(-ClaudeProvider.CalibrationDays - 1));
                 u.Update();
-                t.Equal("其他專案的紀錄也算；三天沒動的檔案不讀", 6, u.Count);
+                t.Equal("其他專案的紀錄也算；太久（超過校準看的天數）沒動的檔案不讀", 6, u.Count);
 
                 WriteLines(file, new[] { Reply("msg_new", "req_new", now.AddMinutes(-2), "claude-opus-4-1", 50, 0, 0, 0, null) });
                 u.Update();
@@ -270,8 +270,47 @@ namespace SentriPet
                 t.Near("新的 5 小時只算結束後的用量（5 萬 token ≈ 5%）", 5, fh4.Used, 0.01);
                 t.Equal("新的 5 小時從結束後第一則回覆起算", Minute(now.AddMinutes(-20)).AddHours(5), fh4.ResetsAt);
                 t.Near("每週照常累加：14% + 1%", 15, sd4.Used, 0.01);
-                t.Check("桌面版太久沒更新：標成舊資料", s4.Stale && s4.Note.Contains("沒在執行"), s4.Note);
+                t.Check("桌面版很久沒記錄：照樣用 token 推算，不標成舊資料", !s4.Stale && s4.Source == "即時推算" && s4.Note.Contains("推算"), s4.Note);
                 closed.Dispose();
+
+                // recent desktop versions write a sample only now and then (mostly when they start): a weekly window can be
+                // calibrated on samples hours apart, a 5-hour one can't — then the last saved calibration is used (user report:
+                // the pet showed the 02:31 sample all day, 5 hours "0%" while 21% was used)
+                string root3 = t.TempDir("claude-sparse");
+                Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", root3);
+                string history3 = Path.Combine(root3, "plan-usage-history.json");
+                ClaudeProvider.HistoryOverride = history3;
+                File.Delete(ClaudeProvider.CalibrationFile);
+                ClaudeProvider.ForgetCalibration();
+                var a3 = now.AddHours(-20);
+                var b3 = now.AddHours(-8);
+                WriteHistory(history3, new List<Dictionary<string, object>> { Sample(a3, null, 0, 10), Sample(b3, null, 0, 16) });
+                WriteLines(Path.Combine(root3, "projects", "D--w", "s.jsonl"), new[]
+                {
+                    Reply("msg_s0", "req_s0", a3.AddHours(2), "claude-opus-4-1", 300000, 0, 0, 0, null),
+                    Reply("msg_s1", "req_s1", a3.AddHours(6), "claude-opus-4-1", 300000, 0, 0, 0, null),
+                    Reply("msg_s2", "req_s2", now.AddHours(-1), "claude-opus-4-1", 100000, 0, 0, 0, null),
+                });
+                var sparse = new ClaudeProvider();
+                var s5 = sparse.Fetch(false, new AppSettings());
+                var sd5 = s5.Meters.First(m => m.Key == "sd");
+                var fh5 = s5.Meters.First(m => m.Key == "fh");
+                t.Near("紀錄相隔 12 小時：每週額度照樣能校準（6% / 60 萬 token）", 1e-5, sparse.LastK7 ?? 0, 1e-9);
+                t.Near("每週：16% + 10 萬 token ≈ 17%", 17, sd5.Used, 0.01);
+                t.Check("5 小時沒有相隔夠近的紀錄、也沒有存下的校準：不推算", sparse.LastK5 == null && fh5.Used == 0 && !fh5.UsedApprox);
+                t.Check("用了 Claude Code 卻推算不出 5 小時：標成舊資料並說明", s5.Stale && s5.Note.Contains("還沒有足夠的紀錄"), s5.Note);
+                sparse.Dispose();
+
+                TestKit.WriteFile(ClaudeProvider.CalibrationFile, "{ \"fh\": { \"k\": 2e-5, \"at\": \"2026-10-01T06:00:00Z\" } }");
+                ClaudeProvider.ForgetCalibration();
+                var saved = new ClaudeProvider();
+                var s6 = saved.Fetch(false, new AppSettings());
+                var fh6 = s6.Meters.First(m => m.Key == "fh");
+                t.Near("沒有新的校準：用上次存下的（5 小時）", 2e-5, saved.LastK5 ?? 0, 1e-12);
+                t.Near("5 小時：0% + 10 萬 token × 2e-5 ≈ 2%", 2, fh6.Used, 0.01);
+                t.Check("全部推算得出來：不是舊資料", fh6.UsedApprox && !s6.Stale && s6.Note.Contains("推算"), s6.Note);
+                t.Check("新的每週校準存起來了", File.ReadAllText(ClaudeProvider.CalibrationFile).Contains("\"sd\""));
+                saved.Dispose();
 
                 ClaudeProvider.HistoryOverride = Path.Combine(root2, "missing.json");
                 var missing = new ClaudeProvider().Fetch(false, new AppSettings());

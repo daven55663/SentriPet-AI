@@ -146,7 +146,7 @@ cd SentriPet-<版本>-linux-x64
 
 SentriPet 會自動找出電腦上的 AI 工具，找到的每個 AI 就是一隻桌寵，並打聲招呼。要讀到用量，需要：
 
-- **Claude**：開著 Claude 桌面版（它每 15 分鐘記錄一次用量；有用 Claude Code 時會在兩次之間即時推算），
+- **Claude**：Claude 桌面版（它會不定時記錄用量，新版大多在啟動時記錄；有用 Claude Code 時，之後的用量用 token 數即時推算），
   或開啟 設定 → AI 服務 →「連接 Claude Code 狀態列」，直接拿 Claude Code 提供的官方數字（Linux 只能用這個方式，見下面的說明）
 - **Codex**：裝了 Codex 桌面版、VS Code 擴充或 `codex` 指令，並用 ChatGPT 帳號登入
 - **Copilot**：用過一次 Copilot CLI（它會留下額度快取）
@@ -309,7 +309,7 @@ Claude 桌面版的紀錄裡沒有重置時間，是用歷史紀錄推算的。�
 或到 設定 → AI 服務 → Claude 每週重置時間，照 Claude「設定 → 用量」頁面寫的時間填一次（例如 `週四 23:00`）。
 
 **在 claude.ai 網頁或手機上聊天，數字沒有馬上變**
-那部分只能等 Claude 桌面版下一次更新紀錄（約 15 分鐘）。
+那部分只能等 Claude 桌面版下一次記錄用量（新版大多在啟動時記錄，重開 Claude 桌面版就會更新）。
 
 **桌寵擋到要點的東西**
 設定 → 外觀 開「滑鼠穿透」，點擊會直接穿過桌寵；要關掉請在系統匣圖示按右鍵。也可以調小一點或移到別的螢幕。
@@ -331,7 +331,7 @@ macOS 的全螢幕 App 會在自己的桌面空間裡，桌寵本來就不會出
 
 | AI | 來源 | 更新頻率 |
 |---|---|---|
-| Claude | Claude 桌面版自己記錄的 `plan-usage-history.json`（和「設定 → 用量」同一份數字），加上 Claude Code 本機對話紀錄裡的 token 數（只讀數字，不讀內容）；開啟「連接 Claude Code 狀態列」時，另外使用 Claude Code 交給狀態列的官方用量與重置時間 | 桌面版約每 15 分鐘寫一次；兩次之間用 Claude Code 的 token 用量即時推算（比例會用你自己的歷史紀錄自動校準，實測誤差約 1 個百分點）；狀態列在 Claude Code 每次回覆後更新 |
+| Claude | Claude 桌面版自己記錄的 `plan-usage-history.json`（和「設定 → 用量」同一份數字），加上 Claude Code 本機對話紀錄裡的 token 數（只讀數字，不讀內容）；開啟「連接 Claude Code 狀態列」時，另外使用 Claude Code 交給狀態列的官方用量與重置時間 | 桌面版不定時寫一次（以前約每 15 分鐘，新版大多在啟動時）；之後用 Claude Code 的 token 用量即時推算（比例用你自己最近 8 天的紀錄自動校準，沒有新紀錄時沿用上次的校準；在開發環境和官方數字差約 1 個百分點）；狀態列在 Claude Code 每次回覆後更新 |
 | Codex | 官方 `codex app-server` 的 `account/rateLimits/read`，加上 `~/.codex/sessions` 對話紀錄裡的 rate_limits | 預設每 5 分鐘即時查詢一次；用 Codex 時本機紀錄會即時更新 |
 | Copilot | Copilot CLI 的額度快取 | 用 Copilot CLI 時才會更新 |
 | Ollama | 本機 `http://127.0.0.1:11434`（沒有額度，只顯示載入中的模型） | 30 秒 |
@@ -376,7 +376,7 @@ xplat/package.sh win-x64                                           打包（osx-
 
 | 測試 | 內容 | 數量 |
 |---|---|---|
-| `xplat/SentriPet.Tests` | 核心、每個資料來源（範例檔與本機假伺服器，不碰真實資料）、提醒、勿擾時段、用完預測、週報、token 帳本、API 價格、usage.json 與本機網頁伺服器、自訂台詞、養成與成就、自訂造型格式、多帳號、翻譯、Claude Code 狀態列與 hooks、Codex notify | 684 項 |
+| `xplat/SentriPet.Tests` | 核心、每個資料來源（範例檔與本機假伺服器，不碰真實資料）、提醒、勿擾時段、用完預測、週報、token 帳本、API 價格、usage.json 與本機網頁伺服器、自訂台詞、養成與成就、自訂造型格式、多帳號、翻譯、Claude Code 狀態列與 hooks、Codex notify | 692 項 |
 | `SentriPet --selftest 報告.txt` | 8 種造型、果凍的表情、詳情卡與擺放位置、泡泡、選單、設定頁、用量報告、週報圖、系統匣圖示、OBS 用的桌寵畫面、果凍的升級配件、自訂造型（範例與壞掉的造型）、語言、開機啟動、通知、單一執行、示範動畫、縮放繪製、hook 指令 | 135 項 |
 | `SentriPet --dev --smoke-test 報告.txt` | 真的開啟程式 15 秒：視窗有出來、在螢幕內、第一次在右下角、有在動畫、系統匣、OBS 網頁真的用 HTTP 回應、沒有錯誤 | 9 項 |
 

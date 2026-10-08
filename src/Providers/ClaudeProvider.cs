@@ -152,7 +152,7 @@ namespace SentriPet
             var snap = new Snapshot();
             snap.ObservedAt = lastUtc;
             snap.Source = L.T("Claude 桌面版快取");
-            bool estimated = false;
+            bool estimated = false, uncalibrated = false;
 
             foreach (var key in OrderedKeys(last.U.Keys))
             {
@@ -241,8 +241,9 @@ namespace SentriPet
                     if (start.HasValue) m.ResetsAt = FloorToMinute(start.Value).AddMinutes(win);
                 }
 
-                double? k = events != null ? Calibrate(samples, key) : null;
+                double? k = events != null ? Calibrate(samples, key, win) : null;
                 if (win < 1440) LastK5 = k; else if (key == "sd") LastK7 = k;
+                if (events != null && !k.HasValue) uncalibrated = true;
                 if (k.HasValue)
                 {
                     double extra = events.Sum(extrapolateFrom, now) * k.Value;
@@ -256,31 +257,36 @@ namespace SentriPet
                 snap.Meters.Add(m);
             }
 
-            string baseTime = lastUtc.ToLocalTime().ToString("HH:mm");
+            // when the desktop app wrote that sample: the time today, with the day otherwise
+            var lastLocal = lastUtc.ToLocalTime();
+            string baseTime = lastLocal.ToString(lastLocal.Date == DateTime.Now.Date ? "HH:mm" : "M/d HH:mm");
             if (officialUsed)
             {
                 snap.ObservedAt = bridge.ObservedAt;
                 snap.Source = L.T("Claude Code 狀態列（官方）");
             }
-            if (estimated)
+            bool unexplained = uncalibrated && events.Sum(lastUtc, now) > 0;   // Claude Code was used, but a window can't be estimated
+            if (estimated && !unexplained)
             {
                 snap.ObservedAt = now;
                 snap.Source = L.T("即時推算");
                 snap.Note = officialUsed
                     ? L.F("以 Claude Code 狀態列 {0} 的官方數字為基準，加上之後用掉的 token 推算（≈）", bridge.ObservedAt.ToLocalTime().ToString("HH:mm"))
-                    : L.F("以桌面版 {0} 的數字為基準，加上之後 Claude Code 用掉的 token 推算（≈）；桌面版約每 15 分鐘校正一次", baseTime);
+                    : L.F("以桌面版 {0} 記錄的數字為基準，加上之後 Claude Code 用掉的 token 推算（≈）", baseTime);
             }
-            var newest = officialUsed && bridge.ObservedAt > lastUtc ? bridge.ObservedAt : lastUtc;
-            if ((now - newest).TotalMinutes > 35 && !officialUsed)
+            else if (officialUsed)
+                snap.Note = L.F("官方數字，來自 Claude Code 狀態列（{0}）；只有用 Claude Code 時才會更新", bridge.ObservedAt.ToLocalTime().ToString("M/d HH:mm"));
+            else if (unexplained)
             {
+                // Claude Code was used since, but there is nothing to turn its tokens into a percentage with yet
                 snap.Stale = true;
-                snap.Note = L.F(estimated ? "Claude 桌面版沒在執行，基準停在 {0}，之後的用量為推算" : "Claude 桌面版沒在執行，基準停在 {0}", lastUtc.ToLocalTime().ToString("M/d HH:mm"));
+                snap.Note = L.F("桌面版最近一次記錄是 {0}；之後用了 Claude Code，但還沒有足夠的紀錄可以推算", baseTime);
             }
-            else if (!estimated)
+            else
             {
-                snap.Note = officialUsed ? L.F("官方數字，來自 Claude Code 狀態列（{0}）；只有用 Claude Code 時才會更新", bridge.ObservedAt.ToLocalTime().ToString("M/d HH:mm"))
-                          : officialReset ? L.F("桌面版約每 15 分鐘更新一次（這次是 {0}）；重置時間是 Claude Code 狀態列的官方時間", baseTime)
-                          : L.F("桌面版約每 15 分鐘更新一次（這次是 {0}）；重置時間為推算值", baseTime);
+                snap.Stale = (now - lastUtc).TotalHours > 12;
+                snap.Note = officialReset ? L.F("桌面版 {0} 記錄的數字；重置時間是 Claude Code 狀態列的官方時間", baseTime)
+                                          : L.F("桌面版 {0} 記錄的數字；重置時間為推算值", baseTime);
             }
             snap.Active = activity.ActiveWithin(90);
             return snap;
@@ -346,19 +352,27 @@ namespace SentriPet
             return snap;
         }
 
+        /// <summary>How far back the calibration looks (as long as ClaudeCodeUsage keeps the transcripts).</summary>
+        internal const int CalibrationDays = 8;
+
         /// <summary>
-        /// %-points per weighted Claude Code token, fitted on the last 3 days: for consecutive desktop samples
-        /// in the same window, the rise in the percentage against the tokens used in between.
+        /// %-points per weighted Claude Code token, fitted on the last 8 days: for consecutive desktop samples
+        /// in the same window, the rise in the percentage against the tokens used in between. A 5-hour window needs
+        /// samples less than 3 hours apart; a weekly one can use samples up to a day apart — recent versions of the
+        /// desktop app write a sample only now and then (mostly when it starts), not every 15 minutes any more.
+        /// When there is nothing new to fit on, the last fit is used (kept in claude-calibration.json): without it
+        /// the estimate stopped, and the pet showed the last desktop sample for hours.
         /// </summary>
-        double? Calibrate(List<Sample> ss, string key)
+        double? Calibrate(List<Sample> ss, string key, int window)
         {
-            long cutoff = Json.ToUnixMs(DateTime.UtcNow.AddDays(-3));
+            long cutoff = Json.ToUnixMs(DateTime.UtcNow.AddDays(-CalibrationDays));
+            long maxGap = (window >= 1440 ? 24 : 3) * 3600 * 1000L;
             double num = 0, den = 0, rise = 0;
             for (int i = 1; i < ss.Count; i++)
             {
                 var a = ss[i - 1];
                 var b = ss[i];
-                if (b.T < cutoff || b.T - a.T > 3 * 3600 * 1000L) continue;
+                if (b.T < cutoff || b.T - a.T > maxGap) continue;
                 double va = Val(a, key), vb = Val(b, key);
                 if (vb < va || va >= 100 || vb >= 100) continue;   // a reset in between, or capped at the limit
                 double w = usage.Sum(Json.FromUnix(a.T), Json.FromUnix(b.T));
@@ -367,10 +381,64 @@ namespace SentriPet
                 den += w * w;
                 rise += vb - va;
             }
-            if (den <= 0 || rise < 4) return null;   // not enough evidence yet
-            double k = num / den;
-            return k > 0 ? k : (double?)null;
+            double k = den > 0 && rise >= 4 ? num / den : 0;   // (not enough evidence yet: 0)
+            if (k > 0)
+            {
+                SaveCalibration(key, k);
+                return k;
+            }
+            return SavedCalibration(key);
         }
+
+        /// <summary>The last calibration per window (fh, sd…), so the estimate goes on when the desktop app writes no new samples.</summary>
+        internal static string CalibrationFile { get { return Path.Combine(AppPaths.DataDir, "claude-calibration.json"); } }
+
+        static Dictionary<string, double> savedCalibration;
+
+        static Dictionary<string, double> ReadCalibration()
+        {
+            if (savedCalibration != null) return savedCalibration;
+            var d = new Dictionary<string, double>();
+            try
+            {
+                if (File.Exists(CalibrationFile))
+                {
+                    var o = Json.Obj(Json.TryParse(File.ReadAllText(CalibrationFile, System.Text.Encoding.UTF8)));
+                    if (o != null)
+                        foreach (var kv in o)
+                        {
+                            double? k = Json.Num(Json.Get(kv.Value, "k"));
+                            if (k.HasValue && k.Value > 0) d[kv.Key] = k.Value;
+                        }
+                }
+            }
+            catch (Exception ex) { Log.Warn("claude calibration: " + ex.Message); }
+            return savedCalibration = d;
+        }
+
+        static double? SavedCalibration(string key)
+        {
+            double k;
+            return ReadCalibration().TryGetValue(key, out k) ? k : (double?)null;
+        }
+
+        static void SaveCalibration(string key, double k)
+        {
+            var d = ReadCalibration();
+            double old;
+            if (d.TryGetValue(key, out old) && Math.Abs(old - k) <= old * 0.01) return;   // (unchanged: not written every few seconds)
+            d[key] = k;
+            try
+            {
+                AppPaths.EnsureDataDirs();
+                var o = d.ToDictionary(kv => kv.Key, kv => (object)new Dictionary<string, object> { { "k", kv.Value }, { "at", DateTime.UtcNow } });
+                File.WriteAllText(CalibrationFile, Json.Serialize(o, true), new System.Text.UTF8Encoding(false));
+            }
+            catch (Exception ex) { Log.Warn("claude calibration: " + ex.Message); }
+        }
+
+        /// <summary>Forgets the calibration read from the file (tests).</summary>
+        internal static void ForgetCalibration() { savedCalibration = null; }
 
         internal static DateTime? RoundToHour(DateTime? t)
         {
