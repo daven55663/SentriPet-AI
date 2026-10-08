@@ -228,17 +228,32 @@ namespace SentriPet
                         while (m.ResetsAt.Value <= now) m.ResetsAt = m.ResetsAt.Value.AddMinutes(win);
                     else
                     {
-                        // a new 5-hour window opens with the first request after the old one ended
-                        var start = events != null ? events.FirstAfter(ended, now) : null;
-                        m.ResetsAt = start.HasValue ? FloorToMinute(start.Value).AddMinutes(win) : (DateTime?)null;
+                        // a new 5-hour window opens with the first request after the old one ended (and so on): only
+                        // the one running now counts
+                        var start = CurrentWindow(events, ended, now, win);
+                        m.ResetsAt = start.HasValue ? start.Value.AddMinutes(win) : (DateTime?)null;
+                        extrapolateFrom = start ?? now;
                         m.ResetApprox = true;
                     }
                 }
                 else if (win < 1440 && m.Used <= 0 && events != null && m.ResetApprox)
                 {
-                    // idle (or just reset) at the last sample: the first request since then opens the window
-                    var start = events.FirstAfter(baseUtc, now);
-                    if (start.HasValue) m.ResetsAt = FloorToMinute(start.Value).AddMinutes(win);
+                    // idle (or just reset) at the last sample: the first request since then opens a window, and when that
+                    // one is over too, the next request the next one (user report: "about to reset" all afternoon, 86% while 22% was used)
+                    var start = CurrentWindow(events, baseUtc, now, win);
+                    if (start.HasValue)
+                    {
+                        m.ResetsAt = start.Value.AddMinutes(win);
+                        if (start.Value > baseUtc) extrapolateFrom = start.Value;
+                        m.WasReset = FloorToMinute(events.FirstAfter(baseUtc, now).Value) != start.Value;   // an earlier window ran out
+                    }
+                    else if (events.FirstAfter(baseUtc, now).HasValue)
+                    {
+                        // windows opened and ended since: nothing is counting down now
+                        m.ResetsAt = null;
+                        m.WasReset = true;
+                        extrapolateFrom = now;
+                    }
                 }
 
                 double? k = events != null ? Calibrate(samples, key, win) : null;
@@ -339,8 +354,8 @@ namespace SentriPet
                         while (m.ResetsAt.Value <= now) m.ResetsAt = m.ResetsAt.Value.AddMinutes(win);
                     else
                     {
-                        var start = events != null ? events.FirstAfter(bw.ResetsAt, now) : null;
-                        m.ResetsAt = start.HasValue ? FloorToMinute(start.Value).AddMinutes(win) : (DateTime?)null;
+                        var start = CurrentWindow(events, bw.ResetsAt, now, win);
+                        m.ResetsAt = start.HasValue ? start.Value.AddMinutes(win) : (DateTime?)null;
                         m.ResetApprox = true;
                     }
                 }
@@ -522,6 +537,25 @@ namespace SentriPet
         {
             double v;
             return s.U.TryGetValue(key, out v) ? v : 0;
+        }
+
+        /// <summary>
+        /// The 5-hour window running now, once the one known at <paramref name="from"/> is over: each window opens with the
+        /// first Claude Code reply after the previous one ended, so a busy day chains one window after another. Returns
+        /// the current window's start (to the minute), or null when nothing was asked since the last one ended.
+        /// </summary>
+        internal static DateTime? CurrentWindow(ClaudeCodeUsage events, DateTime from, DateTime now, int windowMin)
+        {
+            if (events == null) return null;
+            var first = events.FirstAfter(from, now);
+            while (first.HasValue)
+            {
+                var start = FloorToMinute(first.Value);
+                var end = start.AddMinutes(windowMin);
+                if (end > now) return start;
+                first = events.FirstAfter(end, now);
+            }
+            return null;
         }
 
         /// <summary>

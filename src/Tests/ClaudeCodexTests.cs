@@ -312,6 +312,49 @@ namespace SentriPet
                 t.Check("新的每週校準存起來了", File.ReadAllText(ClaudeProvider.CalibrationFile).Contains("\"sd\""));
                 saved.Dispose();
 
+                // a busy day after an idle sample: one 5-hour window opened and ran out, the next one is running now
+                // (user report: the reset stayed at 15:20 — "about to reset" — all afternoon, 86% used while 22% was)
+                string root7 = t.TempDir("claude-chain");
+                Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", root7);
+                string history7 = Path.Combine(root7, "plan-usage-history.json");
+                ClaudeProvider.HistoryOverride = history7;
+                WriteHistory(history7, new List<Dictionary<string, object>> { Sample(now.AddHours(-14), null, 0, 10) });
+                string transcript7 = Path.Combine(root7, "projects", "D--w", "s.jsonl");
+                WriteLines(transcript7, new[]
+                {
+                    Reply("msg_w0", "req_w0", now.AddHours(-7), "claude-opus-4-1", 100000, 0, 0, 0, null),
+                    Reply("msg_w1", "req_w1", now.AddHours(-6), "claude-opus-4-1", 100000, 0, 0, 0, null),
+                    Reply("msg_w2", "req_w2", now.AddMinutes(-90), "claude-opus-4-1", 50000, 0, 0, 0, null),
+                    Reply("msg_w3", "req_w3", now.AddMinutes(-10), "claude-opus-4-1", 50000, 0, 0, 0, null),
+                });
+                var chain = new ClaudeProvider();
+                var fh7 = chain.Fetch(false, new AppSettings()).Meters.First(m => m.Key == "fh");
+                t.Equal("上一輪 5 小時結束後：重置時間接到這一輪（第一則回覆 + 5 小時）", Minute(now.AddMinutes(-90)).AddHours(5), fh7.ResetsAt);
+                t.Near("只算這一輪的用量：10 萬 token × 2e-5 ≈ 2%", 2, fh7.Used, 0.01);
+                t.Check("中間有一輪跑完：標成重置過", fh7.WasReset && fh7.ResetsAt > now);
+                chain.Dispose();
+
+                WriteLines(transcript7, new[] { Reply("msg_w0", "req_w0", now.AddHours(-7), "claude-opus-4-1", 100000, 0, 0, 0, null) });
+                var ended7 = new ClaudeProvider();
+                var fh8 = ended7.Fetch(false, new AppSettings()).Meters.First(m => m.Key == "fh");
+                t.Check("那一輪也結束了、之後沒再用：歸零、沒有在倒數", fh8.Used == 0 && fh8.ResetsAt == null && fh8.WasReset,
+                        fh8.Used + "% " + fh8.ResetsAt);
+                ended7.Dispose();
+
+                // the window seen in the desktop sample ran out, then another one, and a third is running now
+                WriteHistory(history7, new List<Dictionary<string, object>> { Sample(now.AddHours(-11), null, 10, 10) });
+                WriteLines(transcript7, new[]
+                {
+                    Reply("msg_x0", "req_x0", now.AddHours(-11).AddMinutes(-5), "claude-opus-4-1", 100000, 0, 0, 0, null),
+                    Reply("msg_x1", "req_x1", now.AddHours(-6).AddMinutes(10), "claude-opus-4-1", 100000, 0, 0, 0, null),
+                    Reply("msg_x2", "req_x2", now.AddMinutes(-30), "claude-opus-4-1", 50000, 0, 0, 0, null),
+                });
+                var third = new ClaudeProvider();
+                var fh9 = third.Fetch(false, new AppSettings()).Meters.First(m => m.Key == "fh");
+                t.Equal("桌面版看到的那輪、下一輪都結束了：接到現在這一輪", Minute(now.AddMinutes(-30)).AddHours(5), fh9.ResetsAt);
+                t.Near("只算現在這一輪：5 萬 token × 2e-5 ≈ 1%", 1, fh9.Used, 0.01);
+                third.Dispose();
+
                 ClaudeProvider.HistoryOverride = Path.Combine(root2, "missing.json");
                 var missing = new ClaudeProvider().Fetch(false, new AppSettings());
                 t.Check("找不到紀錄：說明原因", !missing.Meters.Any() && missing.Error.Contains(Os.Linux ? "狀態列" : "找不到用量紀錄"), missing.Error);
