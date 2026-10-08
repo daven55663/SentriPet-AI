@@ -5,7 +5,7 @@
 SentriPet 是在這台電腦上開發與測試的。README 與版本說明裡的 CPU 數字（例如 [#8](https://github.com/daven55663/SentriPet-AI/issues/8) 的量測）
 都是在這裡用 `SentriPet --dev --perf-test` 量的；較慢的 CPU 數字會高一些，但版本之間的差異相近。
 
-最後更新：2026-10-08（SentriPet 2.5.0）
+最後更新：2026-10-08（SentriPet 2.5.1）
 
 ## 硬體
 

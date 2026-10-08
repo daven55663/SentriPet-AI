@@ -6,7 +6,7 @@ The machine SentriPet is developed and tested on. The CPU figures in the README 
 the ones in [#8](https://github.com/daven55663/SentriPet-AI/issues/8)) were measured here with `SentriPet --dev --perf-test`;
 on a slower CPU the numbers are higher, the differences between versions similar.
 
-Last updated: 2026-10-08 (SentriPet 2.5.0)
+Last updated: 2026-10-08 (SentriPet 2.5.1)
 
 ## Hardware
 
