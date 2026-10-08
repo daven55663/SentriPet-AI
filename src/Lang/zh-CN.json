@@ -558,5 +558,7 @@
   "桌面版 {0} 記錄的數字；重置時間是 Claude Code 狀態列的官方時間": "桌面版 {0} 记录的数字；重置时间是 Claude Code 状态栏的官方时间",
   "桌面版 {0} 記錄的數字；重置時間為推算值": "桌面版 {0} 记录的数字；重置时间为推算值",
   "Claude 桌面版只偶爾記錄用量（新版大多在啟動時）。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算之後的用量，數字前面會標「≈」": "Claude 桌面版只偶尔记录用量（新版大多在启动时）。开启后会读 Claude Code 本机对话记录里的 token 数（不读内容），推算之后的用量，数字前面会标“≈”",
-  "資料來源：Claude 讀取桌面版自己記錄的用量，加上 Claude Code 的 token 數推算（重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證。": "数据来源：Claude 读取桌面版自己记录的用量，加上 Claude Code 的 token 数推算（重置时间为推算）；Codex 通过官方 codex app-server 实时查询，并读取本机对话记录；Copilot 读取 CLI 的额度缓存。本程序不读取、也不发送任何登录凭证。"
+  "資料來源：Claude 讀取桌面版自己記錄的用量，加上 Claude Code 的 token 數推算（重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證。": "数据来源：Claude 读取桌面版自己记录的用量，加上 Claude Code 的 token 数推算（重置时间为推算）；Codex 通过官方 codex app-server 实时查询，并读取本机对话记录；Copilot 读取 CLI 的额度缓存。本程序不读取、也不发送任何登录凭证。",
+  "讀不到 lines.json：{0}": "读不到 lines.json：{0}",
+  "目前的造型附帶 {0} 句台詞": "当前的造型附带 {0} 句台词"
 }

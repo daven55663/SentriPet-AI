@@ -1,0 +1,57 @@
+// SentriPet example theme: the lines this theme brings along (#28). They are said while the theme is in use,
+// together with your own lines.json; "mix": true keeps the built-in lines too. Same format as your lines.json:
+// https://github.com/daven55663/SentriPet-AI/blob/main/docs/custom-lines.md
+{
+  "version": 1,
+  "mix": true,
+  "en": {
+    "greeting": ["☁ A little cloud drifted in! Found {names}"],
+    "poke": ["I'm fluffy, don't pop me~", "{name} has {pct} left: clear skies"],
+    "idleGreat": ["Clear skies! {name} has {pct} left", "Perfect weather for coding ☀"],
+    "idleGood": ["Partly cloudy: {pct} of the {meter} quota left", "Drifting along~ resets in {reset}"],
+    "idleWorried": ["Clouds are gathering… only {pct} left", "Looks like rain, go easy"],
+    "idleLow": ["Storm coming! {name} has just {pct} left", "Grab an umbrella, sunny again in {reset}"],
+    "idleEmpty": ["Rainy day, time to rest… sunny in {reset}", "Napping till the rain stops Zzz"],
+    "working": ["{name} is busy making rain…", "Clouds swirling, code running ☁"]
+  },
+  "zh-TW": {
+    "greeting": ["☁ 小雲朵飄過來了！找到 {names}"],
+    "poke": ["軟綿綿的，別把我戳破～", "{name} 還有 {pct}，天氣晴朗"],
+    "idleGreat": ["晴空萬里！{name} 還有 {pct}", "好天氣，最適合寫程式 ☀"],
+    "idleGood": ["多雲時晴，{meter}剩 {pct}", "飄啊飄～ {reset}後重置"],
+    "idleWorried": ["烏雲變多了… 只剩 {pct}", "好像要下雨了，省著點用"],
+    "idleLow": ["大雨要來了！{name} 只剩 {pct}", "撐把傘吧，{reset}後就放晴"],
+    "idleEmpty": ["下雨天，休息一下… {reset}後放晴", "雨停之前先睡一下 Zzz"],
+    "working": ["{name} 正在努力降雨中…", "雲在轉，程式在跑 ☁"]
+  },
+  "zh-CN": {
+    "greeting": ["☁ 小云朵飘过来了！找到 {names}"],
+    "poke": ["软绵绵的，别把我戳破～", "{name} 还有 {pct}，天气晴朗"],
+    "idleGreat": ["晴空万里！{name} 还有 {pct}", "好天气，最适合写程序 ☀"],
+    "idleGood": ["多云转晴，{meter}剩 {pct}", "飘啊飘～ {reset}后重置"],
+    "idleWorried": ["乌云变多了… 只剩 {pct}", "好像要下雨了，省着点用"],
+    "idleLow": ["大雨要来了！{name} 只剩 {pct}", "撑把伞吧，{reset}后就放晴"],
+    "idleEmpty": ["下雨天，休息一下… {reset}后放晴", "雨停之前先睡一会儿 Zzz"],
+    "working": ["{name} 正在努力降雨中…", "云在转，程序在跑 ☁"]
+  },
+  "ja": {
+    "greeting": ["☁ ちいさな雲がふわっと来たよ！{names} を見つけた"],
+    "poke": ["ふわふわだから、つつかないで～", "{name} はまだ {pct}、いい天気だね"],
+    "idleGreat": ["雲ひとつない快晴！{name} はまだ {pct}", "いい天気、コードを書くのにぴったり ☀"],
+    "idleGood": ["くもり時々晴れ、{meter}は残り {pct}", "ふわふわ～ {reset}後にリセット"],
+    "idleWorried": ["雲が増えてきた… 残り {pct}", "雨が降りそう、大事に使ってね"],
+    "idleLow": ["もうすぐ大雨！{name} は残り {pct}", "傘をさしてね、{reset}後には晴れるよ"],
+    "idleEmpty": ["雨の日はひと休み… {reset}後に晴れるよ", "雨がやむまでおやすみ Zzz"],
+    "working": ["{name} がせっせと雨を降らせ中…", "雲はくるくる、プログラムはぐんぐん ☁"]
+  },
+  "ko": {
+    "greeting": ["☁ 작은 구름이 둥실 왔어요! {names} 찾았어요"],
+    "poke": ["말랑말랑하니까 찌르지 마세요~", "{name} 아직 {pct} 남았어요, 날씨 맑음"],
+    "idleGreat": ["구름 한 점 없는 맑은 날! {name} 아직 {pct}", "날씨 좋다, 코딩하기 딱 좋아요 ☀"],
+    "idleGood": ["구름 조금, {meter} {pct} 남음", "둥실둥실~ {reset} 후 초기화"],
+    "idleWorried": ["먹구름이 늘었어요… {pct} 남음", "비가 올 것 같아요, 아껴 써요"],
+    "idleLow": ["곧 큰비가 와요! {name} {pct} 남음", "우산 챙겨요, {reset} 후엔 맑아져요"],
+    "idleEmpty": ["비 오는 날엔 쉬어요… {reset} 후 맑음", "비 그칠 때까지 잘게요 Zzz"],
+    "working": ["{name} 열심히 비 내리는 중…", "구름은 빙글빙글, 프로그램은 쑥쑥 ☁"]
+  }
+}

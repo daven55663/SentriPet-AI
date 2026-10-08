@@ -70,19 +70,44 @@
 | 類型 | 鍵 |
 |---|---|
 | `image` | `width`、`height`；`image`（一張圖）或 `states`（每種狀態一張，見下面）；`animate`：`none`、`bob`（上下飄）、`breathe`（呼吸） |
-| `text` | `text`（可用記號）、`size`、`bold`、`color`、`align`（`left`／`center`／`right`）、`width`、`height`（比一行高就換行）、`font`（`ui`、`number`、`mono`） |
+| `text` | `text`（可用記號）和／或 `states`（每種狀態一段文字，見下面）、`size`、`bold`、`color`、`align`（`left`／`center`／`right`）、`width`、`height`（比一行高就換行）、`font`（`ui`、`number`、`mono`） |
 | `bar` | `width`、`height`、`track`（空的部分）、`fill`、`radius`：填到剩下的比例 |
 | `ring` | `width`（直徑）、`thickness`、`track`、`fill`：繞到剩下的比例 |
 | `rect` | `width`、`height`、`color`、`radius` |
 
-圖片的**狀態**：`great`（剩 60% 以上）、`good`（30～60%）、`worried`（12～30%）、`low`（不到 12%）、`empty`（用完）、
-`unknown`（沒有數字）、`working`（AI 正在工作；有這張圖時優先用）。沒有圖的狀態用 `default`，再沒有就用第一張。
+圖片和文字的**狀態**：`great`（剩 60% 以上）、`good`（30～60%）、`worried`（12～30%）、`low`（不到 12%）、`empty`（用完）、
+`unknown`（沒有數字）、`working`（AI 正在工作；有寫時優先用）。沒有圖的狀態用 `default`，再沒有就用第一張；
+沒有文字的狀態用 `default`，再沒有就用 `text`（也沒有就不顯示）。文字（`text` 和每個狀態的）也可以像 `name` 一樣每種語言各一：
+
+```jsonc
+{ "type": "text", "x": 8, "y": 120, "width": 116, "text": "{name}",
+  "states": { "great": { "en": "All good!", "zh-TW": "精神飽滿！" }, "low": "快沒力了…", "working": "忙碌中 ✦" } }
+```
 
 **顏色**：`#RGB`、`#RRGGBB` 或 `#AARRGGBB`（AA = 不透明度）；文字、進度條、圓環、方塊還可以用 `level`（依剩餘量綠／黃／紅）、
 `provider`（那個 AI 的代表色）、`provider-light`、`provider-dark`。
 
 文字裡的**記號**：`{name}`（AI 名稱）、`{pct}`（剩下多少，`58%`）、`{used}`（用了多少）、`{meter}`（額度名稱）、
 `{reset}`（距離重置多久）、`{plan}`、`{status}`（狀態文字，或沒有數字的原因）。
+
+## 造型自帶的台詞
+
+在 `theme.json` 旁邊放一個 `lines.json`，換上這個造型時桌寵就會說這些台詞（2.5 起，[#28](https://github.com/daven55663/SentriPet-AI/issues/28)），
+每種心情寫一兩句，造型就有自己的個性。寫法和[你自己的 lines.json](custom-lines.zh-TW.md) 一樣：先依語言、再依事件分組
+（每種心情的 `idleGreat`～`idleEmpty`、`working`、`poke`、`greeting`、`done`……）。你自己的台詞也照樣會說；
+寫 `"mix": true` 會連內建的台詞一起混著說。範例造型「小雲朵」每種語言都有附台詞。
+
+```jsonc
+{
+  "mix": true,
+  "zh-TW": {
+    "idleGreat": ["晴空萬里！{name} 還有 {pct}"],
+    "idleLow": ["大雨要來了！{name} 只剩 {pct}"],
+    "poke": ["軟綿綿的，別把我戳破～"]
+  },
+  "en": { "idleGreat": ["Clear skies! {name} has {pct} left"] }
+}
+```
 
 ## 圖片
 
@@ -93,7 +118,9 @@
 
 不會當掉。設定 →「造型」的「自訂造型」底下會列出哪裡有問題：theme.json 讀不懂時整個造型不能用（不會出現在選單）；
 某個元素寫錯（不認得的類型、找不到圖片、看不懂的顏色）時略過那個元素，其他照樣畫；記號、`when`、`meter` 寫錯時會提醒並用預設值。
+造型的 `lines.json` 寫錯的地方也會列在那裡，寫對的台詞照樣會說。
 
 ## 分享
 
-把造型的資料夾壓縮起來分享；別人解壓縮到自己的 `themes` 資料夾、按「重新載入」就能用。造型只有圖片和 JSON，不會執行任何東西。
+把造型的資料夾壓縮起來分享（`lines.json` 也一起帶走）；別人解壓縮到自己的 `themes` 資料夾、按「重新載入」就能用。
+造型只有圖片和 JSON，不會執行任何東西。

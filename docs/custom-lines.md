@@ -37,6 +37,9 @@ seconds; the settings page shows how many of your lines are in use and anything 
 - Comments (`//`) and trailing commas are fine. Keys starting with `_` are ignored.
 - A line that uses a placeholder its event doesn't have (a typo like `{nmae}`) is skipped and the settings page says which
   one; if no line of an event is left, the built-in ones are used. A file that can't be read at all changes nothing.
+- A [custom theme](custom-themes.md#its-own-lines) can bring a `lines.json` of its own (since 2.5). While it is in use,
+  its lines and yours are said together; the built-in lines join in only when every file with lines for that event
+  says `"mix": true`.
 
 ## Events
 

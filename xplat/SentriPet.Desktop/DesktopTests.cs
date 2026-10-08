@@ -254,6 +254,14 @@ namespace SentriPet
                     theme.Tick(1 / 30.0);
                     t.Check("換資料也畫得出來（沒資料、用完）", InkPixels(Snapshots.RenderToBitmap(theme.Root, 1.0)) > 20000);
                     theme.Detach();
+                    // its own lines (#28): said while the theme is on the widget
+                    var pwSettings = new AppSettings { Theme = "custom:cloud" };
+                    var pw = new PetWindow(DesktopController.ForSnapshot(pwSettings, MockData.A()), pwSettings);
+                    pw.SetTheme(ThemeCatalog.Get("custom:cloud").Create());
+                    t.Check("範例造型附帶的台詞：換上造型就會說", CustomLines.Theme != null && CustomLines.Theme == cloud.Lines && CustomLines.For("idleGreat") != null);
+                    pw.SetTheme(ThemeCatalog.Get("pet").Create());
+                    t.Check("換回內建造型：不再說那個造型的台詞", CustomLines.Theme == null);
+                    pw.Close();
                     var fakeTheme = ThemeCatalog.Get("custom:fake-picture").Create();
                     fakeTheme.Attach(new Snapshots.PreviewHost());
                     fakeTheme.Update(MockData.A());

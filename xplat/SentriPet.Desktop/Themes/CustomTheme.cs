@@ -50,6 +50,8 @@ namespace SentriPet
         public override string Name { get { return spec.Name; } }
         public override string Mood { get { return spec.Mood; } }
         public override string Blurb { get { return spec.Blurb; } }
+        /// <summary>The theme's own lines (#28), or null.</summary>
+        public LineSet Lines { get { return spec.Lines; } }
 
         /// <summary>A picture of the theme, loaded once (null when it can't be decoded).</summary>
         Bitmap Picture(string file)

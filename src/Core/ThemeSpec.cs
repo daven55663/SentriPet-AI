@@ -21,12 +21,13 @@ namespace SentriPet
         public string Type;                      // image, text, bar, ring, rect
         public double X, Y, Width, Height;
         public string When;                      // null = always; working, idle, data, nodata
+        // image, text
+        public Dictionary<string, string> States = new Dictionary<string, string>();   // a picture or text per state (great, good, worried, low, empty, unknown, working, default)
         // image
-        public string Image;                     // one picture…
-        public Dictionary<string, string> States = new Dictionary<string, string>();   // …or one per state (great, good, worried, low, empty, unknown, working)
+        public string Image;                     // one picture (or States)
         public string Animate;                   // none, bob, breathe
         // text
-        public string Text, Align = "left", Font = "ui";
+        public string Text, Align = "left", Font = "ui";   // Text: when States has nothing for the state
         public double Size = 12;
         public bool Bold;
         // bar, ring, rect, text
@@ -59,8 +60,11 @@ namespace SentriPet
         public readonly List<string> Problems = new List<string>();
         /// <summary>False when the theme can't be shown at all (Problems says why).</summary>
         public bool Usable;
+        /// <summary>The theme's own lines (#28): lines.json in its folder, said while it is in use; null = none.</summary>
+        public LineSet Lines;
 
         public static string ThemesDir { get { return Path.Combine(AppPaths.DataDir, "themes"); } }
+        public const string LinesFile = "lines.json";
 
         /// <summary>Reads every theme folder (sorted by name). Folders without theme.json are ignored.</summary>
         public static List<ThemeSpec> LoadAll(string dir)
@@ -87,6 +91,17 @@ namespace SentriPet
             {
                 s.Problems.Insert(0, L.F("讀不到 theme.json：{0}", error));
                 s.Usable = false;
+            }
+            // its own lines (#28): problems are the theme's, the theme itself stays usable
+            var lines = Path.Combine(folder, LinesFile);
+            if (s.Usable && File.Exists(lines))
+            {
+                try
+                {
+                    s.Lines = LineSet.Parse(File.ReadAllText(lines, Encoding.UTF8), "themes/" + Path.GetFileName(folder.TrimEnd('/', '\\')) + "/" + LinesFile);
+                    s.Problems.AddRange(s.Lines.Problems);
+                }
+                catch (Exception ex) { s.Problems.Add(L.F("讀不到 lines.json：{0}", ex.Message)); }
             }
             return s;
         }
@@ -147,10 +162,10 @@ namespace SentriPet
         }
 
         /// <summary>A text, or one per language ({"en": "…", "zh-TW": "…"}): the current language, then English, then any.</summary>
-        static string Localized(object o)
+        static string Localized(object o, bool trim = true)
         {
             var s = o as string;
-            if (s != null) return s.Trim().Length > 0 ? s.Trim() : null;
+            if (s != null) return !trim ? s : s.Trim().Length > 0 ? s.Trim() : null;
             var d = Json.Obj(o);
             if (d == null || d.Count == 0) return null;
             object x;
@@ -237,11 +252,25 @@ namespace SentriPet
                     }
                     break;
                 case "text":
-                    e.Text = Json.Str(Json.Get(o, "text"));
-                    if (e.Text == null) { s.Problems.Add(L.F("{0}：沒有 text，略過", where)); return null; }
-                    foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(e.Text, @"\{([^{}\s]*)\}"))
-                        if (Array.IndexOf(Placeholders, m.Groups[1].Value) < 0)
-                            s.Problems.Add(L.F("{0}：不認得 {1}（可以用 {2}）", where, m.Value, string.Join(" ", Placeholders.Select(p => "{" + p + "}"))));
+                    // one text, or one per state (#28); each can also be one per language
+                    e.Text = Localized(Json.Get(o, "text"), false);
+                    var texts = Json.Obj(Json.Get(o, "states"));
+                    if (texts != null)
+                        foreach (var kv in texts)
+                        {
+                            if (Array.IndexOf(StateNames, kv.Key) < 0 && kv.Key != "default")
+                            {
+                                s.Problems.Add(L.F("{0}：沒有「{1}」這種狀態（可以用 {2}）", where, kv.Key, string.Join("、", StateNames)));
+                                continue;
+                            }
+                            var x = Localized(kv.Value, false);
+                            if (x != null) e.States[kv.Key] = x;
+                        }
+                    if (e.Text == null && e.States.Count == 0) { s.Problems.Add(L.F("{0}：沒有 text，略過", where)); return null; }
+                    foreach (var words in new[] { e.Text }.Concat(e.States.Values).Where(x => x != null))
+                        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(words, @"\{([^{}\s]*)\}"))
+                            if (Array.IndexOf(Placeholders, m.Groups[1].Value) < 0)
+                                s.Problems.Add(L.F("{0}：不認得 {1}（可以用 {2}）", where, m.Value, string.Join(" ", Placeholders.Select(p => "{" + p + "}"))));
                     e.Align = Json.Str(Json.Get(o, "align")) ?? "left";
                     if (e.Align != "left" && e.Align != "center" && e.Align != "right") e.Align = "left";
                     e.Font = Json.Str(Json.Get(o, "font")) ?? "ui";
@@ -316,13 +345,19 @@ namespace SentriPet
             }
         }
 
-        public static string PictureFor(ElementSpec e, ProviderView v)
+        /// <summary>An element's picture or text for a pet's state: working (when it has one), its mood, then "default".</summary>
+        static string ForState(ElementSpec e, ProviderView v, string otherwise)
         {
             string p;
             if (v.HasData && v.Active && e.States.TryGetValue("working", out p)) return p;
             if (e.States.TryGetValue(StateOf(v), out p)) return p;
             if (e.States.TryGetValue("default", out p)) return p;
-            return e.Image ?? e.States.Values.FirstOrDefault();
+            return otherwise;
+        }
+
+        public static string PictureFor(ElementSpec e, ProviderView v)
+        {
+            return ForState(e, v, e.Image ?? e.States.Values.FirstOrDefault());
         }
 
         /// <summary>The meter an element shows.</summary>
@@ -343,7 +378,7 @@ namespace SentriPet
         {
             var m = MeterFor(e, v);
             var reset = m != null && m.ResetsAt.HasValue ? m : v.ResetMeter;
-            string s = e.Text
+            string s = ForState(e, v, e.Text ?? "")
                 .Replace("{name}", v.Name ?? "")
                 .Replace("{pct}", !v.HasData ? "?" : m == null ? "" : m.Unlimited ? "∞" : Fmt.Pct(m.Remaining))
                 .Replace("{used}", !v.HasData || m == null || m.Unlimited ? "" : Fmt.Pct(m.Used))

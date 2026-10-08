@@ -7,15 +7,16 @@ namespace SentriPet
     /// <summary>
     /// Things the pets say. Every line is a translatable template (see <see cref="L"/>) with named placeholders:
     /// {name} {pct} {meter} {reset} for the provider, plus the extra ones a line passes in.
-    /// Each kind of line is an event the user can give lines of their own in lines.json (#25, see <see cref="CustomLines"/>).
+    /// Each kind of line is an event the user can give lines of their own in lines.json (#25), and so can a theme (#28);
+    /// see <see cref="CustomLines"/>.
     /// </summary>
     static class Lines
     {
         static readonly Random shared = new Random();
 
         /// <summary>
-        /// One line for an event: the user's own lines for it when there are any (with "mix", together with the built-in
-        /// ones), otherwise one of the built-in lines (translation keys).
+        /// One line for an event: the user's and the theme's own lines for it when there are any (with "mix", together with
+        /// the built-in ones), otherwise one of the built-in lines (translation keys).
         /// </summary>
         static string Choose(string ev, Random rng, ProviderView v, Meter m, string[] extra, params string[] builtIn)
         {
@@ -23,7 +24,7 @@ namespace SentriPet
             var custom = CustomLines.For(ev);
             if (custom != null)
             {
-                int total = custom.Count + (CustomLines.Mix ? builtIn.Length : 0);
+                int total = custom.Count + (CustomLines.MixFor(ev) ? builtIn.Length : 0);
                 int i = rng.Next(total);
                 if (i < custom.Count) return Fill(custom[i], v, m, extra);
                 return Say(builtIn[i - custom.Count], v, m, extra);
@@ -31,8 +32,8 @@ namespace SentriPet
             return Say(builtIn[rng.Next(builtIn.Length)], v, m, extra);
         }
 
-        /// <summary>True when the user has lines of their own for an event and doesn't want the built-in ones.</summary>
-        static bool OnlyCustom(string ev) { return CustomLines.For(ev) != null && !CustomLines.Mix; }
+        /// <summary>True when the user (or the theme) has lines of their own for an event and doesn't want the built-in ones.</summary>
+        static bool OnlyCustom(string ev) { return CustomLines.For(ev) != null && !CustomLines.MixFor(ev); }
 
         /// <summary>Translates a line and fills in its placeholders.</summary>
         static string Say(string key, ProviderView v, Meter m, params string[] extra)

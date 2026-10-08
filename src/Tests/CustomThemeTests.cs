@@ -70,6 +70,26 @@ namespace SentriPet
             var none = new ProviderView { Id = "x", Name = "X", Error = "no" };
             t.Equal("沒資料：unknown", "unknown", ThemeSpec.StateOf(none));
             t.Equal("沒資料時 {pct} 是 ?", "X ?", ThemeSpec.TextFor(ThemeSpec.Parse(Minimal, "mini", null).Elements[0], none));
+
+            // a text per state (#28), each also per language
+            s = ThemeSpec.Parse("{ \"card\": { \"elements\": [ { \"type\": \"text\", \"text\": \"{name}\", \"states\": { \"great\": \"好耶 {pct}\", " +
+                                "\"working\": { \"en\": \"busy\", \"zh-TW\": \"忙\" }, \"unknown\": \"找不到 {status}\", \"sad\": \"x\" } }, " +
+                                "{ \"type\": \"text\", \"states\": { \"low\": \"快沒了 {nope}\" } } ] } }", "t", null);
+            t.Check("文字依狀態：讀得懂；不認得的狀態、記號說出來", s.Usable && s.Elements.Count == 2 && s.Problems.Count == 2 && s.Problems.Any(p => p.Contains("{nope}")),
+                    string.Join(" | ", s.Problems));
+            var words = s.Elements[0];
+            v = Claude();
+            v.Mood = Mood.Great;
+            t.Equal("文字依心情", "好耶 " + Fmt.Pct(m.Remaining), ThemeSpec.TextFor(words, v));
+            v.Mood = Mood.Worried;
+            t.Equal("沒有那個心情的文字：用 text", "Claude", ThemeSpec.TextFor(words, v));
+            v.Active = true;
+            t.Equal("工作中的文字（依語言）", "忙", ThemeSpec.TextFor(words, v));
+            t.Equal("沒資料的文字", "找不到 no", ThemeSpec.TextFor(words, none));
+            t.Equal("只寫了狀態的文字：其他狀態是空的", "", ThemeSpec.TextFor(s.Elements[1], v));
+            L.Use("en");
+            t.Equal("工作中的文字（英文）", "busy", ThemeSpec.TextFor(ThemeSpec.Parse("{ \"card\": { \"elements\": [ { \"type\": \"text\", \"states\": { \"working\": { \"en\": \"busy\", \"zh-TW\": \"忙\" } } } ] } }", "t", null).Elements[0], v));
+            L.Use(L.Source);
         }
 
         static void Mistakes(TestKit t)
@@ -114,6 +134,16 @@ namespace SentriPet
             File.WriteAllBytes(Path.Combine(dir, "b-theme", "face.png"), new byte[] { 137, 80, 78, 71 });
             t.Check("圖片檔存在：讀得到", ThemeSpec.Load(Path.Combine(dir, "b-theme")).Elements.Count == 2);
             t.Equal("沒有造型資料夾：空的", 0, ThemeSpec.LoadAll(Path.Combine(dir, "nothing-here")).Count);
+
+            // its own lines (#28): lines.json next to theme.json
+            t.Check("沒有 lines.json：沒有台詞", all[0].Lines == null);
+            File.WriteAllText(Path.Combine(dir, "a-theme", "lines.json"), "{ \"zh-TW\": { \"poke\": [\"戳 {name}\", \"{bad}\"], \"pokee\": [\"x\"] } }");
+            var a = ThemeSpec.Load(Path.Combine(dir, "a-theme"));
+            t.Check("lines.json：讀得到；寫錯的說出來，造型照樣能用", a.Usable && a.Lines != null && a.Lines.For("poke").SequenceEqual(new[] { "戳 {name}" }) && a.Problems.Count == 2,
+                    string.Join(" | ", a.Problems));
+            File.WriteAllText(Path.Combine(dir, "a-theme", "lines.json"), "{ \"zh-TW\": ");
+            a = ThemeSpec.Load(Path.Combine(dir, "a-theme"));
+            t.Check("lines.json 壞掉：說出來，造型照樣能用、沒有台詞", a.Usable && a.Lines != null && a.Lines.Count == 0 && a.Problems.Count == 1);
         }
 
         /// <summary>examples/themes/cloud, when the tests run in the repository.</summary>
@@ -135,6 +165,9 @@ namespace SentriPet
                 L.Use(lang.Code);
                 var n = ThemeSpec.Load(example);
                 t.Check("範例造型：" + lang.Native + " 有自己的名稱和說明", n.Name != "cloud" && !string.IsNullOrEmpty(n.Mood) && !string.IsNullOrEmpty(n.Blurb) && (lang.Code == "en" || n.Name != "Little Cloud"), n.Name);
+                var events = new[] { "greeting", "poke", "idleGreat", "idleGood", "idleWorried", "idleLow", "idleEmpty", "working" };
+                var lacking = n.Lines == null ? events.ToList() : events.Where(e => n.Lines.For(e) == null).ToList();
+                t.Check("範例造型：" + lang.Native + " 有自己的台詞（每種心情、工作中、戳牠）", lacking.Count == 0, string.Join(", ", lacking));
             }
             L.Use(L.Source);
         }

@@ -71,20 +71,46 @@ one that runs out first), `secondary`, or a number (0 = the first quota of that 
 | Type | Keys |
 |---|---|
 | `image` | `width`, `height`; `image` (one picture) or `states` (a picture per state, below); `animate`: `none`, `bob` (floats up and down), `breathe` |
-| `text` | `text` (with placeholders), `size`, `bold`, `color`, `align` (`left`/`center`/`right`), `width`, `height` (taller than one line wraps), `font` (`ui`, `number`, `mono`) |
+| `text` | `text` (with placeholders) and/or `states` (a text per state, below), `size`, `bold`, `color`, `align` (`left`/`center`/`right`), `width`, `height` (taller than one line wraps), `font` (`ui`, `number`, `mono`) |
 | `bar` | `width`, `height`, `track` (the empty part), `fill`, `radius` — filled up to what is left |
 | `ring` | `width` (the diameter), `thickness`, `track`, `fill` — a ring that goes round as far as what is left |
 | `rect` | `width`, `height`, `color`, `radius` |
 
-**States** of a picture: `great` (60 % or more left), `good` (30–60 %), `worried` (12–30 %), `low` (under 12 %),
+**States** of a picture or a text: `great` (60 % or more left), `good` (30–60 %), `worried` (12–30 %), `low` (under 12 %),
 `empty` (used up), `unknown` (no numbers) and `working` (the AI is working right now; used when there is one). A state
-without a picture uses `default`, or the first picture.
+without a picture uses `default`, or the first picture; a state without a text uses `default`, then `text` (or nothing).
+Texts — `text` and each state's — can also be one per language, like `name`:
+
+```jsonc
+{ "type": "text", "x": 8, "y": 120, "width": 116, "text": "{name}",
+  "states": { "great": { "en": "All good!", "zh-TW": "精神飽滿！" }, "low": "Running low…", "working": "Busy ✦" } }
+```
 
 **Colours**: `#RGB`, `#RRGGBB` or `#AARRGGBB` (AA = opacity), and for texts, bars, rings and boxes also `level`
 (green / yellow / red by what is left), `provider` (the AI's own colour), `provider-light`, `provider-dark`.
 
 **Placeholders** in texts: `{name}` (the AI), `{pct}` (left, `58%`), `{used}` (used), `{meter}` (the quota's name),
 `{reset}` (time until it resets), `{plan}`, `{status}` (the status line — or why there are no numbers).
+
+## Its own lines
+
+Put a `lines.json` next to `theme.json` and the pets say those lines while the theme is in use (since 2.5,
+[#28](https://github.com/daven55663/SentriPet-AI/issues/28)) — a line or two per mood gives a theme its own character.
+It is written just like [your own lines.json](custom-lines.md): grouped by language, then by event (`idleGreat` …
+`idleEmpty` for each mood, `working`, `poke`, `greeting`, `done`…). Your own lines are said too; with `"mix": true` the
+built-in lines stay in as well. The example *Little Cloud* has lines in every language.
+
+```jsonc
+{
+  "mix": true,
+  "en": {
+    "idleGreat": ["Clear skies! {name} has {pct} left"],
+    "idleLow": ["Storm coming! {name} has just {pct} left"],
+    "poke": ["I'm fluffy, don't pop me~"]
+  },
+  "zh-TW": { "idleGreat": ["晴空萬里！{name} 還有 {pct}"] }
+}
+```
 
 ## Pictures
 
@@ -97,9 +123,10 @@ without a picture uses `default`, or the first picture.
 
 Nothing crashes. *Settings → Looks* lists what is wrong under *Your own themes*: a theme.json that can't be read makes the
 theme unusable (it isn't in the menu); a wrong element (unknown type, missing picture, bad colour) is left out and the
-rest is drawn; a mistyped placeholder or a wrong `when`/`meter` is reported and a default is used.
+rest is drawn; a mistyped placeholder or a wrong `when`/`meter` is reported and a default is used. Mistakes in the
+theme's `lines.json` are listed there too; the lines that are fine are still said.
 
 ## Sharing
 
-Zip the theme's folder and share it; others unzip it into their `themes` folder and press *Reload*. Themes are data only
-— pictures and a JSON file — so they can't run anything.
+Zip the theme's folder and share it (its `lines.json` goes along); others unzip it into their `themes` folder and press
+*Reload*. Themes are data only — pictures and JSON files — so they can't run anything.

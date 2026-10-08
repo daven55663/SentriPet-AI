@@ -256,8 +256,10 @@ Code's `CLAUDE_CONFIG_DIR` or Codex's `CODEX_HOME`. Each folder becomes a pet of
 Make a look of your own from pictures and a `theme.json` — a card per AI with pictures (one per mood: plenty left,
 worried, running low, asleep, working…), texts, bars, rings and boxes. *Settings → Looks → Your own themes → Open themes
 folder* opens the `themes` folder with the example *Little Cloud* in it; copy it, change the pictures and numbers, press
-*Reload*, and it is in *Change look*. Themes are only data (nothing is run), so they can be shared as a zipped folder;
-mistakes are listed on the settings page instead of crashing. Format: [docs/custom-themes.md](docs/custom-themes.md).
+*Reload*, and it is in *Change look*. Since 2.5 a theme can also have a text per mood and lines of its own (a
+`lines.json` next to `theme.json`), said while it is in use — the example cloud talks about the weather. Themes are only
+data (nothing is run), so they can be shared as a zipped folder; mistakes are listed on the settings page instead of
+crashing. Format: [docs/custom-themes.md](docs/custom-themes.md).
 
 ### Growing pets and achievements
 

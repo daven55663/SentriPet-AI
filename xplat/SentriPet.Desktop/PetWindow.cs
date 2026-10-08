@@ -93,6 +93,8 @@ namespace SentriPet
                 host.Children.Clear();
             }
             theme = t;
+            var custom = t as CustomTheme;
+            CustomLines.Theme = custom != null ? custom.Lines : null;   // the pets say the theme's own lines too (#28)
             t.Attach(this);
             t.SetGrowth(ctl.GrowthLevel);   // (#23) before its pets are made
             host.Children.Add(t.Root);

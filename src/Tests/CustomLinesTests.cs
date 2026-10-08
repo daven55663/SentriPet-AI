@@ -14,10 +14,12 @@ namespace SentriPet
             {
                 t.Run("Custom lines", () => Body(t));
                 t.Run("Example file", () => Example(t));
+                t.Run("Theme lines", () => ThemeLines(t));
             }
             finally
             {
                 CustomLines.Override = null;
+                CustomLines.Theme = null;
                 CustomLines.Reload();
                 L.Use(L.Source);
             }
@@ -118,6 +120,41 @@ namespace SentriPet
             L.Use(L.Source);
             var missing = CustomLines.Events.Keys.Where(e => !CustomLines.Example.Contains(e)).ToList();
             t.Check("每個事件都寫在範例檔的說明裡", missing.Count == 0, string.Join(", ", missing));
+        }
+
+        /// <summary>A theme's own lines (#28), next to the user's.</summary>
+        static void ThemeLines(TestKit t)
+        {
+            L.Use(L.Source);
+            var v = Claude(Mood.Great);
+            var all = new List<ProviderView> { v };
+            var pct = Fmt.Pct((v.Headline ?? v.Primary).Remaining);
+            var rng = new Random(11);
+            Func<int, List<string>> idle = n => Enumerable.Range(0, n).Select(i => Lines.Idle(v, all, rng)).ToList();
+
+            Use("{ }");
+            CustomLines.Theme = LineSet.Parse("{ \"zh-TW\": { \"idleGreat\": [\"造型說 {pct}\"] } }", "test");
+            t.Check("造型的台詞：只用造型的（沒有 mix）", idle(40).All(s => s == "造型說 " + pct));
+            t.Equal("設定頁的自訂台詞數量不算造型的", 0, CustomLines.Count);
+            t.Check("造型沒寫的事件：用內建的", Lines.Warn(v, v.Headline ?? v.Primary).Contains("Claude"));
+
+            Use("{ \"zh-TW\": { \"idleGreat\": [\"我說的\"] } }");
+            var said = idle(200);
+            t.Check("自己的和造型的台詞都會說，不混內建的", said.Contains("我說的") && said.Contains("造型說 " + pct) && said.All(s => s == "我說的" || s == "造型說 " + pct),
+                    string.Join(" | ", said.Distinct()));
+            Use("{ \"mix\": true, \"zh-TW\": { \"idleGreat\": [\"我說的\"] } }");
+            t.Check("只有自己的 mix：造型沒說要混，內建的還是不說", idle(200).All(s => s == "我說的" || s == "造型說 " + pct));
+
+            Use("{ }");
+            CustomLines.Theme = LineSet.Parse("{ \"mix\": true, \"all\": { \"idleGreat\": [\"雲\"] } }", "test");
+            said = idle(200);
+            t.Check("造型 mix：造型的和內建的都會說；all 用在每種語言", said.Contains("雲") && said.Any(s => s != "雲"));
+
+            CustomLines.Theme = LineSet.Parse("{ \"zh-TW\": { \"idleGreat\": [\"{oops}\"] } }", "test");
+            t.Check("造型的台詞寫錯：略過、說出來、用內建的", CustomLines.Theme.Problems.Count == 1 && CustomLines.For("idleGreat") == null && !idle(20).Any(s => s.Contains("{")));
+
+            CustomLines.Theme = null;
+            t.Check("換回沒有台詞的造型：回到內建的", CustomLines.For("idleGreat") == null && idle(20).All(s => !s.StartsWith("造型說")));
         }
     }
 }

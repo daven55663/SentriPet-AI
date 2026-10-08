@@ -870,8 +870,11 @@ namespace SentriPet
                 text = L.F("目前的語言有 {0} 句自訂台詞", CustomLines.Count) + (CustomLines.Mix ? L.T("（和內建的台詞混著說）") : "");
                 foreach (var p in CustomLines.Problems.Take(5)) text += "\n⚠ " + p;
                 if (CustomLines.Problems.Count > 5) text += "\n" + L.F("……還有 {0} 個問題", CustomLines.Problems.Count - 5);
-                text = L.Finish(text);
             }
+            var theme = CustomLines.Theme;   // (#28)
+            if (theme != null && theme.Count > 0)
+                text += (text.Length > 0 ? "\n" : "") + L.F("目前的造型附帶 {0} 句台詞", theme.Count) + (theme.Mix ? L.T("（和內建的台詞混著說）") : "");
+            text = L.Finish(text);
             if (text == linesShown) return;
             linesShown = text;
             linesStatus.Text = text;
