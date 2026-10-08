@@ -230,7 +230,8 @@ namespace SentriPet
                 // a text per state (#28): texts, not picture files
                 Directory.CreateDirectory(System.IO.Path.Combine(dir, "words"));
                 File.WriteAllText(System.IO.Path.Combine(dir, "words", "theme.json"),
-                    "{ \"card\": { \"elements\": [ { \"type\": \"text\", \"text\": \"{name}\", \"states\": { \"great\": \"好耶\", \"low\": { \"en\": \"low\", \"zh-TW\": \"快沒了\" } } } ] } }");
+                    "{ \"card\": { \"elements\": [ { \"type\": \"text\", \"text\": \"{name}\", \"states\": { \"great\": \"好耶\", \"low\": { \"en\": \"low\", \"zh-TW\": \"快沒了\" } } }, " +
+                    "{ \"type\": \"rect\", \"width\": 7, \"height\": 7, \"color\": \"provider\" } ] } }");
                 try
                 {
                     ThemeCatalog.LoadCustom(dir);
@@ -245,6 +246,13 @@ namespace SentriPet
                     var texts = ThemeCatalog.CustomSpecs.FirstOrDefault(s => s.Id == "custom:words");
                     t.Check("依狀態換的文字不會被當成圖片檢查", texts != null && texts.Usable && texts.Problems.Count == 0 && texts.Elements[0].States.Count == 2,
                             texts == null ? "missing" : string.Join(" | ", texts.Problems));
+                    var boxes = ThemeCatalog.Get("custom:words").Create();
+                    boxes.Attach(new Snapshots.PreviewHost());
+                    boxes.Update(MockData.A());
+                    var box = boxes.Root.GetLogicalDescendants().OfType<Border>().FirstOrDefault(b => b.Width == 7 && b.Height == 7);
+                    var boxColor = box != null && box.Background is Avalonia.Media.ISolidColorBrush ? ((Avalonia.Media.ISolidColorBrush)box.Background).Color : Avalonia.Media.Colors.Transparent;
+                    t.Equal("方塊用 provider 顏色：跟著那個 AI 的代表色", MockData.A()[0].Color.ToColor().ToString(), boxColor.ToString());
+                    boxes.Detach();
                     t.Equal("選單：8 種內建＋可以用的自訂造型", 11, ThemeCatalog.Choices.Count);
 
                     var theme = ThemeCatalog.Get("custom:cloud").Create();

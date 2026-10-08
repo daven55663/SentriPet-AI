@@ -251,6 +251,9 @@ namespace SentriPet
                             SetBrush(it, e.Fill, v, m, b => it.Arc.Stroke = b);
                             break;
                         }
+                        case "rect":
+                            if (e.Color != null && !e.Color.StartsWith("#")) SetBrush(it, e.Color, v, m, b => ((Border)it.Control).Background = b);
+                            break;
                     }
                 }
             }
