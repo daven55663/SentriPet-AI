@@ -230,9 +230,10 @@ namespace SentriPet
                     {
                         // a new 5-hour window opens with the first request after the old one ended (and so on): only
                         // the one running now counts
-                        var start = CurrentWindow(events, ended, now, win);
+                        DateTime opened;
+                        var start = CurrentWindow(events, ended, now, win, out opened);
                         m.ResetsAt = start.HasValue ? start.Value.AddMinutes(win) : (DateTime?)null;
-                        extrapolateFrom = start ?? now;
+                        extrapolateFrom = start.HasValue ? opened.AddTicks(-1) : now;
                         m.ResetApprox = true;
                     }
                 }
@@ -240,11 +241,12 @@ namespace SentriPet
                 {
                     // idle (or just reset) at the last sample: the first request since then opens a window, and when that
                     // one is over too, the next request the next one (user report: "about to reset" all afternoon, 86% while 22% was used)
-                    var start = CurrentWindow(events, baseUtc, now, win);
+                    DateTime opened;
+                    var start = CurrentWindow(events, baseUtc, now, win, out opened);
                     if (start.HasValue)
                     {
                         m.ResetsAt = start.Value.AddMinutes(win);
-                        if (start.Value > baseUtc) extrapolateFrom = start.Value;
+                        extrapolateFrom = opened.AddTicks(-1);
                         m.WasReset = FloorToMinute(events.FirstAfter(baseUtc, now).Value) != start.Value;   // an earlier window ran out
                     }
                     else if (events.FirstAfter(baseUtc, now).HasValue)
@@ -354,7 +356,8 @@ namespace SentriPet
                         while (m.ResetsAt.Value <= now) m.ResetsAt = m.ResetsAt.Value.AddMinutes(win);
                     else
                     {
-                        var start = CurrentWindow(events, bw.ResetsAt, now, win);
+                        DateTime opened;
+                        var start = CurrentWindow(events, bw.ResetsAt, now, win, out opened);
                         m.ResetsAt = start.HasValue ? start.Value.AddMinutes(win) : (DateTime?)null;
                         m.ResetApprox = true;
                     }
@@ -543,16 +546,19 @@ namespace SentriPet
         /// The 5-hour window running now, once the one known at <paramref name="from"/> is over: each window opens with the
         /// first Claude Code reply after the previous one ended, so a busy day chains one window after another. Returns
         /// the current window's start (to the minute), or null when nothing was asked since the last one ended.
+        /// <paramref name="opened"/> is the reply that opened it: its usage counts from just before that reply, as the
+        /// start is cut to the minute and a reply right on the minute would otherwise be left out.
         /// </summary>
-        internal static DateTime? CurrentWindow(ClaudeCodeUsage events, DateTime from, DateTime now, int windowMin)
+        internal static DateTime? CurrentWindow(ClaudeCodeUsage events, DateTime from, DateTime now, int windowMin, out DateTime opened)
         {
+            opened = default(DateTime);
             if (events == null) return null;
             var first = events.FirstAfter(from, now);
             while (first.HasValue)
             {
                 var start = FloorToMinute(first.Value);
                 var end = start.AddMinutes(windowMin);
-                if (end > now) return start;
+                if (end > now) { opened = first.Value; return start; }
                 first = events.FirstAfter(end, now);
             }
             return null;

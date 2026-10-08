@@ -355,6 +355,22 @@ namespace SentriPet
                 t.Near("只算現在這一輪：5 萬 token × 2e-5 ≈ 1%", 1, fh9.Used, 0.01);
                 third.Dispose();
 
+                // the reply that opens the window right on the minute (no seconds) counts too: the start is cut to the
+                // minute, and the tests above failed on CI whenever they ran at hh:mm:00
+                var onMinute = Minute(now);
+                WriteLines(transcript7, new[] { Reply("msg_y0", "req_y0", onMinute.AddMinutes(-30), "claude-opus-4-1", 50000, 0, 0, 0, null) });
+                var exact = new ClaudeProvider();
+                var fh10 = exact.Fetch(false, new AppSettings()).Meters.First(m => m.Key == "fh");
+                t.Near("上一輪結束後、整分鐘的第一則回覆也算進新的一輪（5 萬 token ≈ 1%）", 1, fh10.Used, 0.01);
+                exact.Dispose();
+                WriteHistory(history7, new List<Dictionary<string, object>> { Sample(now.AddHours(-14), null, 0, 10) });
+                WriteLines(transcript7, new[] { Reply("msg_y1", "req_y1", onMinute.AddMinutes(-10), "claude-opus-4-1", 50000, 0, 0, 0, null) });
+                var idle = new ClaudeProvider();
+                var fh11 = idle.Fetch(false, new AppSettings()).Meters.First(m => m.Key == "fh");
+                t.Near("閒置後、整分鐘的第一則回覆也算（5 萬 token ≈ 1%）", 1, fh11.Used, 0.01);
+                t.Equal("……重置時間從那一分鐘起算", onMinute.AddMinutes(-10).AddHours(5), fh11.ResetsAt);
+                idle.Dispose();
+
                 ClaudeProvider.HistoryOverride = Path.Combine(root2, "missing.json");
                 var missing = new ClaudeProvider().Fetch(false, new AppSettings());
                 t.Check("找不到紀錄：說明原因", !missing.Meters.Any() && missing.Error.Contains(Os.Linux ? "狀態列" : "找不到用量紀錄"), missing.Error);
