@@ -153,6 +153,7 @@ namespace SentriPet
             snap.ObservedAt = lastUtc;
             snap.Source = L.T("Claude 桌面版快取");
             bool estimated = false, uncalibrated = false;
+            bool startFromReply = false, weeklyUnknown = false;   // (#31) for the hints below
 
             foreach (var key in OrderedKeys(last.U.Keys))
             {
@@ -235,6 +236,7 @@ namespace SentriPet
                         m.ResetsAt = start.HasValue ? start.Value.AddMinutes(win) : (DateTime?)null;
                         extrapolateFrom = start.HasValue ? opened.AddTicks(-1) : now;
                         m.ResetApprox = true;
+                        if (start.HasValue) startFromReply = true;
                     }
                 }
                 else if (win < 1440 && m.Used <= 0 && events != null && m.ResetApprox)
@@ -248,6 +250,7 @@ namespace SentriPet
                         m.ResetsAt = start.Value.AddMinutes(win);
                         extrapolateFrom = opened.AddTicks(-1);
                         m.WasReset = FloorToMinute(events.FirstAfter(baseUtc, now).Value) != start.Value;   // an earlier window ran out
+                        startFromReply = true;
                     }
                     else if (events.FirstAfter(baseUtc, now).HasValue)
                     {
@@ -271,6 +274,7 @@ namespace SentriPet
                         estimated = true;
                     }
                 }
+                if (win >= 1440 && !m.ResetsAt.HasValue) weeklyUnknown = true;
                 snap.Meters.Add(m);
             }
 
@@ -297,7 +301,7 @@ namespace SentriPet
             {
                 // Claude Code was used since, but there is nothing to turn its tokens into a percentage with yet
                 snap.Stale = true;
-                snap.Note = L.F("桌面版最近一次記錄是 {0}；之後用了 Claude Code，但還沒有足夠的紀錄可以推算", baseTime);
+                snap.Note = L.F("桌面版最近一次記錄是 {0}；之後用了 Claude Code，但還沒有足夠的紀錄可以推算，要等桌面版再記錄一次（它不定時才記錄）", baseTime);
             }
             else
             {
@@ -305,6 +309,14 @@ namespace SentriPet
                 snap.Note = officialReset ? L.F("桌面版 {0} 記錄的數字；重置時間是 Claude Code 狀態列的官方時間", baseTime)
                                           : L.F("桌面版 {0} 記錄的數字；重置時間為推算值", baseTime);
             }
+
+            // (#31) what the numbers can't see, and what the user can do about it
+            var hints = new List<string>();
+            if (unexplained && !settings.ClaudeStatusBridge && AppPaths.Which("claude") != null)
+                hints.Add(L.T("在終端機用 claude 的話，在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」就能看到官方數字"));   // (only the terminal's claude runs it)
+            if (startFromReply) hints.Add(L.T("5 小時從 Claude Code 第一則回覆起算，聊天或網頁的用量看不到，實際可能更早重置"));
+            if (weeklyUnknown) hints.Add(L.T("每週重置時間推算不出來，可以在 設定 → AI 服務 填一次，例如「週四 23:00」"));
+            if (hints.Count > 0) snap.Note = string.Join(L.T("；"), new[] { snap.Note }.Concat(hints));
             snap.Active = activity.ActiveWithin(90);
             return snap;
         }
