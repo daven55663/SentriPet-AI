@@ -365,5 +365,14 @@ xplat/                新的跨平台版（.NET 10）
   - 發佈 v2.5.1：CI、四個安裝檔的自我測試、Scoop／Homebrew／winget 安裝測試都通過。這台電腦更新到 2.5.1
     （本機 GIF 版 `local/animated-themes` 合併 main 後安裝），記錄檔無錯誤，設定裡記著的舊版 computer-use 已清掉。
     winget 的 2.4.0 PR（microsoft/winget-pkgs#443980）還在等合併；合併後直接送 2.5.1。
+- 2026-10-09：**#30 Codex 即時查詢失敗（舊版 Codex）**。第一次在 Mac（Apple 晶片）上從原始碼編譯執行（.NET 10.0.401 SDK），
+  記錄檔每次都有 `codex live query: Invalid request: invalid type: map, expected unit`，只能退回本機紀錄。
+  - 原因：這台的 Codex 是 VS Code 擴充附的 `codex-cli 0.151.0-alpha.7.2`，它的 `account/rateLimits/read` 不接受參數；
+    SentriPet 帶了 `{"excludeResetCreditDetails":true}` 就整個被拒絕。直接對它試：`params: null` 或不帶 `params` 都正常回傳。
+  - 修正（`CodexProvider.QueryLive`）：回應是 `Invalid request…` 時，在同一個連線改用不帶參數的查詢再問一次，新舊版都能用。
+    假的 app-server 加上 `--unit-params` 模擬舊版，新增測試（沒修正時失敗、修正後通過）。核心測試 741 → 742 項、自我測試 136 項（Mac）。
+    修正後對實際帳號查到 Plus 方案、5 小時 0%、每週 9%。
+  - 同一天也查了 #31：剛安裝時 Claude 一直顯示 0%（官方 40%／6%）。桌面版當天只寫了 3 筆（都是 0%），9/27 的用量全在聊天、
+    沒有 Claude Code 回覆，所以算不出校準值；開啟 5 小時窗口的那次用量也不在 Claude Code 紀錄裡，重置時間晚了 23 分鐘。還沒改。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。

@@ -453,6 +453,13 @@ namespace SentriPet
                 input.WriteLine("{\"id\":2,\"method\":\"account/rateLimits/read\",\"params\":{\"excludeResetCreditDetails\":true}}");
                 var resp = WaitFor(lines, 2, 25000);
                 if (resp == null) { error = L.T("查詢逾時"); return null; }
+                if (Json.Get(resp, "error") != null && ErrorText(resp).StartsWith("Invalid request", StringComparison.OrdinalIgnoreCase))
+                {
+                    // older Codex versions take no params here ("invalid type: map, expected unit"): ask again without them
+                    input.WriteLine("{\"id\":3,\"method\":\"account/rateLimits/read\"}");
+                    resp = WaitFor(lines, 3, 25000);
+                    if (resp == null) { error = L.T("查詢逾時"); return null; }
+                }
                 if (Json.Get(resp, "error") != null) { error = ErrorText(resp); return null; }
 
                 var result = Json.Get(resp, "result");
