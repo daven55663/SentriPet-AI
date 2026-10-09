@@ -299,6 +299,7 @@ namespace SentriPet
                 t.Near("每週：16% + 10 萬 token ≈ 17%", 17, sd5.Used, 0.01);
                 t.Check("5 小時沒有相隔夠近的紀錄、也沒有存下的校準：不推算", sparse.LastK5 == null && fh5.Used == 0 && !fh5.UsedApprox);
                 t.Check("用了 Claude Code 卻推算不出 5 小時：標成舊資料並說明", s5.Stale && s5.Note.Contains("還沒有足夠的紀錄"), s5.Note);
+                t.Check("……並說明要等桌面版再記錄一次（#31）", s5.Note.Contains("要等桌面版再記錄一次"), s5.Note);
                 sparse.Dispose();
 
                 TestKit.WriteFile(ClaudeProvider.CalibrationFile, "{ \"fh\": { \"k\": 2e-5, \"at\": \"2026-10-01T06:00:00Z\" } }");
@@ -370,6 +371,17 @@ namespace SentriPet
                 t.Near("閒置後、整分鐘的第一則回覆也算（5 萬 token ≈ 1%）", 1, fh11.Used, 0.01);
                 t.Equal("……重置時間從那一分鐘起算", onMinute.AddMinutes(-10).AddHours(5), fh11.ResetsAt);
                 idle.Dispose();
+
+                // (#31) the last desktop sample was idle (0%) and no weekly reset was ever seen: say what the numbers can't see
+                WriteHistory(history7, new List<Dictionary<string, object>> { Sample(now.AddHours(-3), null, 0, 0) });
+                WriteLines(transcript7, new[] { Reply("msg_z0", "req_z0", now.AddMinutes(-30), "claude-opus-4-1", 50000, 0, 0, 0, null) });
+                var hinted = new ClaudeProvider();
+                var s12 = hinted.Fetch(false, new AppSettings());
+                t.Check("5 小時從第一則回覆起算：說明聊天的用量看不到", s12.Note.Contains("聊天或網頁的用量看不到"), s12.Note);
+                t.Check("每週重置時間推算不出來：提示可以在設定填", s12.Meters.First(m => m.Key == "sd").ResetsAt == null && s12.Note.Contains("每週重置時間推算不出來"), s12.Note);
+                var s13 = hinted.Fetch(false, new AppSettings { ClaudeWeeklyReset = "週四 23:00" });
+                t.Check("……填了每週重置時間就不再提示", s13.Meters.First(m => m.Key == "sd").ResetsAt != null && !s13.Note.Contains("每週重置時間推算不出來"), s13.Note);
+                hinted.Dispose();
 
                 ClaudeProvider.HistoryOverride = Path.Combine(root2, "missing.json");
                 var missing = new ClaudeProvider().Fetch(false, new AppSettings());

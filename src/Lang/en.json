@@ -554,12 +554,15 @@
   "{0} 太大了（{1}×{2}，最大 4096×4096）": "{0} is too big ({1}×{2}, at most 4096×4096)",
   "{0} 打不開，不是圖片或檔案壞掉了": "Can't open {0}: not a picture, or the file is damaged",
   "以桌面版 {0} 記錄的數字為基準，加上之後 Claude Code 用掉的 token 推算（≈）": "Based on the desktop app's figure from {0}, plus the tokens Claude Code has used since (≈)",
-  "桌面版最近一次記錄是 {0}；之後用了 Claude Code，但還沒有足夠的紀錄可以推算": "The desktop app last recorded at {0}; Claude Code was used since, but there isn't enough history to estimate it yet",
+  "桌面版最近一次記錄是 {0}；之後用了 Claude Code，但還沒有足夠的紀錄可以推算，要等桌面版再記錄一次（它不定時才記錄）": "The desktop app last recorded at {0}; Claude Code was used since, but there isn't enough history to estimate it yet — that needs the desktop app's next record (it records only now and then)",
   "桌面版 {0} 記錄的數字；重置時間是 Claude Code 狀態列的官方時間": "The desktop app's figure from {0}; reset times are the official ones from the Claude Code status line",
   "桌面版 {0} 記錄的數字；重置時間為推算值": "The desktop app's figure from {0}; reset times are estimated",
   "Claude 桌面版只偶爾記錄用量（新版大多在啟動時）。開啟後會讀 Claude Code 本機對話紀錄裡的 token 數（不讀內容），推算之後的用量，數字前面會標「≈」": "The Claude desktop app records the usage only now and then (recent versions mostly when they start). With this on, SentriPet reads the token counts in Claude Code's local transcripts (never the content) to estimate the usage since; estimates are marked \"≈\"",
   "資料來源：Claude 讀取桌面版自己記錄的用量，加上 Claude Code 的 token 數推算（重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證。": "Sources: Claude — the usage the desktop app records itself, plus estimates from Claude Code's token counts (reset times estimated); Codex — the official codex app-server, live, plus the local session logs; Copilot — the CLI's quota cache. SentriPet never reads or sends any sign-in credentials.",
   "讀不到 lines.json：{0}": "Can't read lines.json: {0}",
   "目前的造型附帶 {0} 句台詞": "The current look brings {0} lines of its own",
-  "Codex 原本的通知程式找不到了（可能是 Codex 更新過），先不執行：{0}": "Codex's own notify program is missing (Codex was probably updated), so it isn't run: {0}"
+  "Codex 原本的通知程式找不到了（可能是 Codex 更新過），先不執行：{0}": "Codex's own notify program is missing (Codex was probably updated), so it isn't run: {0}",
+  "在終端機用 claude 的話，在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」就能看到官方數字": "If you use claude in a terminal, turn on \"Connect the Claude Code status line\" in Settings → AI services for the official numbers",
+  "5 小時從 Claude Code 第一則回覆起算，聊天或網頁的用量看不到，實際可能更早重置": "The 5 hours are counted from Claude Code's first reply; usage in chat or on the web isn't visible, so it may reset earlier",
+  "每週重置時間推算不出來，可以在 設定 → AI 服務 填一次，例如「週四 23:00」": "The weekly reset time can't be estimated; enter it once in Settings → AI services, e.g. \"Thu 23:00\""
 }
