@@ -15,7 +15,8 @@ namespace SentriPet
         static int Main(string[] args)
         {
             // the Codex tests start this program again as a stand-in for "codex app-server"
-            if (args.Length > 0 && args[0] == "--fake-codex-app-server") return FakeCodexServer.Run(args.Length > 1 ? args[1] : null);
+            if (args.Length > 0 && args[0] == "--fake-codex-app-server")
+                return FakeCodexServer.Run(args.Length > 1 ? args[1] : null, Array.IndexOf(args, "--unit-params") > 1);
 
             AppPaths.UseDevProfile();
             var t = new TestKit();

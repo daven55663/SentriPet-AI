@@ -493,6 +493,12 @@ namespace SentriPet
                 t.Check("數字與方案", s.Meters.Count == 2 && s.Meters[0].Used == 25 && s.Meters[1].Used == 40 && s.Plan == "Pro");
                 t.Close("重置時間", now.AddHours(2), s.Meters.Count > 0 ? s.Meters[0].ResetsAt : null, TimeSpan.FromSeconds(2));
 
+                // older Codex versions reject params on account/rateLimits/read ("invalid type: map, expected unit")
+                CodexProvider.ArgsOverride = prefix + "--fake-codex-app-server \"" + single + "\" --unit-params";
+                var old = new CodexProvider().Fetch(true, live);
+                t.Check("舊版 Codex（不接受參數）：改用不帶參數的查詢", old.Error == null && old.Source == "Codex 官方 app-server" && old.Meters.Count == 2 && old.Meters[0].Used == 25,
+                    old.Error ?? old.Note ?? old.Source);
+
                 string byId = Path.Combine(dir, "byid.json");
                 TestKit.WriteFile(byId, "{\"rateLimitsByLimitId\":{\"codex\":{\"limitId\":\"codex\",\"primary\":{\"usedPercent\":10,\"windowDurationMins\":300}," +
                     "\"secondary\":{\"usedPercent\":20,\"windowDurationMins\":10080}},\"codex_bengalfox\":{\"limitId\":\"codex_bengalfox\",\"limitName\":\"GPT-5.3-Codex-Spark\"," +

@@ -239,10 +239,11 @@ namespace SentriPet
     /// <summary>
     /// --fake-codex-app-server result.json: a stand-in for "codex app-server" used by the self-test. Speaks the same
     /// line-based JSON-RPC over stdin/stdout and answers account/rateLimits/read with the file's content.
+    /// With --unit-params it acts like older Codex versions, which reject any params on that method.
     /// </summary>
     static class FakeCodexServer
     {
-        public static int Run(string resultFile)
+        public static int Run(string resultFile, bool unitParams = false)
         {
             string result = "{}";
             if (resultFile != null && File.Exists(resultFile))
@@ -260,6 +261,8 @@ namespace SentriPet
                 string method = Json.Str(Json.Get(o, "method"));
                 string rid = Json.Serialize(id, false);
                 if (method == "initialize") stdout.WriteLine("{\"id\":" + rid + ",\"result\":{\"userAgent\":\"fake-codex/0.0\"}}");
+                else if (method == "account/rateLimits/read" && unitParams && Json.Obj(Json.Get(o, "params")) != null)
+                    stdout.WriteLine("{\"id\":" + rid + ",\"error\":{\"code\":-32600,\"message\":\"Invalid request: invalid type: map, expected unit\"}}");
                 else if (method == "account/rateLimits/read") stdout.WriteLine("{\"id\":" + rid + ",\"result\":" + result + "}");
                 else stdout.WriteLine("{\"id\":" + rid + ",\"error\":{\"message\":\"unknown method\"}}");
             }
