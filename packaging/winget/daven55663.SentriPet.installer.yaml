@@ -1,17 +1,17 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
 
 PackageIdentifier: daven55663.SentriPet
-PackageVersion: 2.5.1
+PackageVersion: 2.6.0
 InstallerType: zip
 NestedInstallerType: portable
 NestedInstallerFiles:
 - RelativeFilePath: SentriPet.exe
   PortableCommandAlias: sentripet
 MinimumOSVersion: 10.0.17763.0
-ReleaseDate: 2026-10-08
+ReleaseDate: 2026-10-16
 Installers:
 - Architecture: x64
-  InstallerUrl: https://github.com/daven55663/SentriPet-AI/releases/download/v2.5.1/SentriPet-2.5.1-win-x64.zip
-  InstallerSha256: 80F4B5D82B80EAAAB87EC5BA849C348735780AD02E15A2CA605CB76098125D80
+  InstallerUrl: https://github.com/daven55663/SentriPet-AI/releases/download/v2.6.0/SentriPet-2.6.0-win-x64.zip
+  InstallerSha256: 60510F61F600C0F3AD7BAF9CF389B5FF797C6A8E402A4D81DC5B22EFDE4A403B
 ManifestType: installer
 ManifestVersion: 1.12.0
