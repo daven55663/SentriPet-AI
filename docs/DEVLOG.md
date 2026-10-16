@@ -402,5 +402,9 @@ xplat/                新的跨平台版（.NET 10）
 「用拖曳替狀態換圖」，附編輯器截圖（`docs/images/state-editor.png`、`docs/images/en/state-editor.png`，用 `--snapshot` 產生）。
   編輯器的狀態名稱「工作中」改用獨立的「正在工作」（英文原本沿用狀態文字的小寫 working）。
   開發環境更新：Claude 桌面版 2.42304.0（Claude Code 2.1.299）、Codex 26.1013、Windows 組建 26200.9711。
+  - 發佈 v2.6.0：CI、四個安裝檔的自我測試通過；套件管理器測試 Scoop、winget 通過，Homebrew 失敗——不是程式的問題，
+    而是 Homebrew 新版的 `brew style` 規定 cask 要用 `postflight_steps` 取代 `postflight`（Cask/InstallSteps）。
+    cask 與 `update-manifests.py` 的範本改成 `postflight_steps` 裡的 `run "/usr/bin/xattr"`（路徑用 `{{appdir}}`），
+    加 `must_succeed: false`：沒有隔離標記時 xattr 會回傳錯誤，新的 `run` 預設會因此中止安裝（舊的 system_command 不會）。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。

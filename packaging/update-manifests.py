@@ -94,9 +94,9 @@ def cask(version, sha):
   app "SentriPet.app"
 
   # SentriPet is not signed with an Apple Developer ID (it is signed ad hoc), so macOS would refuse to open it
-  # after the download; installing it through this tap is the approval
-  postflight do
-    system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{appdir}/SentriPet.app"]
+  # after the download; installing it through this tap is the approval (no quarantine flag to remove: fine too)
+  postflight_steps do
+    run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{appdir}}/SentriPet.app"], must_succeed: false
   end
 
   uninstall quit: "com.sentripet.app"
