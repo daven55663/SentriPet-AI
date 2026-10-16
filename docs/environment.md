@@ -6,7 +6,7 @@ The machine SentriPet is developed and tested on. The CPU figures in the README 
 the ones in [#8](https://github.com/daven55663/SentriPet-AI/issues/8)) were measured here with `SentriPet --dev --perf-test`;
 on a slower CPU the numbers are higher, the differences between versions similar.
 
-Last updated: 2026-10-08 (SentriPet 2.5.1)
+Last updated: 2026-10-16 (SentriPet 2.6.0)
 
 ## Hardware
 
@@ -21,11 +21,11 @@ Last updated: 2026-10-08 (SentriPet 2.5.1)
 
 | | |
 |---|---|
-| Operating system | Windows 11 Pro 25H2 (build 26200.9457) |
+| Operating system | Windows 11 Pro 25H2 (build 26200.9711) |
 | .NET | SDK 10.0.401 (runtime 10.0.12) |
 | UI framework | Avalonia 12.1.3 (Skia, HarfBuzz; Fluent theme) |
 | Tools | Git 2.55, GitHub CLI 2.101, Python 3.12 (translation scripts) |
-| AI tools (also the usage sources SentriPet reads) | Claude desktop app 2.26454.2 (Claude Code 2.1.293), Codex 26.1002 |
+| AI tools (also the usage sources SentriPet reads) | Claude desktop app 2.42304.0 (Claude Code 2.1.299), Codex 26.1013 |
 | Development | With Claude Code (Claude Opus 5.5) |
 
 ## Automated tests

@@ -320,7 +320,7 @@ namespace SentriPet
         {
             switch (state)
             {
-                case "working": return L.T("工作中");
+                case "working": return L.T("正在工作");
                 case "done": return L.T("AI 做完了");
                 case "useit": return L.T("催你快用");
                 case "great": return L.T("額度很多");

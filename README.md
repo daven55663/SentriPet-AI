@@ -263,6 +263,38 @@ used up…) or drop one in from the file manager, and the pet shows it at once �
 (nothing is run), so they can be shared as a zipped folder; mistakes are listed on the settings page instead of
 crashing. Format: [docs/custom-themes.md](docs/custom-themes.md).
 
+### Changing a state's picture by dragging (the state editor)
+
+A custom theme's pets change pictures with their state: the AI at work, a task just finished, plenty of quota left or
+almost none, each can show its own picture or animation. Until now that meant editing `theme.json` by hand, which is
+not friendly if you don't know JSON. Since 2.6, *Settings → Looks → Your own themes → Edit state pictures* opens a state
+editor instead; when there is no custom theme yet, the example *Little Cloud* is put in to try it on.
+
+<p align="center"><img src="docs/images/en/state-editor.png" alt="The state editor: the theme folder's pictures on the left, the states on the right" width="640"></p>
+
+On the left is the theme folder as a library of pictures, each sub-folder a group of its own — a character's folder can
+group its moves, for example. On the right are the states, in the order they are tried: the first that applies is
+used. There are three ways to change a picture, all with the same result: drag a picture onto a state; click a picture
+and then a state; or drop a picture file from the file manager onto the window, which copies it into the theme's folder
+first. Every change is saved at once, and when the theme is in use the pet on the desktop shows the new picture right
+away; *Undo* goes back to the theme's own picture.
+
+The choices are kept in `states.json` in the theme's folder, while the author's `theme.json` stays untouched — so a
+theme can come with a whole set of pictures for everyone to pick from, and you decide whether to share your picks.
+The states and when they apply are below; *AI is done* and *Use it up!* are optional: a theme without a picture for them
+keeps showing the working or mood picture.
+
+| State (from the top: the first that applies is used) | When |
+|---|---|
+| AI is done | For 30 seconds after Claude Code or Codex finished a longer task (with *Tell me when an AI is done or waiting* on) |
+| Working | The AI is replying |
+| Use it up! | A weekly or monthly quota resets soon with plenty left — the moments of the "use it" reminder above |
+| Plenty left, Doing fine, A bit worried, Running low | 60% or more, 30–60%, 12–30%, under 12% left |
+| Used up | The quota is used up |
+| No numbers | The usage can't be read |
+
+The format and rules of `states.json` are in [docs/custom-themes.md](docs/custom-themes.md#picking-the-pictures-by-dragging-the-state-editor).
+
 ### Growing pets and achievements
 
 Using your quotas well makes the pets grow. Each weekly or monthly quota that ends earns experience — the most for using
