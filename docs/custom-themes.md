@@ -77,8 +77,10 @@ one that runs out first), `secondary`, or a number (0 = the first quota of that 
 | `rect` | `width`, `height`, `color`, `radius` |
 
 **States** of a picture or a text: `great` (60 % or more left), `good` (30–60 %), `worried` (12–30 %), `low` (under 12 %),
-`empty` (used up), `unknown` (no numbers) and `working` (the AI is working right now; used when there is one). A state
-without a picture uses `default`, or the first picture; a state without a text uses `default`, then `text` (or nothing).
+`empty` (used up), `unknown` (no numbers), `working` (the AI is working right now) and `done` (for 30 seconds after
+Claude Code or Codex finished a longer task, since 2.6). `done` wins over `working`, and both over the mood — each only
+when the element has one. A state without a picture uses `default`, or the first picture; a state without a text uses
+`default`, then `text` (or nothing).
 Texts — `text` and each state's — can also be one per language, like `name`:
 
 ```jsonc
@@ -91,6 +93,25 @@ Texts — `text` and each state's — can also be one per language, like `name`:
 
 **Placeholders** in texts: `{name}` (the AI), `{pct}` (left, `58%`), `{used}` (used), `{meter}` (the quota's name),
 `{reset}` (time until it resets), `{plan}`, `{status}` (the status line — or why there are no numbers).
+
+## Picking the pictures by dragging: the state editor
+
+You don't have to edit the JSON to change which picture a state shows (since 2.6,
+[#34](https://github.com/daven55663/SentriPet-AI/issues/34)). *Settings → Looks → Your own themes → Edit state pictures*
+opens a window with the theme's folder as a library on the left — every picture in it, each sub-folder a group of its
+own — and the states on the right. Drag a picture onto a state, or click a picture and then a state; a picture dropped
+from the file manager is copied into the theme's folder first. The pet in use changes at once, and *Undo* goes back to
+the theme's own picture.
+
+The choices are saved in `states.json` next to `theme.json`, which stays as its author wrote it:
+
+```jsonc
+{ "version": 1, "states": { "working": "run.png", "done": "party.png" } }
+```
+
+They replace the pictures of the theme's main picture element (the first `image` element with `states`, otherwise the
+first `image` element) state by state; a state that isn't listed keeps the picture from `theme.json`. So a theme can
+ship a folder full of pictures and let everyone choose their own; share `states.json` along or leave it out.
 
 ## Its own lines
 

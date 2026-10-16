@@ -46,7 +46,7 @@ namespace SentriPet
         public const int Version = 1;
         public const int MaxElements = 60;
         public static readonly string[] Types = { "image", "text", "bar", "ring", "rect" };
-        public static readonly string[] StateNames = { "great", "good", "worried", "low", "empty", "unknown", "working" };
+        public static readonly string[] StateNames = { "great", "good", "worried", "low", "empty", "unknown", "working", "done" };
         public static readonly string[] Conditions = { "working", "idle", "data", "nodata" };
         public static readonly string[] ImageTypes = { ".png", ".jpg", ".jpeg", ".webp", ".bmp" };
         public static readonly string[] Placeholders = { "name", "pct", "used", "meter", "reset", "plan", "status" };
@@ -62,9 +62,22 @@ namespace SentriPet
         public bool Usable;
         /// <summary>The theme's own lines (#28): lines.json in its folder, said while it is in use; null = none.</summary>
         public LineSet Lines;
+        /// <summary>
+        /// The picture the state editor changes (#34): the first image element with a picture per state, else the first
+        /// image element; null when the theme has no picture.
+        /// </summary>
+        public ElementSpec MainPicture;
+        /// <summary>The pictures chosen in the state editor (#34): states.json, state → file; empty when there is none.</summary>
+        public readonly Dictionary<string, string> Picks = new Dictionary<string, string>();
+        /// <summary>The main picture's states as theme.json has them (before states.json), for the state editor.</summary>
+        public readonly Dictionary<string, string> Authored = new Dictionary<string, string>();
+
+        /// <summary>How long a pet shows its "done" picture after Claude Code / Codex finished a longer task (#34).</summary>
+        public const double DoneSeconds = 30;
 
         public static string ThemesDir { get { return Path.Combine(AppPaths.DataDir, "themes"); } }
         public const string LinesFile = "lines.json";
+        public const string PicksFile = "states.json";
 
         /// <summary>Reads every theme folder (sorted by name). Folders without theme.json are ignored.</summary>
         public static List<ThemeSpec> LoadAll(string dir)
@@ -103,7 +116,67 @@ namespace SentriPet
                 }
                 catch (Exception ex) { s.Problems.Add(L.F("讀不到 lines.json：{0}", ex.Message)); }
             }
+            // the pictures chosen in the state editor (#34) replace those of theme.json, state by state
+            var picks = Path.Combine(folder, PicksFile);
+            if (s.Usable && File.Exists(picks))
+            {
+                try { ApplyPicks(s, File.ReadAllText(picks, Encoding.UTF8)); }
+                catch (Exception ex) { s.Problems.Add(L.F("讀不到 states.json：{0}", ex.Message)); }
+            }
             return s;
+        }
+
+        /// <summary>Reads states.json ({"states": {"working": "run.gif", …}}) into the main picture (#34).</summary>
+        internal static void ApplyPicks(ThemeSpec s, string json)
+        {
+            string err;
+            var states = Json.Obj(Json.Get(Json.Obj(Json.TryParse(json, out err)), "states"));
+            if (states == null) { s.Problems.Add(L.F("states.json 讀不懂（{0}）", err ?? "states")); return; }
+            if (s.MainPicture == null) { s.Problems.Add(L.T("states.json：這個造型沒有圖片可以換")); return; }
+            foreach (var kv in states)
+            {
+                if (Array.IndexOf(StateNames, kv.Key) < 0)
+                {
+                    s.Problems.Add(L.F("states.json：沒有「{0}」這種狀態（可以用 {1}）", kv.Key, string.Join("、", StateNames)));
+                    continue;
+                }
+                var file = ImageOf(Json.Str(kv.Value), "states.json", s);
+                if (file == null) continue;
+                s.Picks[kv.Key] = file;
+                s.MainPicture.States[kv.Key] = file;
+            }
+        }
+
+        /// <summary>Writes the state editor's choices (#34) next to theme.json; an empty choice removes the file.</summary>
+        public static void SavePicks(string folder, Dictionary<string, string> picks)
+        {
+            string path = Path.Combine(folder, PicksFile);
+            if (picks == null || picks.Count == 0) { if (File.Exists(path)) File.Delete(path); return; }
+            var states = new Dictionary<string, object>();
+            foreach (var n in StateNames) { string f; if (picks.TryGetValue(n, out f) && f != null) states[n] = f; }
+            var o = new Dictionary<string, object> { { "version", 1 }, { "states", states } };
+            File.WriteAllText(path, "// " + L.T("「編輯狀態圖片」選的圖片，蓋過 theme.json 裡同一種狀態的圖片") + " (SentriPet #34)\n" +
+                              Json.Serialize(o, true) + "\n", new UTF8Encoding(false));
+        }
+
+        /// <summary>
+        /// The pictures in a theme's folder for the state editor (#34): relative paths with "/", the folder's own first,
+        /// then each sub-folder's (one level down, a group of its own), sorted by name.
+        /// </summary>
+        public static List<string> Pictures(string folder)
+        {
+            var list = new List<string>();
+            if (folder == null || !Directory.Exists(folder)) return list;
+            Func<string, bool> picture = f => Array.IndexOf(ImageTypes, Path.GetExtension(f).ToLowerInvariant()) >= 0;
+            try
+            {
+                list.AddRange(Directory.GetFiles(folder).Where(picture).Select(Path.GetFileName).OrderBy(f => f, StringComparer.CurrentCultureIgnoreCase));
+                foreach (var dir in Directory.GetDirectories(folder).OrderBy(d => d, StringComparer.CurrentCultureIgnoreCase))
+                    list.AddRange(Directory.GetFiles(dir).Where(picture).OrderBy(f => f, StringComparer.CurrentCultureIgnoreCase)
+                                           .Select(f => Path.GetFileName(dir) + "/" + Path.GetFileName(f)));
+            }
+            catch (Exception ex) { Log.Warn("theme pictures: " + ex.Message); }
+            return list;
         }
 
         /// <summary>Parses theme.json (the folder is used to check the pictures exist; null skips that).</summary>
@@ -158,6 +231,8 @@ namespace SentriPet
             }
             s.Usable = s.Elements.Count > 0;
             if (!s.Usable) s.Problems.Add(L.T("沒有可以畫的元素"));
+            s.MainPicture = s.Elements.FirstOrDefault(e => e.Type == "image" && e.States.Count > 0) ?? s.Elements.FirstOrDefault(e => e.Type == "image");
+            if (s.MainPicture != null) foreach (var kv in s.MainPicture.States) s.Authored[kv.Key] = kv.Value;
             return s;
         }
 
@@ -345,19 +420,24 @@ namespace SentriPet
             }
         }
 
-        /// <summary>An element's picture or text for a pet's state: working (when it has one), its mood, then "default".</summary>
-        static string ForState(ElementSpec e, ProviderView v, string otherwise)
+        /// <summary>
+        /// An element's picture or text for a pet's state: "done" for a while after the AI finished a longer task (#34),
+        /// working, its mood, then "default" — each only when the element has one.
+        /// </summary>
+        static string ForState(ElementSpec e, ProviderView v, string otherwise, bool done)
         {
             string p;
+            if (done && e.States.TryGetValue("done", out p)) return p;
             if (v.HasData && v.Active && e.States.TryGetValue("working", out p)) return p;
             if (e.States.TryGetValue(StateOf(v), out p)) return p;
             if (e.States.TryGetValue("default", out p)) return p;
             return otherwise;
         }
 
-        public static string PictureFor(ElementSpec e, ProviderView v)
+        /// <summary>The picture for a pet; <paramref name="done"/>: its AI just finished a longer task (#34).</summary>
+        public static string PictureFor(ElementSpec e, ProviderView v, bool done = false)
         {
-            return ForState(e, v, e.Image ?? e.States.Values.FirstOrDefault());
+            return ForState(e, v, e.Image ?? e.States.Values.FirstOrDefault(), done);
         }
 
         /// <summary>The meter an element shows.</summary>
@@ -374,11 +454,11 @@ namespace SentriPet
         }
 
         /// <summary>A text element's words for a pet.</summary>
-        public static string TextFor(ElementSpec e, ProviderView v)
+        public static string TextFor(ElementSpec e, ProviderView v, bool done = false)
         {
             var m = MeterFor(e, v);
             var reset = m != null && m.ResetsAt.HasValue ? m : v.ResetMeter;
-            string s = ForState(e, v, e.Text ?? "")
+            string s = ForState(e, v, e.Text ?? "", done)
                 .Replace("{name}", v.Name ?? "")
                 .Replace("{pct}", !v.HasData ? "?" : m == null ? "" : m.Unlimited ? "∞" : Fmt.Pct(m.Remaining))
                 .Replace("{used}", !v.HasData || m == null || m.Unlimited ? "" : Fmt.Pct(m.Used))

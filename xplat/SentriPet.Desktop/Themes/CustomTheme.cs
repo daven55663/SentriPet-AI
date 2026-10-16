@@ -43,6 +43,7 @@ namespace SentriPet
         }
 
         readonly List<Card> cards = new List<Card>();
+        readonly Dictionary<string, double> doneUntil = new Dictionary<string, double>();   // provider → Time its "done" picture ends (#34)
 
         public CustomTheme(ThemeSpec spec) { this.spec = spec; }
 
@@ -208,6 +209,8 @@ namespace SentriPet
             {
                 var v = views != null ? views.FirstOrDefault(x => x.Id == card.Id) : null;
                 if (v == null) v = new ProviderView { Id = card.Id, Name = L.T("偵測中"), Color = Rgba.Hex("#94A3B8"), Error = L.T("正在尋找電腦上的 AI…"), Mood = SentriPet.Mood.Unknown };
+                double until;
+                bool done = doneUntil.TryGetValue(card.Id, out until) && until > Time;
                 foreach (var it in card.Items)
                 {
                     var e = it.E;
@@ -219,13 +222,13 @@ namespace SentriPet
                     {
                         case "image":
                         {
-                            string pic = ThemeSpec.PictureFor(e, v);
+                            string pic = ThemeSpec.PictureFor(e, v, done);
                             if (pic != it.Picture) { it.Picture = pic; it.Img.Source = Picture(pic); }
                             break;
                         }
                         case "text":
                         {
-                            string text = ThemeSpec.TextFor(e, v);
+                            string text = ThemeSpec.TextFor(e, v, done);
                             if (it.Text.Text != text) it.Text.Text = text;
                             SetBrush(it, e.Color, v, m, b => it.Text.Foreground = b);
                             break;
@@ -286,6 +289,20 @@ namespace SentriPet
                         if (it.Scale.ScaleY != s) { it.Scale.ScaleX = 2 - s; it.Scale.ScaleY = s; }
                     }
                 }
+        }
+
+        /// <summary>Test hook: the picture the main picture element of a pet's card shows now.</summary>
+        internal string ShownPicture(string providerId)
+        {
+            var card = cards.FirstOrDefault(c => c.Id == providerId);
+            var it = card != null ? card.Items.FirstOrDefault(x => x.E == spec.MainPicture) : null;
+            return it != null ? it.Picture : null;
+        }
+
+        public override void AgentDone(string providerId)
+        {
+            doneUntil[providerId] = Time + ThemeSpec.DoneSeconds;
+            Refresh();   // (it ends with the once-a-second refresh)
         }
 
         public override void Detach()

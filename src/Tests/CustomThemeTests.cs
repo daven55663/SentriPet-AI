@@ -144,6 +144,53 @@ namespace SentriPet
             File.WriteAllText(Path.Combine(dir, "a-theme", "lines.json"), "{ \"zh-TW\": ");
             a = ThemeSpec.Load(Path.Combine(dir, "a-theme"));
             t.Check("lines.json 壞掉：說出來，造型照樣能用、沒有台詞", a.Usable && a.Lines != null && a.Lines.Count == 0 && a.Problems.Count == 1);
+            Picks(t, dir);
+        }
+
+        /// <summary>The state editor's choices (#34): states.json over theme.json, the "done" state, the picture library.</summary>
+        static void Picks(TestKit t, string dir)
+        {
+            string folder = Path.Combine(dir, "picks");
+            Directory.CreateDirectory(Path.Combine(folder, "run"));
+            foreach (var f in new[] { "great.png", "low.png", "yay.png", "run/fast.png", "run/slow.png", "notes.txt" })
+                File.WriteAllBytes(Path.Combine(folder, f), new byte[] { 137, 80, 78, 71 });
+            File.WriteAllText(Path.Combine(folder, "theme.json"),
+                "{ \"card\": { \"elements\": [ { \"type\": \"text\", \"text\": \"{name}\", \"states\": { \"done\": \"好了！\" } }, " +
+                "{ \"type\": \"image\", \"width\": 9, \"height\": 9, \"states\": { \"great\": \"great.png\", \"low\": \"low.png\" } } ] } }");
+            var s = ThemeSpec.Load(folder);
+            t.Check("主要的圖片：第一個依狀態換圖的元素", s.MainPicture != null && s.MainPicture == s.Elements[1] && s.Picks.Count == 0);
+            t.Equal("圖庫：資料夾裡的圖片先、子資料夾一組一組，不列其他檔案", "great.png,low.png,yay.png,run/fast.png,run/slow.png", string.Join(",", ThemeSpec.Pictures(folder)));
+
+            ThemeSpec.SavePicks(folder, new Dictionary<string, string> { { "working", "run/fast.png" }, { "done", "yay.png" }, { "great", "low.png" } });
+            s = ThemeSpec.Load(folder);
+            t.Check("states.json：選的圖蓋過 theme.json、沒選的照舊、記得作者原本的", s.Problems.Count == 0 && s.Picks.Count == 3 &&
+                    s.MainPicture.States["great"] == "low.png" && s.MainPicture.States["low"] == "low.png" && s.MainPicture.States["working"] == "run/fast.png" &&
+                    s.Authored["great"] == "great.png" && !s.Authored.ContainsKey("working"), string.Join(" | ", s.Problems));
+            var v = Claude();
+            v.Mood = Mood.Critical;
+            t.Equal("沒在工作：照心情", "low.png", ThemeSpec.PictureFor(s.MainPicture, v));
+            v.Active = true;
+            t.Equal("工作中：states.json 選的跑步圖", "run/fast.png", ThemeSpec.PictureFor(s.MainPicture, v));
+            t.Equal("AI 剛做完：「做完了」的圖優先", "yay.png", ThemeSpec.PictureFor(s.MainPicture, v, true));
+            t.Equal("AI 剛做完：文字也換", "好了！", ThemeSpec.TextFor(s.Elements[0], v, true));
+            t.Equal("沒有「做完了」的元素：照常", "Claude", ThemeSpec.TextFor(ThemeSpec.Parse(Minimal, "mini", null).Elements[0], v, true).Split(' ')[0]);
+
+            File.WriteAllText(Path.Combine(folder, ThemeSpec.PicksFile), "{ \"states\": { \"sad\": \"yay.png\", \"empty\": \"gone.png\", \"unknown\": \"../x.png\", \"good\": \"yay.png\" } }");
+            s = ThemeSpec.Load(folder);
+            t.Check("states.json 寫錯：不認得的狀態、找不到的圖、資料夾外的圖都說出來，寫對的照用", s.Usable && s.Problems.Count == 3 && s.Picks.Count == 1 && s.MainPicture.States["good"] == "yay.png",
+                    string.Join(" | ", s.Problems));
+            File.WriteAllText(Path.Combine(folder, ThemeSpec.PicksFile), "{ \"states\": ");
+            s = ThemeSpec.Load(folder);
+            t.Check("states.json 壞掉：說出來，用 theme.json 的圖", s.Usable && s.Problems.Count == 1 && s.Picks.Count == 0 && s.MainPicture.States["great"] == "great.png");
+            ThemeSpec.SavePicks(folder, new Dictionary<string, string>());
+            t.Check("全部還原：states.json 刪掉", !File.Exists(Path.Combine(folder, ThemeSpec.PicksFile)));
+
+            string still = Path.Combine(dir, "no-picture");
+            Directory.CreateDirectory(still);
+            File.WriteAllText(Path.Combine(still, "theme.json"), Minimal);
+            File.WriteAllText(Path.Combine(still, ThemeSpec.PicksFile), "{ \"states\": { \"great\": \"a.png\" } }");
+            s = ThemeSpec.Load(still);
+            t.Check("沒有圖片元素的造型：states.json 說沒有圖可以換", s.Usable && s.MainPicture == null && s.Problems.Count == 1, string.Join(" | ", s.Problems));
         }
 
         /// <summary>examples/themes/cloud, when the tests run in the repository.</summary>
@@ -159,7 +206,7 @@ namespace SentriPet
             if (example == null) { t.Skip("範例造型", "找不到 examples/themes/cloud（不是在原始碼資料夾裡執行）"); return; }
             var s = ThemeSpec.Load(example);
             t.Check("範例造型（小雲朵）：可以用、沒有問題", s.Usable && s.Problems.Count == 0, string.Join(" | ", s.Problems));
-            t.Check("範例造型：七種狀態的圖都有", s.Elements.Any(e => e.Type == "image" && ThemeSpec.StateNames.All(n => e.States.ContainsKey(n))));
+            t.Check("範例造型：七種狀態的圖都有（「AI 做完了」可以沒有）", s.Elements.Any(e => e.Type == "image" && ThemeSpec.StateNames.Where(n => n != "done").All(n => e.States.ContainsKey(n))));
             foreach (var lang in L.Languages)
             {
                 L.Use(lang.Code);

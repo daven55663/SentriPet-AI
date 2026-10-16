@@ -56,6 +56,7 @@ namespace SentriPet
             public void ApplyGrowth() { }
             public void OpenThemesFolder() { }
             public void ReloadThemes() { }
+            public void OpenStateEditor() { }
             public string AddAccount(string kind, string folder) { return null; }
             public void RemoveAccount(Account a) { }
             public void AccountChanged() { }
@@ -219,6 +220,35 @@ namespace SentriPet
                 {
                     failures++;
                     File.WriteAllText(Path.Combine(outDir, "settings_error.txt"), ex.ToString());
+                }
+                // the state editor (#34) on the example theme, with a picture picked for "done"
+                string editorDir = Path.Combine(Path.GetTempPath(), "SentriPet-editor-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                try
+                {
+                    ExampleTheme.Install(Path.Combine(editorDir, ExampleTheme.Folder));
+                    ThemeCatalog.LoadCustom(editorDir);
+                    var win = new StateEditorWindow("custom:" + ExampleTheme.Folder, null, null) { Width = 920, Height = 900 };
+                    win.Show();
+                    win.Assign("done", "great.png");
+                    for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
+                    var page = win.Page;
+                    var size = page.Bounds.Size;
+                    using (var rtb = new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height)), new Vector(96, 96)))
+                    {
+                        rtb.Render(page);
+                        rtb.Save(Path.Combine(outDir, "state-editor.png"));
+                    }
+                    win.Close();
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "state-editor_error.txt"), ex.ToString());
+                }
+                finally
+                {
+                    try { Directory.Delete(editorDir, true); } catch { }
+                    ThemeCatalog.LoadCustom(editorDir);   // (gone: no custom themes for the rest)
                 }
                 // the usage report (#18), 7 and 30 days
                 try

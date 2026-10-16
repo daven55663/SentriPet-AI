@@ -37,6 +37,8 @@ namespace SentriPet
         /// <summary>The user's themes (#24): open their folder (with the example the first time), read them again.</summary>
         void OpenThemesFolder();
         void ReloadThemes();
+        /// <summary>The state editor (#34): pick a picture per state of a custom theme by dragging.</summary>
+        void OpenStateEditor();
         /// <summary>Other accounts (#26): add one (null, or why not), remove one, its name or colour changed, its status line.</summary>
         string AddAccount(string kind, string folder);
         void RemoveAccount(Account a);
@@ -273,6 +275,7 @@ namespace SentriPet
             var themeButtons = new StackPanel { Orientation = Orientation.Horizontal };
             themeButtons.Children.Add(Btn(L.T("打開造型資料夾"), ctl.OpenThemesFolder));
             themeButtons.Children.Add(Btn(L.T("重新載入"), ctl.ReloadThemes));
+            themeButtons.Children.Add(Btn(L.T("編輯狀態圖片"), ctl.OpenStateEditor));
             themeButtons.Children.Add(Btn(L.T("說明"), () => Integration.OpenPath(Docs("custom-themes"))));
             Row(body, L.T("自訂造型"), L.T("在設定資料夾的 themes 裡放圖片和 theme.json 就能做自己的造型；第一次打開會附一個範例"), themeButtons);
             var problems = new List<string>();

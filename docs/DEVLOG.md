@@ -383,5 +383,15 @@ xplat/                新的跨平台版（.NET 10）
   - 說明多加三種提示（`ClaudeProvider.Fetch`，用「；」接在原本的說明後面）：推算不出來時說要等桌面版再記錄一次，有終端機的
     `claude` 且沒開狀態列時提示可以開；5 小時是從 Claude Code 第一則回覆起算時，註明聊天或網頁的用量看不到、可能更早重置；
     每週重置時間推算不出來時，提示可以在 設定 → AI 服務 填。四種語言的翻譯。核心測試 742 → 746 項（在 GitHub CI 上跑）。
+- 2026-10-16：**#34 狀態圖片編輯器、「AI 做完了」狀態**（使用者要求：一個角色是大分類、每個動作是細分類，用拖曳的方式把動態圖放進自訂的狀態）。
+  - 新視窗 `StateEditorWindow`（設定 → 造型 → 自訂造型 →「編輯狀態圖片」）：左邊把造型資料夾當圖庫（`ThemeSpec.Pictures`，子資料夾一組），
+    右邊 8 種狀態，由上往下先符合的先用。拖曳用 Avalonia 12 的 `DragDrop.DoDragDropAsync`／`DataTransfer`（文字格式帶檔名）；
+    從檔案總管拖進來的圖片先複製到造型資料夾（同名就加「(2)」）。也可以先點圖再點狀態。每次選完立刻存，正在用的桌寵立刻換圖。
+  - 選擇存在造型資料夾的 `states.json`，不改作者的 `theme.json`（JSON 改寫會弄丟註解）：依狀態蓋過「主要圖片元素」
+    （第一個有 `states` 的 `image`，否則第一個 `image`）的圖；`ThemeSpec.Authored` 記住 theme.json 原本的圖，編輯器顯示「造型原本的／你選的」並可還原。
+    寫錯的狀態、找不到的圖、資料夾外的路徑都列進造型的問題。全部還原就刪掉 states.json。
+  - 新狀態 `done`：`CheckAgentEvents` 收到比較久的「做完了」時呼叫 `Theme.AgentDone`，`CustomTheme` 那張卡 30 秒內用 `done` 的圖和文字
+    （優先於 working；安靜時段也換圖，只是不說話）。檢查圖片時也順手修了 `MainPicture`／`Picks` 指到被拿掉的壞圖。
+  - 48 句新字串的四種語言翻譯；`--snapshot` 多輸出 `state-editor.png`。核心測試 746 → 758 項、自我測試 139 → 149 項。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。

@@ -84,6 +84,8 @@ namespace SentriPet
         /// <summary>Clicked somewhere in the widget; true when the theme handled it.</summary>
         public virtual bool Click(Point rootPoint) { return false; }
         public virtual void Celebrate(string providerId) { }
+        /// <summary>Claude Code / Codex finished a longer task (#34): a theme can show its "done" picture for a while.</summary>
+        public virtual void AgentDone(string providerId) { }
         public virtual void Detach() { }
 
         /// <summary>The pets' level (growing pets, #23; 0 = turned off). A theme can dress its pets up for it.</summary>
@@ -203,6 +205,8 @@ namespace SentriPet
                 foreach (var k in e.States.Where(kv => bad.Contains(kv.Value)).Select(kv => kv.Key).ToList()) e.States.Remove(k);
             }
             s.Elements.RemoveAll(e => e.Type == "image" && e.Image == null && e.States.Count == 0);
+            if (s.MainPicture != null && !s.Elements.Contains(s.MainPicture)) s.MainPicture = null;
+            foreach (var k in s.Picks.Where(kv => bad.Contains(kv.Value)).Select(kv => kv.Key).ToList()) s.Picks.Remove(k);
             foreach (var box in new[] { s.Background, s.Card }) if (box != null && box.Image != null && bad.Contains(box.Image)) box.Image = null;
             if (s.Elements.Count == 0) { s.Usable = false; s.Problems.Add(L.T("沒有可以畫的元素")); }
         }

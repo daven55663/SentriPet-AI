@@ -327,8 +327,9 @@ namespace SentriPet
                 if (e.Kind == AgentEvent.Done && e.Seconds >= 0 && e.Seconds < AgentHooks.LongTurnSeconds) continue;   // a quick reply
                 if ((DateTime.UtcNow - e.At).TotalMinutes > 5) continue;   // written while the widget was busy or stopped
                 Log.Info("agent " + e.Source + " " + e.Kind + (e.Seconds >= 0 ? " after " + Math.Round(e.Seconds) + " s" : ""));
-                if (IsQuiet) continue;
                 var v = views.FirstOrDefault(x => x.Id == e.Source);
+                if (e.Kind == AgentEvent.Done && v != null && window.CurrentTheme != null) window.CurrentTheme.AgentDone(v.Id);   // its "done" picture (#34)
+                if (IsQuiet) continue;
                 string name = v != null ? v.Name : (e.Source == "codex" ? "Codex" : "Claude");
                 string text = Lines.Agent(e, name);
                 if (v != null && window.CurrentTheme != null) window.CurrentTheme.Poke(v.Id);   // a little hop
@@ -983,6 +984,36 @@ namespace SentriPet
             ThemeCatalog.LoadCustom();
             if ((Settings.Theme ?? "").StartsWith("custom:")) window.SetTheme(ThemeCatalog.Get(Settings.Theme).Create());
             ReopenSettings();
+        }
+
+        StateEditorWindow stateEditor;
+
+        /// <summary>The state editor (#34): pick a picture per state of a custom theme by dragging.</summary>
+        public void OpenStateEditor()
+        {
+            if (stateEditor != null) { stateEditor.Activate(); return; }
+            try
+            {
+                // nothing to edit yet: the example theme is a start
+                string dir = ThemeSpec.ThemesDir;
+                System.IO.Directory.CreateDirectory(dir);
+                if (!System.IO.Directory.EnumerateDirectories(dir).Any())
+                {
+                    ExampleTheme.Install(System.IO.Path.Combine(dir, ExampleTheme.Folder));
+                    ThemeCatalog.LoadCustom();
+                }
+            }
+            catch (Exception ex) { Log.Error("themes folder", ex); }
+            stateEditor = new StateEditorWindow((Settings.Theme ?? "").StartsWith("custom:") ? Settings.Theme : null, ThemePicturesChanged, ChangeTheme);
+            stateEditor.Closed += (s, e) => stateEditor = null;
+            stateEditor.Show();
+        }
+
+        /// <summary>The state editor saved a theme's pictures: read the themes again, and show them when it is in use.</summary>
+        void ThemePicturesChanged(string id)
+        {
+            ThemeCatalog.LoadCustom();
+            if (Settings.Theme == id) window.SetTheme(ThemeCatalog.Get(id).Create());
         }
 
         public void ToggleWidget()

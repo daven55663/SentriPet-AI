@@ -277,6 +277,44 @@ namespace SentriPet
                     pw.SetTheme(ThemeCatalog.Get("pet").Create());
                     t.Check("換回內建造型：不再說那個造型的台詞", CustomLines.Theme == null);
                     pw.Close();
+
+                    // the state editor (#34): dropping a picture on a state saves states.json and the pet shows it at once
+                    string cloudDir = System.IO.Path.Combine(dir, ExampleTheme.Folder);
+                    string changedId = null, usedId = null;
+                    var editor = new StateEditorWindow("custom:cloud", id => { changedId = id; ThemeCatalog.LoadCustom(dir); }, id => usedId = id);
+                    editor.Show();
+                    t.Check("狀態圖片編輯器：打開範例造型", editor.Theme != null && editor.Theme.Id == "custom:cloud" && editor.Picks.Count == 0);
+                    editor.Assign("done", "great.png");
+                    editor.Assign("working", "good.png");
+                    t.Check("放進狀態：存成 states.json、通知桌寵", changedId == "custom:cloud" && File.Exists(System.IO.Path.Combine(cloudDir, ThemeSpec.PicksFile)));
+                    var cloud2 = ThemeCatalog.CustomSpecs.First(s => s.Id == "custom:cloud");
+                    t.Check("重新讀造型：選的圖生效", cloud2.Picks.Count == 2 && cloud2.MainPicture.States["working"] == "good.png" && cloud2.Problems.Count == 0,
+                            string.Join(" | ", cloud2.Problems));
+                    var picked = (CustomTheme)ThemeCatalog.Get("custom:cloud").Create();
+                    picked.Attach(new Snapshots.PreviewHost());
+                    var calm = MockData.A();
+                    foreach (var x in calm) x.Active = false;
+                    picked.Update(calm);
+                    string before = picked.ShownPicture("claude"), codexBefore = picked.ShownPicture("codex");
+                    picked.AgentDone("claude");
+                    t.Check("AI 做完了：那隻換成「做完了」的圖，別隻不變", before != null && picked.ShownPicture("claude") == "great.png" && picked.ShownPicture("codex") == codexBefore,
+                            before + " → " + picked.ShownPicture("claude"));
+                    for (int i = 0; i <= ThemeSpec.DoneSeconds; i++) picked.Tick(1.0);
+                    picked.Update(calm);
+                    t.Equal("過了 30 秒：換回原本的圖", before, picked.ShownPicture("claude"));
+                    picked.Detach();
+
+                    string drop = System.IO.Path.Combine(t.TempDir("drop"), "dropped.png");
+                    File.Copy(System.IO.Path.Combine(cloudDir, "great.png"), drop);
+                    t.Check("從檔案總管拖進來的圖：複製到造型資料夾", editor.Import(drop) == "dropped.png" && File.Exists(System.IO.Path.Combine(cloudDir, "dropped.png")));
+                    t.Equal("同名的圖再拖一次：換個名字", "dropped (2).png", editor.Import(drop));
+                    t.Equal("造型資料夾裡的圖：不用再複製", "great.png", editor.Import(System.IO.Path.Combine(cloudDir, "great.png")));
+                    File.WriteAllText(drop + ".txt", "x");
+                    t.Check("不是圖片的檔案：不收", editor.Import(drop + ".txt") == null);
+                    editor.Clear("done");
+                    editor.Clear("working");
+                    t.Check("全部還原：states.json 刪掉", !File.Exists(System.IO.Path.Combine(cloudDir, ThemeSpec.PicksFile)) && editor.Picks.Count == 0);
+                    editor.Close();
                     var fakeTheme = ThemeCatalog.Get("custom:fake-picture").Create();
                     fakeTheme.Attach(new Snapshots.PreviewHost());
                     fakeTheme.Update(MockData.A());
@@ -645,6 +683,7 @@ namespace SentriPet
             public void ApplyGrowth() { Changed++; }
             public void OpenThemesFolder() { Changed++; }
             public void ReloadThemes() { Changed++; }
+            public void OpenStateEditor() { Changed++; }
             public string AddAccount(string kind, string folder) { Changed++; return AccountSetup.Problem(settings, kind, folder) ?? (AccountSetup.Add(settings, kind, folder) == null ? "?" : null); }
             public void RemoveAccount(Account a) { settings.Accounts.Remove(a); Changed++; }
             public void AccountChanged() { Changed++; }
