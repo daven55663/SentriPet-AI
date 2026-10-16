@@ -30,7 +30,7 @@ namespace SentriPet
         const string DragPrefix = "sentripet-picture:";
 
         /// <summary>The states as they are listed: the ones that win over the others first.</summary>
-        public static readonly string[] Order = { "working", "done", "great", "good", "worried", "low", "empty", "unknown" };
+        public static readonly string[] Order = { "done", "working", "useit", "great", "good", "worried", "low", "empty", "unknown" };
 
         readonly Action<string> changed, use;
         readonly List<ThemeSpec> themes;
@@ -322,6 +322,7 @@ namespace SentriPet
             {
                 case "working": return L.T("工作中");
                 case "done": return L.T("AI 做完了");
+                case "useit": return L.T("催你快用");
                 case "great": return L.T("額度很多");
                 case "good": return L.T("還不錯");
                 case "worried": return L.T("有點擔心");
@@ -335,8 +336,9 @@ namespace SentriPet
         {
             switch (state)
             {
-                case "working": return L.T("AI 正在回覆時，優先於下面的狀態");
+                case "working": return L.T("AI 正在回覆時");
                 case "done": return L.T("Claude Code／Codex 做完比較久的事後 30 秒");
+                case "useit": return L.T("每週／每月額度快重置了還剩很多，該趕快用了");
                 case "great": return L.T("剩 60% 以上");
                 case "good": return L.T("剩 30～60%");
                 case "worried": return L.T("剩 12～30%");
@@ -355,7 +357,8 @@ namespace SentriPet
                 string file, source;
                 if (Picks.TryGetValue(state, out file)) source = L.F("你選的：{0}", Path.GetFileNameWithoutExtension(file));
                 else if (spec.Authored.TryGetValue(state, out file)) source = L.F("造型原本的：{0}", Path.GetFileNameWithoutExtension(file));
-                else source = state == "done" ? L.T("沒有圖：照工作中或心情顯示") : L.T("沒有圖：用造型的預設圖");
+                else source = state == "done" ? L.T("沒有圖：照工作中或心情顯示")
+                            : state == "working" || state == "useit" ? L.T("沒有圖：照心情顯示") : L.T("沒有圖：用造型的預設圖");
 
                 var slot = new Border
                 {

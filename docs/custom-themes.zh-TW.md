@@ -76,8 +76,9 @@
 | `rect` | `width`、`height`、`color`、`radius` |
 
 圖片和文字的**狀態**：`great`（剩 60% 以上）、`good`（30～60%）、`worried`（12～30%）、`low`（不到 12%）、`empty`（用完）、
-`unknown`（沒有數字）、`working`（AI 正在工作）以及 `done`（Claude Code 或 Codex 做完一件比較久的事之後 30 秒，2.6 起）。
-`done` 優先於 `working`，兩者又優先於心情，但都只在元素有寫的時候才用。沒有圖的狀態用 `default`，再沒有就用第一張；
+`unknown`（沒有數字）、`working`（AI 正在工作）、`done`（Claude Code 或 Codex 做完一件比較久的事之後 30 秒，2.6 起）
+以及 `useit`（每週或每月額度快重置了還剩不少，也就是「快重置了趕快用」提醒出現的時機：最後兩天剩 30%、最後一天剩 10%、
+最後六小時剩 5% 以上，2.6 起）。優先順序依序為 `done`、`working`、`useit`、心情，但都只在元素有寫的時候才用。沒有圖的狀態用 `default`，再沒有就用第一張；
 沒有文字的狀態用 `default`，再沒有就用 `text`（也沒有就不顯示）。文字（`text` 和每個狀態的）也可以像 `name` 一樣每種語言各一：
 
 ```jsonc

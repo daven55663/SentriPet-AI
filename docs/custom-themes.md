@@ -77,9 +77,11 @@ one that runs out first), `secondary`, or a number (0 = the first quota of that 
 | `rect` | `width`, `height`, `color`, `radius` |
 
 **States** of a picture or a text: `great` (60 % or more left), `good` (30–60 %), `worried` (12–30 %), `low` (under 12 %),
-`empty` (used up), `unknown` (no numbers), `working` (the AI is working right now) and `done` (for 30 seconds after
-Claude Code or Codex finished a longer task, since 2.6). `done` wins over `working`, and both over the mood — each only
-when the element has one. A state without a picture uses `default`, or the first picture; a state without a text uses
+`empty` (used up), `unknown` (no numbers), `working` (the AI is working right now), `done` (for 30 seconds after
+Claude Code or Codex finished a longer task, since 2.6) and `useit` (a weekly or monthly quota resets soon with a good
+part left — the moments of the "use it before it resets" reminder: 30 % in the last two days, 10 % on the last day, 5 %
+in the last six hours; since 2.6). They win in this order: `done`, `working`, `useit`, then the mood — each only when
+the element has one. A state without a picture uses `default`, or the first picture; a state without a text uses
 `default`, then `text` (or nothing).
 Texts — `text` and each state's — can also be one per language, like `name`:
 

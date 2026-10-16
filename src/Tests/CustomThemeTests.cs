@@ -173,6 +173,21 @@ namespace SentriPet
             t.Equal("工作中：states.json 選的跑步圖", "run/fast.png", ThemeSpec.PictureFor(s.MainPicture, v));
             t.Equal("AI 剛做完：「做完了」的圖優先", "yay.png", ThemeSpec.PictureFor(s.MainPicture, v, true));
             t.Equal("AI 剛做完：文字也換", "好了！", ThemeSpec.TextFor(s.Elements[0], v, true));
+
+            // "use it before it resets" (#35): after working, before the mood; only with a picture for it
+            var hurry = ThemeSpec.Parse("{ \"card\": { \"elements\": [ { \"type\": \"image\", \"width\": 9, \"height\": 9, " +
+                                        "\"states\": { \"great\": \"g.png\", \"working\": \"w.png\", \"useit\": \"u.png\" } } ] } }", "h", null);
+            var u = Claude();
+            u.Mood = Mood.Great;
+            u.UseItLevel = 2;
+            t.Equal("週額度快重置還剩很多：催你快用的圖", "u.png", ThemeSpec.PictureFor(hurry.MainPicture, u));
+            u.Active = true;
+            t.Equal("已經在用了：工作中優先", "w.png", ThemeSpec.PictureFor(hurry.MainPicture, u));
+            u.Active = false;
+            u.UseItLevel = 0;
+            t.Equal("不用催：照心情", "g.png", ThemeSpec.PictureFor(hurry.MainPicture, u));
+            u.UseItLevel = 3;
+            t.Equal("沒有「催你快用」圖的造型：照心情", "low.png", ThemeSpec.PictureFor(s.MainPicture, new ProviderView { Id = "x", Name = "X", HasData = true, Mood = Mood.Critical, UseItLevel = 3 }));
             t.Equal("沒有「做完了」的元素：照常", "Claude", ThemeSpec.TextFor(ThemeSpec.Parse(Minimal, "mini", null).Elements[0], v, true).Split(' ')[0]);
 
             File.WriteAllText(Path.Combine(folder, ThemeSpec.PicksFile), "{ \"states\": { \"sad\": \"yay.png\", \"empty\": \"gone.png\", \"unknown\": \"../x.png\", \"good\": \"yay.png\" } }");
@@ -206,7 +221,8 @@ namespace SentriPet
             if (example == null) { t.Skip("範例造型", "找不到 examples/themes/cloud（不是在原始碼資料夾裡執行）"); return; }
             var s = ThemeSpec.Load(example);
             t.Check("範例造型（小雲朵）：可以用、沒有問題", s.Usable && s.Problems.Count == 0, string.Join(" | ", s.Problems));
-            t.Check("範例造型：七種狀態的圖都有（「AI 做完了」可以沒有）", s.Elements.Any(e => e.Type == "image" && ThemeSpec.StateNames.Where(n => n != "done").All(n => e.States.ContainsKey(n))));
+            t.Check("範例造型：七種狀態的圖都有（「AI 做完了」「催你快用」可以沒有）",
+                    s.Elements.Any(e => e.Type == "image" && ThemeSpec.StateNames.Where(n => n != "done" && n != "useit").All(n => e.States.ContainsKey(n))));
             foreach (var lang in L.Languages)
             {
                 L.Use(lang.Code);

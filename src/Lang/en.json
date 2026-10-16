@@ -595,7 +595,6 @@
   "快沒了": "Running low",
   "用完了": "Used up",
   "沒資料": "No numbers",
-  "AI 正在回覆時，優先於下面的狀態": "While the AI is replying; wins over the states below",
   "Claude Code／Codex 做完比較久的事後 30 秒": "30 seconds after Claude Code / Codex finished a longer task",
   "剩 60% 以上": "60% or more left",
   "剩 30～60%": "30–60% left",
@@ -612,5 +611,9 @@
   "states.json 讀不懂（{0}）": "states.json can't be understood ({0})",
   "states.json：這個造型沒有圖片可以換": "states.json: this theme has no picture to change",
   "states.json：沒有「{0}」這種狀態（可以用 {1}）": "states.json: there is no state “{0}” (use {1})",
-  "「編輯狀態圖片」選的圖片，蓋過 theme.json 裡同一種狀態的圖片": "Pictures picked in “Edit state pictures”; they replace theme.json's for the same states"
+  "「編輯狀態圖片」選的圖片，蓋過 theme.json 裡同一種狀態的圖片": "Pictures picked in “Edit state pictures”; they replace theme.json's for the same states",
+  "AI 正在回覆時": "While the AI is replying",
+  "催你快用": "Use it up!",
+  "每週／每月額度快重置了還剩很多，該趕快用了": "A weekly or monthly quota resets soon with plenty left: time to use it",
+  "沒有圖：照心情顯示": "No picture: the mood is shown"
 }

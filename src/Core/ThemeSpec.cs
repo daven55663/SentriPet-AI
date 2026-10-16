@@ -46,7 +46,7 @@ namespace SentriPet
         public const int Version = 1;
         public const int MaxElements = 60;
         public static readonly string[] Types = { "image", "text", "bar", "ring", "rect" };
-        public static readonly string[] StateNames = { "great", "good", "worried", "low", "empty", "unknown", "working", "done" };
+        public static readonly string[] StateNames = { "great", "good", "worried", "low", "empty", "unknown", "working", "done", "useit" };
         public static readonly string[] Conditions = { "working", "idle", "data", "nodata" };
         public static readonly string[] ImageTypes = { ".png", ".jpg", ".jpeg", ".webp", ".bmp" };
         public static readonly string[] Placeholders = { "name", "pct", "used", "meter", "reset", "plan", "status" };
@@ -422,13 +422,15 @@ namespace SentriPet
 
         /// <summary>
         /// An element's picture or text for a pet's state: "done" for a while after the AI finished a longer task (#34),
-        /// working, its mood, then "default" — each only when the element has one.
+        /// working, "useit" while a weekly/monthly quota should be spent before it resets (#35), its mood, then "default" —
+        /// each only when the element has one.
         /// </summary>
         static string ForState(ElementSpec e, ProviderView v, string otherwise, bool done)
         {
             string p;
             if (done && e.States.TryGetValue("done", out p)) return p;
             if (v.HasData && v.Active && e.States.TryGetValue("working", out p)) return p;
+            if (v.HasData && v.UseItLevel > 0 && e.States.TryGetValue("useit", out p)) return p;
             if (e.States.TryGetValue(StateOf(v), out p)) return p;
             if (e.States.TryGetValue("default", out p)) return p;
             return otherwise;
