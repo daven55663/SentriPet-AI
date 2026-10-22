@@ -417,6 +417,10 @@ namespace SentriPet
             Row(body, L.T("連接 Claude Code 狀態列（官方用量）"),
                 L.T("在 ~/.claude/settings.json 加上狀態列設定：Claude Code 每次回覆都會把官方的用量與重置時間交給 SentriPet。原本的狀態列照常顯示，關掉時會還原。Linux 沒有 Claude 桌面版，要開這個才讀得到 Claude 用量"),
                 bridgeBox);
+            // the terminal signed in to another account than the desktop app (#36)
+            Row(body, L.T("終端機是另一個 Claude 帳號"),
+                L.T("桌面版和終端機的 Claude Code 登入不同帳號時打開：分成「Claude」（桌面版）和「Claude CLI」（終端機，數字來自上面的狀態列）兩隻，各自計算"),
+                Toggle(S.ClaudeCliSeparate, v => { if (v == S.ClaudeCliSeparate) return; S.ClaudeCliSeparate = v; ctl.AccountChanged(); }));
             // "done / waiting for you" (#14)
             var hookError = Txt("", 11, Palette.Hex("#FCA5A5"), FontWeight.Normal);
             hookError.IsVisible = false;

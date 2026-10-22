@@ -408,5 +408,15 @@ xplat/                新的跨平台版（.NET 10）
     加 `must_succeed: false`：沒有隔離標記時 xattr 會回傳錯誤，新的 `run` 預設會因此中止安裝（舊的 system_command 不會）。
     改完後套件管理器測試全部通過（Scoop、Homebrew、winget 都裝得起來並通過自我測試）。這台電腦更新到 2.6.0（本機的 GIF 版，記錄檔無錯誤）。
     winget 的 2.4.0 PR（microsoft/winget-pkgs#443980）還在等審核；合併後直接送 2.6.0。
+- 2026-10-22：**#36 桌面版和終端機登入不同的 Claude 帳號**（使用者：終端機 CLI 是工作帳號、桌面版是私人帳號，都指向同一個資料夾，桌寵分不出各自用了多少）。
+  - 兩者都寫 `~/.claude/projects`；桌寵把終端機狀態列（工作帳號）的官方數字套到桌面版（私人帳號）的用量上，推算也把兩邊的 token 加在一起。
+  - 依據：Claude Code 每一行對話紀錄都有 `entrypoint`（桌面版 `claude-desktop`、終端機 `cli`、SDK `sdk-cli`、VS Code `claude-vscode`）。
+    `ClaudeCodeUsage` 記下每則回覆的來源（只在回覆那一行、或還不知道來源時才找，100 MB 的紀錄不多掃），`Only` 決定算哪些，
+    `ActiveWithin` 依各來源的檔案寫入時間判斷「工作中」。
+  - 設定「終端機是另一個 Claude 帳號」（`claudeCliSeparate`）：`ClaudeProvider` 只算桌面版的回覆、不再套用狀態列；
+    `ClaudeProvider.ForCli()`（id `claude-cli`，排在 Claude 後面）用狀態列的官方數字，其他來源的回覆接續 5 小時視窗。
+    「AI 做完或在等你」的 hook 從對話紀錄末尾讀 `entrypoint` 記進事件（`entry`），`AgentEvent.PetId` 交給對應的桌寵。
+  - 用這台電腦的真實資料驗證：桌面版 5 小時 42.6%、21:23 重置（官方 43%、21:19），每週 67.1%（官方 66%）；
+    Claude CLI 是工作帳號的 1%／2%。用量報告的 token 統計還沒分帳號。核心測試 762 → 778 項。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。

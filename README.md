@@ -251,6 +251,15 @@ Code's `CLAUDE_CONFIG_DIR` or Codex's `CODEX_HOME`. Each folder becomes a pet of
   `settings.json` the same way as for the default account, keeps your own status line and puts it back when turned off).
 - SentriPet still never reads a sign-in. The usage report and "done or waiting" cover the default accounts.
 
+Two accounts can also share one folder: the Claude desktop app (with its Code tab) signed in to a personal account and
+the terminal's `claude` to a work account, both writing their transcripts to `~/.claude`. Left alone, the pet would put
+the terminal's official status-line numbers on the desktop app's usage and add both accounts' tokens together, so
+neither is right. Claude Code notes in every transcript line where the session runs (desktop app, terminal, SDK or VS
+Code), so since 2.7 *Settings → AI services → The terminal uses another Claude account* splits them into two pets:
+*Claude* counts only the desktop app's usage and sessions, *Claude CLI* shows the terminal's status line, and "working"
+and "done or waiting" go to the pet whose session it was. *Claude CLI* needs *Connect the Claude Code status line* on as
+well, and shows numbers once you have asked `claude` something in the terminal.
+
 ### Your own themes
 
 Make a look of your own from pictures and a `theme.json` — a card per AI with pictures (one per mood: plenty left,

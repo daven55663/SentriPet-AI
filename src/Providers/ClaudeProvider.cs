@@ -28,6 +28,10 @@ namespace SentriPet
         ActivityWatcher activity;
         readonly ClaudeCodeUsage usage;
         readonly Account account;   // another account (#26): only its folder's status line and transcripts
+        bool cli;                   // the terminal's account (#36): the status line, and the transcripts that aren't the desktop app's
+
+        /// <summary>The pet of the terminal's Claude Code when it is signed in to another account than the desktop app (#36).</summary>
+        public const string CliId = "claude-cli";
         string cachedFile;
         DateTime cachedMtime;
         long cachedLen;
@@ -54,6 +58,18 @@ namespace SentriPet
             Rgba c;
             if (a.Color != null && Rgba.TryParse(a.Color, out c)) Color = c;
             usage = new ClaudeCodeUsage(Path.Combine(a.Home, "projects"));
+        }
+
+        /// <summary>
+        /// The terminal's Claude Code, signed in to another account than the desktop app (#36). Both write to ~/.claude, so
+        /// the transcripts are told apart by where each session runs; the numbers are the status line's (the terminal's
+        /// claude runs it, the desktop app's Code tab doesn't).
+        /// </summary>
+        public static ClaudeProvider ForCli()
+        {
+            var p = new ClaudeProvider { cli = true, Id = CliId, Name = "Claude CLI", Color = Rgba.Hex("#E0A458") };
+            p.usage.Only = ClaudeCodeUsage.Origin.Others;
+            return p;
         }
 
         public override int IntervalSeconds { get { return 10; } }
@@ -95,6 +111,13 @@ namespace SentriPet
                 else if (!account.StatusLine) d.Hint = L.T("在設定頁連接這個帳號的 Claude Code 狀態列，才讀得到它的用量");
                 return d;
             }
+            if (cli)
+            {
+                if (AppPaths.Which("claude") != null) d.Evidence.Add(L.T("claude 指令"));
+                if (Directory.Exists(Path.Combine(AppPaths.Home, ".claude"))) d.Evidence.Add("Claude Code");
+                d.Installed = d.Evidence.Count > 0;
+                return d;
+            }
             if (Directory.Exists(Path.Combine(AppPaths.AppData, "Claude")) || AppPaths.MsixInstalled("Claude"))
                 d.Evidence.Add(L.T("Claude 桌面版"));
             if (Directory.Exists(Path.Combine(AppPaths.Home, ".claude"))) d.Evidence.Add("Claude Code");
@@ -113,11 +136,16 @@ namespace SentriPet
 
             var now = DateTime.UtcNow;
             if (account != null) return FetchAccount(settings, now);
+            if (cli) return FetchCli(settings, now);
+            // the terminal signed in to another account (#36): the status line is its, and so are the replies that aren't
+            // the desktop app's
+            bool split = settings.ClaudeCliSeparate;
+            usage.Only = split ? ClaudeCodeUsage.Origin.Desktop : ClaudeCodeUsage.Origin.All;
             // official numbers from Claude Code's status line (when the bridge is on), ignored once a week old
-            var bridge = settings.ClaudeStatusBridge ? ClaudeStatusLine.Load() : null;
+            var bridge = settings.ClaudeStatusBridge && !split ? ClaudeStatusLine.Load() : null;
             if (bridge != null && (now - bridge.ObservedAt).TotalDays > 7) bridge = null;
             bool estimate = settings.ClaudeEstimate;
-            if (estimate)
+            if (estimate || split)
             {
                 try { usage.Update(); }
                 catch (Exception ex) { Log.Warn("claude transcripts: " + ex.Message); }
@@ -312,12 +340,27 @@ namespace SentriPet
 
             // (#31) what the numbers can't see, and what the user can do about it
             var hints = new List<string>();
-            if (unexplained && !settings.ClaudeStatusBridge && AppPaths.Which("claude") != null)
+            if (unexplained && !settings.ClaudeStatusBridge && !split && AppPaths.Which("claude") != null)
                 hints.Add(L.T("在終端機用 claude 的話，在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」就能看到官方數字"));   // (only the terminal's claude runs it)
             if (startFromReply) hints.Add(L.T("5 小時從 Claude Code 第一則回覆起算，聊天或網頁的用量看不到，實際可能更早重置"));
             if (weeklyUnknown) hints.Add(L.T("每週重置時間推算不出來，可以在 設定 → AI 服務 填一次，例如「週四 23:00」"));
             if (hints.Count > 0) snap.Note = string.Join(L.T("；"), new[] { snap.Note }.Concat(hints));
-            snap.Active = activity.ActiveWithin(90);
+            snap.Active = split ? usage.ActiveWithin(90) : activity.ActiveWithin(90);
+            return snap;
+        }
+
+        /// <summary>The terminal's account (#36): the status line's official numbers; its sessions' replies chain the 5-hour window.</summary>
+        Snapshot FetchCli(AppSettings settings, DateTime now)
+        {
+            try { usage.Update(); }
+            catch (Exception ex) { Log.Warn("claude transcripts (cli): " + ex.Message); }
+            var bridge = settings.ClaudeStatusBridge ? ClaudeStatusLine.Load() : null;
+            if (bridge != null && (now - bridge.ObservedAt).TotalDays > 7) bridge = null;
+            if (bridge == null)
+                return Snapshot.Fail(settings.ClaudeStatusBridge ? L.T("還沒有終端機帳號的用量：在終端機用 claude 問一句話就會出現")
+                                                                 : L.T("在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」，才讀得到終端機帳號的用量"));
+            var snap = FromBridge(bridge, settings.ClaudeEstimate ? usage : null, now);
+            snap.Active = usage.ActiveWithin(90);
             return snap;
         }
 

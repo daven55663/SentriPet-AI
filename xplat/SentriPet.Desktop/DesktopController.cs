@@ -327,7 +327,8 @@ namespace SentriPet
                 if (e.Kind == AgentEvent.Done && e.Seconds >= 0 && e.Seconds < AgentHooks.LongTurnSeconds) continue;   // a quick reply
                 if ((DateTime.UtcNow - e.At).TotalMinutes > 5) continue;   // written while the widget was busy or stopped
                 Log.Info("agent " + e.Source + " " + e.Kind + (e.Seconds >= 0 ? " after " + Math.Round(e.Seconds) + " s" : ""));
-                var v = views.FirstOrDefault(x => x.Id == e.Source);
+                string pet = e.PetId(Settings);   // (#36: the terminal's own account has its own pet)
+                var v = views.FirstOrDefault(x => x.Id == pet) ?? views.FirstOrDefault(x => x.Id == e.Source);
                 if (e.Kind == AgentEvent.Done && v != null && window.CurrentTheme != null) window.CurrentTheme.AgentDone(v.Id);   // its "done" picture (#34)
                 if (IsQuiet) continue;
                 string name = v != null ? v.Name : (e.Source == "codex" ? "Codex" : "Claude");

@@ -139,7 +139,7 @@ namespace SentriPet
     {
         public static List<Provider> CreateAll() { return CreateAll(null); }
 
-        /// <summary>The built-in providers, the plugins, and (with the settings) the other accounts (#26).</summary>
+        /// <summary>The built-in providers, the plugins, and (with the settings) the terminal's Claude account (#36) and the other accounts (#26).</summary>
         public static List<Provider> CreateAll(AppSettings settings)
         {
             var list = new List<Provider>
@@ -149,6 +149,7 @@ namespace SentriPet
                 new CopilotProvider(),
                 new OllamaProvider(),
             };
+            if (settings != null && settings.ClaudeCliSeparate) list.Insert(1, ClaudeProvider.ForCli());   // (#36) next to the desktop app's
             if (settings != null)
                 foreach (var a in settings.Accounts)
                     list.Add(a.Kind == "claude" ? (Provider)new ClaudeProvider(a) : new CodexProvider(a));

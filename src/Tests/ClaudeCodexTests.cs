@@ -57,12 +57,99 @@ namespace SentriPet
                 Transcripts(t);
                 History(t);
                 Estimate(t);
+                TwoAccounts(t);
             }
             finally
             {
                 Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", oldConfig);
                 ClaudeProvider.HistoryOverride = null;
+                ClaudeStatusLine.FileOverride = null;
             }
+        }
+
+        /// <summary>A reply line as Claude Code writes it, saying where the session runs (#36).</summary>
+        static string From(string entrypoint, string reply)
+        {
+            return "{\"entrypoint\":\"" + entrypoint + "\"," + reply.Substring(1);
+        }
+
+        /// <summary>
+        /// The desktop app and the terminal signed in to different accounts, both writing to ~/.claude (#36): the desktop
+        /// app's pet counts only its own sessions and leaves the status line alone; the "Claude CLI" pet shows the status line.
+        /// </summary>
+        static void TwoAccounts(TestKit t)
+        {
+            t.Section("桌面版和終端機是不同的 Claude 帳號（#36）");
+            t.Run("Two accounts", () =>
+            {
+                var now = WholeSecond(DateTime.UtcNow);
+                string root = t.TempDir("claude-two");
+                Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", root);
+                string history = Path.Combine(root, "plan-usage-history.json");
+                ClaudeProvider.HistoryOverride = history;
+                ClaudeStatusLine.FileOverride = Path.Combine(root, "sentripet-status.json");
+                TestKit.WriteFile(ClaudeProvider.CalibrationFile, "{ \"fh\": { \"k\": 1e-5, \"at\": \"2026-10-01T06:00:00Z\" }, \"sd\": { \"k\": 1e-6, \"at\": \"2026-10-01T06:00:00Z\" } }");
+                ClaudeProvider.ForgetCalibration();
+
+                // the desktop app's account: 10% at its last sample, then 100k tokens in its Code tab
+                WriteHistory(history, new List<Dictionary<string, object>> { Sample(now.AddHours(-2), null, 10, 20) });
+                string desk = Path.Combine(root, "projects", "D--home", "desk.jsonl");
+                WriteLines(desk, new[] { From("claude-desktop", Reply("msg_d0", "req_d0", now.AddHours(-1), "claude-opus-4-1", 100000, 0, 0, 0, null)) });
+                // the terminal's account: 300k tokens from claude and the SDK, and its own official numbers
+                string term = Path.Combine(root, "projects", "D--work", "cli.jsonl");
+                WriteLines(term, new[]
+                {
+                    From("cli", Reply("msg_c0", "req_c0", now.AddMinutes(-50), "claude-opus-4-1", 200000, 0, 0, 0, null)),
+                    From("sdk-cli", Reply("msg_c1", "req_c1", now.AddMinutes(-40), "claude-opus-4-1", 100000, 0, 0, 0, null)),
+                });
+                ClaudeStatusLine.Save(new ClaudeStatusLine.Data
+                {
+                    ObservedAt = now.AddMinutes(-5),
+                    FiveHour = new ClaudeStatusLine.Window { Used = 50, ResetsAt = now.AddHours(3) },
+                    SevenDay = new ClaudeStatusLine.Window { Used = 70, ResetsAt = now.AddDays(2) },
+                });
+                File.SetLastWriteTimeUtc(desk, now.AddSeconds(-20));
+                File.SetLastWriteTimeUtc(term, now.AddMinutes(-10));
+
+                var all = new ClaudeCodeUsage();
+                all.Update();
+                t.Near("沒分開：兩個帳號的 token 都算", 400000, all.Sum(now.AddDays(-1), now), 1);
+                all.Only = ClaudeCodeUsage.Origin.Desktop;
+                t.Near("只算桌面版：entrypoint claude-desktop", 100000, all.Sum(now.AddDays(-1), now), 1);
+                t.Check("桌面版剛寫過對話紀錄：工作中", all.ActiveWithin(90));
+                all.Only = ClaudeCodeUsage.Origin.Others;
+                t.Near("其他（終端機 cli、SDK sdk-cli）", 300000, all.Sum(now.AddDays(-1), now), 1);
+                t.Check("終端機 10 分鐘沒寫：沒在工作", !all.ActiveWithin(90));
+
+                var split = new AppSettings { ClaudeStatusBridge = true, ClaudeCliSeparate = true };
+                var desktopPet = new ClaudeProvider().Fetch(false, split).Meters.First(m => m.Key == "fh");
+                t.Near("分開後的桌面版：10% + 自己的 10 萬 token ≈ 11%，不套用終端機的狀態列", 11, desktopPet.Used, 0.01);
+                var cli = ClaudeProvider.ForCli();
+                var cs = cli.Fetch(false, split);
+                var cfh = cs.Meters.FirstOrDefault(m => m.Key == "fh");
+                t.Check("Claude CLI：終端機帳號的官方數字", cli.Id == ClaudeProvider.CliId && cs.Error == null && cfh != null && cfh.Used == 50 && !cfh.ResetApprox && cs.Source.Contains("狀態列"),
+                        cs.Error ?? cs.Source);
+                var noBridge = ClaudeProvider.ForCli().Fetch(false, new AppSettings { ClaudeCliSeparate = true });
+                t.Check("Claude CLI 沒開狀態列：說要開哪裡", noBridge.Error != null && noBridge.Error.Contains("狀態列") && !noBridge.Meters.Any(), noBridge.Error);
+                var together = new ClaudeProvider().Fetch(false, new AppSettings { ClaudeStatusBridge = true }).Meters.First(m => m.Key == "fh");
+                t.Check("沒分開（同一個帳號）：照舊用狀態列較新的官方數字", together.Used >= 50, together.Used + "%");
+
+                t.Equal("設定打開：多一隻 Claude CLI，排在 Claude 後面", "claude,claude-cli,codex",
+                        string.Join(",", ProviderRegistry.CreateAll(split).Select(p => p.Id).Take(3)));
+                t.Check("設定關著：沒有 Claude CLI", ProviderRegistry.CreateAll(new AppSettings()).All(p => p.Id != ClaudeProvider.CliId));
+                split.Save();
+                t.Check("設定存得起來", AppSettings.Load().ClaudeCliSeparate);
+
+                // "done / waiting" (#14): the session's origin picks the pet
+                var stopCli = AgentHooks.FromClaude(Json.Parse("{\"hook_event_name\":\"Stop\",\"cwd\":\"D:/work\",\"transcript_path\":" + Json.Serialize(term, false) + "}"), now);
+                var stopDesk = AgentHooks.FromClaude(Json.Parse("{\"hook_event_name\":\"Stop\",\"cwd\":\"D:/home\",\"transcript_path\":" + Json.Serialize(desk, false) + "}"), now);
+                t.Check("做完了：記下對話是從哪裡來的", stopCli.Entry == "sdk-cli" && stopDesk.Entry == "claude-desktop", stopCli.Entry + " / " + stopDesk.Entry);
+                t.Check("分開時：終端機的交給 Claude CLI，桌面版的交給 Claude", stopCli.PetId(split) == ClaudeProvider.CliId && stopDesk.PetId(split) == "claude");
+                t.Check("沒分開：都交給 Claude", stopCli.PetId(new AppSettings()) == "claude");
+                string events = Path.Combine(root, "events.jsonl");
+                AgentHooks.Append(events, stopCli);
+                t.Equal("事件檔記得來源", "sdk-cli", AgentHooks.ParseLine(File.ReadAllText(events).Trim()).Entry);
+            });
         }
 
         static void Transcripts(TestKit t)

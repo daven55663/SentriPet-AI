@@ -14,15 +14,26 @@ namespace SentriPet
     /// </summary>
     class ClaudeCodeUsage
     {
+        /// <summary>
+        /// Which replies count (#36). Every transcript line says where the session runs: the desktop app's Code tab
+        /// writes "entrypoint":"claude-desktop", the terminal "cli", the SDK "sdk-cli", VS Code "claude-vscode". When
+        /// the desktop app and the terminal are signed in to different accounts, the desktop app's replies belong to
+        /// one and all the others to the other.
+        /// </summary>
+        public enum Origin { All, Desktop, Others }
+
         class FileState
         {
             public long Offset;
+            public DateTime Written;
+            public bool? Desktop;   // from the transcript's lines; null until one says
         }
 
         struct Event
         {
             public DateTime T;
             public double W;
+            public bool Desktop;
         }
 
         static readonly TimeSpan Keep = TimeSpan.FromDays(ClaudeProvider.CalibrationDays);   // (the calibration looks as far back)
@@ -30,8 +41,39 @@ namespace SentriPet
         readonly Dictionary<string, FileState> files = new Dictionary<string, FileState>(StringComparer.OrdinalIgnoreCase);
         readonly Dictionary<string, Event> byKey = new Dictionary<string, Event>();   // message id|request id → reply
         readonly List<Event> keyless = new List<Event>();
-        List<Event> events = new List<Event>();   // sorted by time, rebuilt when something changed
+        List<Event> events = new List<Event>();   // the counted ones, sorted by time, rebuilt when something changed
         bool dirty;
+        Origin only;
+
+        /// <summary>Which replies count (all by default). Changing it needs no new read.</summary>
+        public Origin Only
+        {
+            get { lock (gate) return only; }
+            set
+            {
+                lock (gate)
+                {
+                    if (only == value) return;
+                    only = value;
+                    Rebuild();
+                }
+            }
+        }
+
+        bool Counts(bool desktop) { return only == Origin.All || (only == Origin.Desktop) == desktop; }
+
+        void Rebuild()
+        {
+            events = byKey.Values.Concat(keyless).Where(e => Counts(e.Desktop)).OrderBy(e => e.T).ToList();
+            dirty = false;
+        }
+
+        /// <summary>A transcript of the counted origin was written to in the last <paramref name="seconds"/>: the AI is at work.</summary>
+        public bool ActiveWithin(int seconds)
+        {
+            var since = DateTime.UtcNow.AddSeconds(-seconds);
+            lock (gate) return files.Values.Any(f => f.Written >= since && Counts(f.Desktop == true));
+        }
 
         /// <summary>Claude Code's transcript folder (honours CLAUDE_CONFIG_DIR).</summary>
         internal static string Root
@@ -77,6 +119,7 @@ namespace SentriPet
                         FileState st;
                         if (!files.TryGetValue(fi.FullName, out st)) { st = new FileState(); files[fi.FullName] = st; }
                         fi.Refresh();
+                        st.Written = fi.LastWriteTimeUtc;
                         if (fi.Length < st.Offset) st.Offset = 0;   // rewritten
                         if (fi.Length == st.Offset) continue;
                         ReadFrom(fi.FullName, st, cutoff);
@@ -87,8 +130,7 @@ namespace SentriPet
                 {
                     foreach (var k in byKey.Where(kv => kv.Value.T < cutoff).Select(kv => kv.Key).ToList()) byKey.Remove(k);
                     keyless.RemoveAll(e => e.T < cutoff);
-                    events = byKey.Values.Concat(keyless).OrderBy(e => e.T).ToList();
-                    dirty = false;
+                    Rebuild();
                 }
             }
         }
@@ -117,7 +159,7 @@ namespace SentriPet
                     {
                         if (buf[i] != (byte)'\n') continue;
                         line.Write(buf, start, i - start);
-                        Consume(line, cutoff);
+                        Consume(line, st, cutoff);
                         line.SetLength(0);
                         start = i + 1;
                         st.Offset = pos + i + 1;   // everything up to here is done
@@ -128,19 +170,25 @@ namespace SentriPet
             }
         }
 
-        void Consume(MemoryStream line, DateTime cutoff)
+        void Consume(MemoryStream line, FileState st, DateTime cutoff)
         {
             byte[] bytes = line.GetBuffer();
             int len = (int)line.Length;
+            if (len < 20) return;
+            bool assistant = IndexOf(bytes, len, AssistantMark) >= 0;
+            // where the session runs (#36): a reply's own line says it (a session can be resumed elsewhere); other
+            // lines only until the transcript's origin is known
+            if ((assistant || st.Desktop == null) && IndexOf(bytes, len, EntryMark) >= 0) st.Desktop = IndexOf(bytes, len, DesktopMark) >= 0;
+            bool desktop = st.Desktop == true;
             // only assistant replies carry usage: skip the rest (tool results, prompts) without decoding it
-            if (len < 20 || IndexOf(bytes, len, AssistantMark) < 0) return;
+            if (!assistant) return;
             DateTime t;
             double w;
             string key;
             if (!TryParse(Encoding.UTF8.GetString(bytes, 0, len), out t, out w, out key) || t < cutoff) return;
             if (key == null)
             {
-                keyless.Add(new Event { T = t, W = w });
+                keyless.Add(new Event { T = t, W = w, Desktop = desktop });
                 dirty = true;
                 return;
             }
@@ -148,12 +196,15 @@ namespace SentriPet
             if (byKey.TryGetValue(key, out old))
             {
                 // Claude Code writes one line per content block with the same message id; keep the largest
-                if (w > old.W) { byKey[key] = new Event { T = old.T, W = w }; dirty = true; }
+                if (w > old.W) { byKey[key] = new Event { T = old.T, W = w, Desktop = old.Desktop }; dirty = true; }
                 return;
             }
-            byKey[key] = new Event { T = t, W = w };
+            byKey[key] = new Event { T = t, W = w, Desktop = desktop };
             dirty = true;
         }
+
+        static readonly byte[] EntryMark = Encoding.ASCII.GetBytes("\"entrypoint\":\"");
+        static readonly byte[] DesktopMark = Encoding.ASCII.GetBytes("\"entrypoint\":\"claude-desktop\"");
 
         static int IndexOf(byte[] hay, int len, byte[] needle)
         {

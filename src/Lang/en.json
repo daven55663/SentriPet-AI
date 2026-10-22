@@ -616,5 +616,9 @@
   "催你快用": "Use it up!",
   "每週／每月額度快重置了還剩很多，該趕快用了": "A weekly or monthly quota resets soon with plenty left: time to use it",
   "沒有圖：照心情顯示": "No picture: the mood is shown",
-  "正在工作": "Working"
+  "正在工作": "Working",
+  "終端機是另一個 Claude 帳號": "The terminal uses another Claude account",
+  "桌面版和終端機的 Claude Code 登入不同帳號時打開：分成「Claude」（桌面版）和「Claude CLI」（終端機，數字來自上面的狀態列）兩隻，各自計算": "Turn on when the desktop app and the terminal's Claude Code are signed in to different accounts: two pets, “Claude” (the desktop app) and “Claude CLI” (the terminal, numbers from the status line above), each counted on its own",
+  "還沒有終端機帳號的用量：在終端機用 claude 問一句話就會出現": "No numbers for the terminal's account yet: ask claude something in the terminal and they appear",
+  "在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」，才讀得到終端機帳號的用量": "Turn on “Connect the Claude Code status line” in Settings → AI services to read the terminal's account"
 }

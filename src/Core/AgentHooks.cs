@@ -17,8 +17,19 @@ namespace SentriPet
         public DateTime At;            // UTC
         public double Seconds = -1;    // how long the turn took (done), -1 = unknown
         public string Project;         // the folder it worked in (its name only)
+        public string Entry;           // Claude Code: where the session runs ("claude-desktop", "cli"…, #36), null = unknown
 
         public const string Done = "done", Permission = "permission", Waiting = "waiting";
+
+        /// <summary>
+        /// The pet that tells it: with the terminal signed in to another account (#36), a Claude session that doesn't run in
+        /// the desktop app is the "Claude CLI" pet's.
+        /// </summary>
+        public string PetId(AppSettings s)
+        {
+            if (Source == "claude" && s.ClaudeCliSeparate && Entry != null && Entry != "claude-desktop") return ClaudeProvider.CliId;
+            return Source;
+        }
     }
 
     /// <summary>
@@ -77,6 +88,7 @@ namespace SentriPet
         {
             string evt = Json.Str(Json.Get(input, "hook_event_name"));
             var e = new AgentEvent { Source = "claude", At = now, Project = ProjectName(Json.Str(Json.Get(input, "cwd"))) };
+            if (evt == "Stop" || evt == "Notification") e.Entry = ClaudeEntrypoint(Json.Str(Json.Get(input, "transcript_path")));
             if (evt == "Stop")
             {
                 if (Json.Bool(Json.Get(input, "stop_hook_active")) == true) return null;   // another hook made it continue
@@ -212,6 +224,26 @@ namespace SentriPet
             }
         }
 
+        /// <summary>Where a Claude Code session runs, from its transcript's last lines (#36): "claude-desktop", "cli"…, or null.</summary>
+        internal static string ClaudeEntrypoint(string transcript)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(transcript) || !File.Exists(transcript)) return null;
+                var lines = Tail(transcript, 256 * 1024);
+                for (int i = lines.Count - 1; i >= 0; i--)
+                {
+                    int at = lines[i].IndexOf("\"entrypoint\":\"", StringComparison.Ordinal);
+                    if (at < 0) continue;
+                    at += 14;
+                    int end = lines[i].IndexOf('"', at);
+                    if (end > at) return lines[i].Substring(at, end - at);
+                }
+            }
+            catch (Exception ex) { Log.Warn("claude transcript: " + ex.Message); }
+            return null;
+        }
+
         /// <summary>Seconds since the user's last prompt in a Claude Code transcript, or -1.</summary>
         internal static double ClaudeTurnSeconds(string transcript, DateTime now)
         {
@@ -277,6 +309,7 @@ namespace SentriPet
                 var o = new Dictionary<string, object> { { "at", e.At.ToString("o", CultureInfo.InvariantCulture) }, { "source", e.Source }, { "kind", e.Kind } };
                 if (e.Seconds >= 0) o["seconds"] = Math.Round(e.Seconds, 1);
                 if (e.Project != null) o["project"] = e.Project;
+                if (e.Entry != null) o["entry"] = e.Entry;
                 string line = Json.Serialize(o, false) + "\n";
                 if (File.Exists(file) && new FileInfo(file).Length > MaxEventsFile)
                 {
@@ -299,6 +332,7 @@ namespace SentriPet
             {
                 Source = Json.Str(Json.Get(o, "source")), Kind = kind, At = at.Value,
                 Seconds = Json.Num(Json.Get(o, "seconds")) ?? -1, Project = Json.Str(Json.Get(o, "project")),
+                Entry = Json.Str(Json.Get(o, "entry")),
             };
         }
 

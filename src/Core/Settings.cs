@@ -42,6 +42,7 @@ namespace SentriPet
         public int CodexLiveMinutes = 5;      // 0 = only local session logs
         public string ClaudeWeeklyReset = ""; // optional override, e.g. "Thu 23:00" / "週四 23:00"
         public bool ClaudeStatusBridge;       // SentriPet is Claude Code's status-line command (official usage, see ClaudeStatusLine)
+        public bool ClaudeCliSeparate;        // the terminal's Claude Code is signed in to another account than the desktop app: two pets (#36)
         public bool AgentHooks;               // "done / waiting for you" from Claude Code's hooks and Codex's notify (#14, see AgentHooks)
         public bool AgentHookNotify;          // …also as a notification
         public string CodexNotifyChain;       // the notify array the user had in Codex's config.toml (still run)
@@ -107,6 +108,7 @@ namespace SentriPet
                 s.CodexLiveMinutes = (int)Clamp(Json.Num(Json.Get(o, "codexLiveMinutes")) ?? 5, 0, 120);
                 s.ClaudeWeeklyReset = Json.Str(Json.Get(o, "claudeWeeklyReset")) ?? "";
                 s.ClaudeStatusBridge = Json.Bool(Json.Get(o, "claudeStatusBridge")) ?? false;
+                s.ClaudeCliSeparate = Json.Bool(Json.Get(o, "claudeCliSeparate")) ?? false;
                 s.AgentHooks = Json.Bool(Json.Get(o, "agentHooks")) ?? false;
                 s.AgentHookNotify = Json.Bool(Json.Get(o, "agentHookNotify")) ?? false;
                 s.CodexNotifyChain = Json.Str(Json.Get(o, "codexNotifyChain"));
@@ -169,6 +171,7 @@ namespace SentriPet
                 o["codexLiveMinutes"] = CodexLiveMinutes;
                 o["claudeWeeklyReset"] = ClaudeWeeklyReset;
                 o["claudeStatusBridge"] = ClaudeStatusBridge;
+                o["claudeCliSeparate"] = ClaudeCliSeparate;
                 o["agentHooks"] = AgentHooks;
                 o["agentHookNotify"] = AgentHookNotify;
                 if (CodexNotifyChain != null) o["codexNotifyChain"] = CodexNotifyChain;
