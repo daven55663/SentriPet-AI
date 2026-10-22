@@ -129,10 +129,31 @@ namespace SentriPet
                 var cfh = cs.Meters.FirstOrDefault(m => m.Key == "fh");
                 t.Check("Claude CLI：終端機帳號的官方數字", cli.Id == ClaudeProvider.CliId && cs.Error == null && cfh != null && cfh.Used == 50 && !cfh.ResetApprox && cs.Source.Contains("狀態列"),
                         cs.Error ?? cs.Source);
+                // the status line is drawn again and again with the numbers of the session's last reply: they are dated by it
+                var dated = ClaudeStatusLine.Extract(Json.Parse("{\"rate_limits\":{\"five_hour\":{\"used_percentage\":0,\"resets_at\":" + TestKit.Unix(now.AddHours(2)) +
+                                                                "}},\"transcript_path\":" + Json.Serialize(term, false) + "}"), now);
+                t.Equal("狀態列的數字是那個對話最後一次回覆時的", now.AddMinutes(-40), dated.ObservedAt);
+
+                // between two readings: the terminal's replies since, at first with the desktop app's ratio…
+                File.Delete(ClaudeStatusLine.FileOverride);
+                ClaudeStatusLine.Save(new ClaudeStatusLine.Data { ObservedAt = now.AddMinutes(-60), FiveHour = new ClaudeStatusLine.Window { Used = 30, ResetsAt = now.AddHours(3) } });
+                var borrowed = ClaudeProvider.ForCli().Fetch(false, split);
+                t.Near("終端機帳號：官方 30% + 之後的 30 萬 token（先借用桌面版的比例 1e-5）≈ 33%", 33, borrowed.Meters.First(m => m.Key == "fh").Used, 0.01);
+                t.Check("註明是推算、比例是借來的", borrowed.Source == "即時推算" && borrowed.Note.Contains("借用"), borrowed.Note);
+                // …then with its own, once two readings in a window are far enough apart
+                File.Delete(ClaudeStatusLine.FileOverride);
+                WriteLines(Path.Combine(root, "projects", "D--sdk", "sdk.jsonl"), new[] { From("sdk-cli", Reply("msg_s0", "req_s0", now.AddMinutes(-80), "claude-opus-4-1", 1000000, 0, 0, 0, null)) });
+                ClaudeStatusLine.Save(new ClaudeStatusLine.Data { ObservedAt = now.AddMinutes(-100), FiveHour = new ClaudeStatusLine.Window { Used = 10, ResetsAt = now.AddHours(3) } });
+                ClaudeStatusLine.Save(new ClaudeStatusLine.Data { ObservedAt = now.AddMinutes(-60), FiveHour = new ClaudeStatusLine.Window { Used = 30, ResetsAt = now.AddHours(3) } });
+                t.Equal("每次的官方數字都留下來（校準用）", 2, ClaudeStatusLine.Load().History.Count);
+                var own = ClaudeProvider.ForCli().Fetch(false, split);
+                t.Near("自己校準：100 萬 token 用了 20%（2e-5）；30% + 30 萬 token ≈ 36%", 36, own.Meters.First(m => m.Key == "fh").Used, 0.01);
+                t.Check("自己的比例存起來，不動桌面版的", File.ReadAllText(ClaudeProvider.CalibrationFile).Contains("\"cli:fh\"") && !own.Note.Contains("借用"), own.Note);
+
                 var noBridge = ClaudeProvider.ForCli().Fetch(false, new AppSettings { ClaudeCliSeparate = true });
                 t.Check("Claude CLI 沒開狀態列：說要開哪裡", noBridge.Error != null && noBridge.Error.Contains("狀態列") && !noBridge.Meters.Any(), noBridge.Error);
                 var together = new ClaudeProvider().Fetch(false, new AppSettings { ClaudeStatusBridge = true }).Meters.First(m => m.Key == "fh");
-                t.Check("沒分開（同一個帳號）：照舊用狀態列較新的官方數字", together.Used >= 50, together.Used + "%");
+                t.Check("沒分開（同一個帳號）：照舊用狀態列較新的官方數字", together.Used >= 30, together.Used + "%");
 
                 t.Equal("設定打開：多一隻 Claude CLI，排在 Claude 後面", "claude,claude-cli,codex",
                         string.Join(",", ProviderRegistry.CreateAll(split).Select(p => p.Id).Take(3)));

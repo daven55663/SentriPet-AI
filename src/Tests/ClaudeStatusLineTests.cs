@@ -180,6 +180,16 @@ namespace SentriPet
                 var off = new ClaudeProvider().Fetch(false, new AppSettings { ClaudeEstimate = false });
                 t.Check("沒開橋接：不讀（提示怎麼開）", off.Error != null && !off.Meters.Any(), off.Error);
 
+                // a session left open with older numbers doesn't overwrite newer ones (#36)
+                ClaudeStatusLine.Save(new ClaudeStatusLine.Data
+                {
+                    ObservedAt = now.AddHours(-3),
+                    FiveHour = new ClaudeStatusLine.Window { Used = 5, ResetsAt = now.AddHours(1) },
+                });
+                var kept = ClaudeStatusLine.Load();
+                t.Check("比較舊的數字不會蓋掉新的", kept.ObservedAt == now.AddMinutes(-10) && kept.FiveHour.Used == 30, kept.ObservedAt + " " + kept.FiveHour.Used);
+
+                File.Delete(ClaudeStatusLine.FileOverride);
                 ClaudeStatusLine.Save(new ClaudeStatusLine.Data
                 {
                     ObservedAt = now.AddHours(-3),
@@ -211,6 +221,7 @@ namespace SentriPet
                 t.Check("狀態列比桌面版新：用官方的用量與重置時間", fh.Used == 12 && fh.ResetsAt == now.AddHours(3) && !fh.ResetApprox, fh.Used + " " + fh.ResetsAt);
                 t.Check("來源標成狀態列（官方）", s.Source.Contains("狀態列") && s.Note.Contains("官方"), s.Source + " / " + s.Note);
 
+                File.Delete(ClaudeStatusLine.FileOverride);
                 ClaudeStatusLine.Save(new ClaudeStatusLine.Data
                 {
                     ObservedAt = now.AddMinutes(-40),

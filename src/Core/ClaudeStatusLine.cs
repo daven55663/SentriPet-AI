@@ -24,12 +24,24 @@ namespace SentriPet
 
         public class Data
         {
-            public DateTime ObservedAt;   // UTC
+            public DateTime ObservedAt;   // UTC: when Claude Code last heard the numbers (its session's last reply)
             public Window FiveHour, SevenDay;
             public string Model;
+            /// <summary>The readings of the last days, oldest first (#36): how many %-points a token is worth for this account.</summary>
+            public List<Reading> History = new List<Reading>();
 
             public Window For(string key) { return key == "fh" ? FiveHour : key == "sd" ? SevenDay : null; }
         }
+
+        public class Reading
+        {
+            public DateTime At;           // UTC
+            public double? FiveHour, SevenDay;   // used %
+        }
+
+        /// <summary>How many readings and how far back the history keeps (the calibration looks 8 days back).</summary>
+        const int MaxReadings = 300;
+        static readonly TimeSpan KeepReadings = TimeSpan.FromDays(8);
 
         /// <summary>Test hooks: the bridge file and Claude's settings.json.</summary>
         internal static string FileOverride, SettingsOverride;
@@ -89,14 +101,40 @@ namespace SentriPet
             return string.IsNullOrEmpty(chain) ? null : Json.Str(Json.Get(Json.TryParse(chain), "command"));
         }
 
-        /// <summary>The plan usage in Claude Code's status-line input, or null when it has none (API key, first message not answered yet).</summary>
+        /// <summary>
+        /// The plan usage in Claude Code's status-line input, or null when it has none (API key, first message not answered
+        /// yet). The numbers are those of the session's last reply: the status line is drawn again and again in a session
+        /// left open for hours, with the same numbers (user report: "0%" at 16:32 was the 13:10 reading, 42% was used by
+        /// then), so they are dated by that reply in the transcript when there is one.
+        /// </summary>
         internal static Data Extract(object root, DateTime nowUtc)
         {
             var rl = Json.Get(root, "rate_limits");
             if (rl == null) return null;
             var d = new Data { ObservedAt = nowUtc, FiveHour = WindowOf(Json.Get(rl, "five_hour")), SevenDay = WindowOf(Json.Get(rl, "seven_day")) };
             d.Model = Json.Str(Json.Path(root, "model.display_name"));
+            var reply = LastReplyAt(Json.Str(Json.Get(root, "transcript_path")));
+            if (reply.HasValue && reply.Value < nowUtc) d.ObservedAt = reply.Value;
             return d.FiveHour != null || d.SevenDay != null ? d : null;
+        }
+
+        /// <summary>When the last answer in a Claude Code transcript came (UTC), or null.</summary>
+        internal static DateTime? LastReplyAt(string transcript)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(transcript) || !File.Exists(transcript)) return null;
+                var lines = AgentHooks.Tail(transcript, 256 * 1024);
+                for (int i = lines.Count - 1; i >= 0; i--)
+                {
+                    string l = lines[i];
+                    if (l.IndexOf("\"type\":\"assistant\"", StringComparison.Ordinal) < 0 || l.IndexOf("<synthetic>", StringComparison.Ordinal) >= 0) continue;
+                    var at = Json.Date(Json.Get(Json.TryParse(l), "timestamp"));
+                    if (at.HasValue) return at.Value;
+                }
+            }
+            catch (Exception ex) { Log.Warn("status line transcript: " + ex.Message); }
+            return null;
         }
 
         static Window WindowOf(object o)
@@ -119,14 +157,37 @@ namespace SentriPet
 
         // ------------------------------------------------------------------ the saved numbers
 
+        /// <summary>
+        /// Keeps a reading: the newest numbers (a session left open with older ones doesn't overwrite them), and the
+        /// history of readings (a new one when the numbers changed, or every ten minutes).
+        /// </summary>
         public static void Save(Data d, string path = null)
         {
+            path = path ?? DataFile;
+            var old = Load(path);
+            if (old != null && old.ObservedAt > d.ObservedAt) return;
+            var history = old != null ? old.History : new List<Reading>();
+            if (old != null && history.Count == 0)   // (a file from before the history: its reading is the first)
+                history.Add(new Reading { At = old.ObservedAt, FiveHour = old.FiveHour != null ? old.FiveHour.Used : (double?)null, SevenDay = old.SevenDay != null ? old.SevenDay.Used : (double?)null });
+            var last = history.Count > 0 ? history[history.Count - 1] : null;
+            double? fh = d.FiveHour != null ? d.FiveHour.Used : (double?)null, sd = d.SevenDay != null ? d.SevenDay.Used : (double?)null;
+            if (last == null || (d.ObservedAt > last.At && (last.FiveHour != fh || last.SevenDay != sd || d.ObservedAt - last.At >= TimeSpan.FromMinutes(10))))
+                history.Add(new Reading { At = d.ObservedAt, FiveHour = fh, SevenDay = sd });
+            history = history.Where(r => r.At >= d.ObservedAt - KeepReadings).ToList();
+            if (history.Count > MaxReadings) history = history.Skip(history.Count - MaxReadings).ToList();
+
             var o = new Dictionary<string, object>();
             o["observedAt"] = d.ObservedAt;
             if (d.Model != null) o["model"] = d.Model;
             if (d.FiveHour != null) o["fiveHour"] = WindowJson(d.FiveHour);
             if (d.SevenDay != null) o["sevenDay"] = WindowJson(d.SevenDay);
-            path = path ?? DataFile;
+            o["history"] = history.Select(r =>
+            {
+                var h = new Dictionary<string, object> { { "at", r.At } };
+                if (r.FiveHour.HasValue) h["fh"] = r.FiveHour.Value;
+                if (r.SevenDay.HasValue) h["sd"] = r.SevenDay.Value;
+                return (object)h;
+            }).ToList();
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             string tmp = path + ".tmp";
             File.WriteAllText(tmp, Json.Serialize(o, true), new UTF8Encoding(false));
@@ -154,6 +215,13 @@ namespace SentriPet
                 var d = new Data { ObservedAt = at.Value, Model = Json.Str(Json.Get(o, "model")) };
                 d.FiveHour = SavedWindow(Json.Get(o, "fiveHour"));
                 d.SevenDay = SavedWindow(Json.Get(o, "sevenDay"));
+                var history = Json.Arr(Json.Get(o, "history"));
+                if (history != null)
+                    foreach (var h in history)
+                    {
+                        var hat = Json.Date(Json.Get(h, "at"));
+                        if (hat.HasValue) d.History.Add(new Reading { At = hat.Value, FiveHour = Json.Num(Json.Get(h, "fh")), SevenDay = Json.Num(Json.Get(h, "sd")) });
+                    }
                 return d.FiveHour != null || d.SevenDay != null ? d : null;
             }
             catch (Exception ex) { Log.Warn("status line data: " + ex.Message); return null; }

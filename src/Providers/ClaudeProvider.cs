@@ -359,7 +359,7 @@ namespace SentriPet
             if (bridge == null)
                 return Snapshot.Fail(settings.ClaudeStatusBridge ? L.T("還沒有終端機帳號的用量：在終端機用 claude 問一句話就會出現")
                                                                  : L.T("在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」，才讀得到終端機帳號的用量"));
-            var snap = FromBridge(bridge, settings.ClaudeEstimate ? usage : null, now);
+            var snap = FromBridge(bridge, settings.ClaudeEstimate ? usage : null, now, "cli:", true);
             snap.Active = usage.ActiveWithin(90);
             return snap;
         }
@@ -380,13 +380,26 @@ namespace SentriPet
                 try { usage.Update(); }
                 catch (Exception ex) { Log.Warn("claude transcripts " + account.Id + ": " + ex.Message); }
             }
-            return FromBridge(bridge, settings.ClaudeEstimate ? usage : null, now);
+            return FromBridge(bridge, settings.ClaudeEstimate ? usage : null, now, account.Id + ":");
         }
 
-        /// <summary>Only the status line's numbers (no desktop app, e.g. Linux).</summary>
-        Snapshot FromBridge(ClaudeStatusLine.Data bridge, ClaudeCodeUsage events, DateTime now)
+        /// <summary>
+        /// The status line's official numbers (no desktop app, e.g. Linux; another account, #26; the terminal's account, #36),
+        /// and between two readings the replies since the last one turned into %-points. How many a token is worth is fitted
+        /// on this account's own readings (kept under <paramref name="calibration"/> + fh/sd in claude-calibration.json);
+        /// with <paramref name="borrow"/>, the desktop app's fit stands in until there is one.
+        /// </summary>
+        Snapshot FromBridge(ClaudeStatusLine.Data bridge, ClaudeCodeUsage events, DateTime now, string calibration = "", bool borrow = false)
         {
             var snap = new Snapshot { Source = L.T("Claude Code 狀態列（官方）"), ObservedAt = bridge.ObservedAt };
+            var readings = bridge.History.Select(r =>
+            {
+                var x = new Sample { T = Json.ToUnixMs(r.At) };
+                if (r.FiveHour.HasValue) x.U["fh"] = r.FiveHour.Value;
+                if (r.SevenDay.HasValue) x.U["sd"] = r.SevenDay.Value;
+                return x;
+            }).ToList();
+            bool estimated = false, borrowed = false;
             foreach (var key in new[] { "fh", "sd" })
             {
                 var bw = bridge.For(key);
@@ -402,11 +415,13 @@ namespace SentriPet
                     ResetsAt = bw.ResetsAt,
                     ResetApprox = false,
                 };
+                DateTime extrapolateFrom = bridge.ObservedAt;
                 if (bw.ResetsAt <= now)
                 {
                     // the window ended since Claude Code last reported it
                     m.Used = 0;
                     m.WasReset = true;
+                    extrapolateFrom = bw.ResetsAt;
                     if (win >= 1440)
                         while (m.ResetsAt.Value <= now) m.ResetsAt = m.ResetsAt.Value.AddMinutes(win);
                     else
@@ -415,12 +430,39 @@ namespace SentriPet
                         var start = CurrentWindow(events, bw.ResetsAt, now, win, out opened);
                         m.ResetsAt = start.HasValue ? start.Value.AddMinutes(win) : (DateTime?)null;
                         m.ResetApprox = true;
+                        extrapolateFrom = start.HasValue ? opened.AddTicks(-1) : now;   // only what the window running now has used
+                    }
+                }
+                if (events != null)
+                {
+                    double? k = Calibrate(readings, key, win, calibration + key);
+                    if (!k.HasValue && borrow)
+                    {
+                        k = SavedCalibration(key);
+                        borrowed |= k.HasValue;
+                    }
+                    double extra = k.HasValue ? events.Sum(extrapolateFrom, now) * k.Value : 0;
+                    if (extra >= 0.1)
+                    {
+                        m.Used = Math.Min(100, m.Used + extra);
+                        m.UsedApprox = true;
+                        estimated = true;
                     }
                 }
                 snap.Meters.Add(m);
             }
-            snap.Note = L.F("官方數字，來自 Claude Code 狀態列（{0}）；只有用 Claude Code 時才會更新", bridge.ObservedAt.ToLocalTime().ToString("M/d HH:mm"));
-            if ((now - bridge.ObservedAt).TotalHours > 6) snap.Stale = true;
+            if (estimated)
+            {
+                snap.ObservedAt = now;
+                snap.Source = L.T("即時推算");
+                snap.Note = L.F("以 Claude Code 狀態列 {0} 的官方數字為基準，加上之後用掉的 token 推算（≈）", bridge.ObservedAt.ToLocalTime().ToString("HH:mm"));
+                if (borrowed) snap.Note += L.T("；這個帳號還沒有足夠的紀錄，換算比例先借用桌面版帳號的");
+            }
+            else
+            {
+                snap.Note = L.F("官方數字，來自 Claude Code 狀態列（{0}）；只有用 Claude Code 時才會更新", bridge.ObservedAt.ToLocalTime().ToString("M/d HH:mm"));
+                if ((now - bridge.ObservedAt).TotalHours > 6) snap.Stale = true;
+            }
             snap.Active = activity.ActiveWithin(90);
             return snap;
         }
@@ -436,7 +478,7 @@ namespace SentriPet
         /// When there is nothing new to fit on, the last fit is used (kept in claude-calibration.json): without it
         /// the estimate stopped, and the pet showed the last desktop sample for hours.
         /// </summary>
-        double? Calibrate(List<Sample> ss, string key, int window)
+        double? Calibrate(List<Sample> ss, string key, int window, string store = null)
         {
             long cutoff = Json.ToUnixMs(DateTime.UtcNow.AddDays(-CalibrationDays));
             long maxGap = (window >= 1440 ? 24 : 3) * 3600 * 1000L;
@@ -457,10 +499,10 @@ namespace SentriPet
             double k = den > 0 && rise >= 4 ? num / den : 0;   // (not enough evidence yet: 0)
             if (k > 0)
             {
-                SaveCalibration(key, k);
+                SaveCalibration(store ?? key, k);
                 return k;
             }
-            return SavedCalibration(key);
+            return SavedCalibration(store ?? key);
         }
 
         /// <summary>The last calibration per window (fh, sd…), so the estimate goes on when the desktop app writes no new samples.</summary>

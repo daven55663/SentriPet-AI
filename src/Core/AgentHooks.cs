@@ -211,7 +211,7 @@ namespace SentriPet
         }
 
         /// <summary>The last lines of a file (the tail of a long transcript), oldest first.</summary>
-        static List<string> Tail(string path, int bytes)
+        internal static List<string> Tail(string path, int bytes)
         {
             using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
             {
