@@ -372,7 +372,7 @@ macOS 的全螢幕 App 會在自己的桌面空間裡，桌寵本來就不會出
 | Codex | 官方 `codex app-server` 的 `account/rateLimits/read`，加上 `~/.codex/sessions` 對話紀錄裡的 rate_limits | 預設每 5 分鐘即時查詢一次；用 Codex 時本機紀錄會即時更新 |
 | Copilot | Copilot CLI 的額度快取 | 用 Copilot CLI 時才會更新 |
 | Ollama | 本機 `http://127.0.0.1:11434`（沒有額度，只顯示載入中的模型） | 30 秒 |
-| 其他 | Gemini CLI、Cursor、Windsurf、LM Studio… 會被偵測到並列在設定裡；可以用外掛接上用量 | — |
+| 其他 | Gemini（桌面版與 CLI）、Cursor、Windsurf、LM Studio… 會被偵測到並列在設定裡；可以用外掛接上用量 | — |
 
 ## 接上其他 AI（外掛）
 

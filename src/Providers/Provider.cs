@@ -116,7 +116,7 @@ namespace SentriPet
 
         public static readonly List<CatalogEntry> All = new List<CatalogEntry>
         {
-            new CatalogEntry { Id = "gemini", Name = "Gemini CLI", Paths = new[] { "~/.gemini" }, Commands = new[] { "gemini" } },
+            new CatalogEntry { Id = "gemini", Name = "Gemini", Paths = new[] { "%LOCALAPPDATA%/Google/Gemini", "~/.gemini" }, Commands = new[] { "gemini" } },   // the desktop app, the CLI
             new CatalogEntry { Id = "chatgpt", Name = L.T("ChatGPT 桌面版"), MsixPackages = new[] { "OpenAI.ChatGPT-Desktop", "OpenAI.ChatGPT" } },
             new CatalogEntry { Id = "cursor", Name = "Cursor", Paths = new[] { "%APPDATA%/Cursor", "%LOCALAPPDATA%/Programs/cursor" } },
             new CatalogEntry { Id = "windsurf", Name = "Windsurf", Paths = new[] { "%APPDATA%/Windsurf", "~/.codeium/windsurf" } },

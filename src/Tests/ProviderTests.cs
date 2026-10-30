@@ -18,11 +18,35 @@ namespace SentriPet
                 Copilot(t);
                 Ollama(t);
                 Plugins(t);
+                Catalog(t);
             }
             finally
             {
                 CopilotProvider.CacheOverride = null;
             }
+        }
+
+        /// <summary>Tools that are recognised but have no usage source: the Gemini desktop app as well as its CLI (#37).</summary>
+        static void Catalog(TestKit t)
+        {
+            t.Section("偵測得到、沒有用量來源的工具");
+            t.Run("Catalog", () =>
+            {
+                var gemini = CatalogEntry.All.First(c => c.Id == "gemini");
+                t.Equal("名稱不限於 CLI", "Gemini", gemini.Name);
+                t.Check("桌面版和 CLI 的位置都會找", gemini.Paths.Contains("%LOCALAPPDATA%/Google/Gemini") && gemini.Paths.Contains("~/.gemini") && gemini.Commands.Contains("gemini"));
+                if (!Os.Windows) { t.Skip("Gemini 桌面版的資料夾", "桌面版的位置只在 Windows 確認過"); return; }
+                string old = Environment.GetEnvironmentVariable("LOCALAPPDATA");
+                try
+                {
+                    string local = t.TempDir("gemini-local");
+                    Environment.SetEnvironmentVariable("LOCALAPPDATA", local);
+                    Directory.CreateDirectory(Path.Combine(local, "Google", "Gemini"));
+                    var d = gemini.Detect();
+                    t.Check("裝了桌面版：偵測得到，沒有用量來源", d.Installed && !d.UsageSupported && d.Evidence.Any(e => e.Contains("Gemini")), string.Join(" | ", d.Evidence));
+                }
+                finally { Environment.SetEnvironmentVariable("LOCALAPPDATA", old); }
+            });
         }
 
         static void Copilot(TestKit t)

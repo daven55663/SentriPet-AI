@@ -380,7 +380,7 @@ Everything stays on your computer. SentriPet never reads or sends sign-in creden
 | Codex | The official `codex app-server` (`account/rateLimits/read`), plus the rate limits in `~/.codex/sessions` | Every 5 minutes by default; the local records update live while you use Codex |
 | Copilot | Copilot CLI's quota cache | When you use Copilot CLI |
 | Ollama | `http://127.0.0.1:11434` (no quota, shows the loaded models) | 30 seconds |
-| Others | Gemini CLI, Cursor, Windsurf, LM Studio… are detected and listed in the settings; add their usage with a plugin | — |
+| Others | Gemini (desktop app and CLI), Cursor, Windsurf, LM Studio… are detected and listed in the settings; add their usage with a plugin | — |
 
 ## Other AIs (plugins)
 
