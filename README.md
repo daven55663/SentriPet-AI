@@ -268,7 +268,8 @@ folder* opens the `themes` folder with the example *Little Cloud* in it; copy it
 *Reload*, and it is in *Change look*. Since 2.5 a theme can also have a text per mood and lines of its own (a
 `lines.json` next to `theme.json`), said while it is in use — the example cloud talks about the weather. Since 2.6
 *Edit state pictures* treats a theme's folder as a library: drag a picture onto a state (working, AI done, use it up, plenty left,
-used up…) or drop one in from the file manager, and the pet shows it at once — no JSON to edit. Themes are only data
+used up…) or drop one in from the file manager, and the pet shows it at once — no JSON to edit. Since 2.7 animated GIFs
+play too (looping, at a speed you can set per picture or state), in the pet and in the editor. Themes are only data
 (nothing is run), so they can be shared as a zipped folder; mistakes are listed on the settings page instead of
 crashing. Format: [docs/custom-themes.md](docs/custom-themes.md).
 

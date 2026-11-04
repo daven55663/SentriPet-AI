@@ -90,6 +90,22 @@ namespace SentriPet
             L.Use("en");
             t.Equal("工作中的文字（英文）", "busy", ThemeSpec.TextFor(ThemeSpec.Parse("{ \"card\": { \"elements\": [ { \"type\": \"text\", \"states\": { \"working\": { \"en\": \"busy\", \"zh-TW\": \"忙\" } } } ] } }", "t", null).Elements[0], v));
             L.Use(L.Source);
+
+            // animated GIFs and how fast they play
+            s = ThemeSpec.Parse("{ \"card\": { \"elements\": [ { \"type\": \"image\", \"width\": 9, \"height\": 9, \"speed\": { \"dance.gif\": 0.25, \"working\": 2, \"default\": 0.7, \"nope\": 3 }, " +
+                                "\"states\": { \"great\": \"dance.gif\", \"good\": \"wave.gif\", \"working\": \"run.gif\" } }, " +
+                                "{ \"type\": \"image\", \"width\": 9, \"height\": 9, \"image\": \"a.gif\", \"speed\": 9 } ] } }", "g", null);
+            t.Check("GIF 可以當圖片；speed 寫錯的鍵說出來", s.Usable && s.Elements.Count == 2 && s.Problems.Count == 1 && s.Problems[0].Contains("nope"), string.Join(" | ", s.Problems));
+            var gif = s.Elements[0];
+            v = Claude();
+            v.Mood = Mood.Great;
+            t.Equal("依圖片檔設的速度優先", 0.25, ThemeSpec.SpeedFor(gif, v, "dance.gif", false));
+            v.Mood = Mood.Good;
+            t.Equal("沒有那個檔案的速度：用 default", 0.7, ThemeSpec.SpeedFor(gif, v, "wave.gif", false));
+            v.Active = true;
+            t.Equal("依狀態設的速度（工作中）", 2.0, ThemeSpec.SpeedFor(gif, v, "run.gif", false));
+            t.Equal("只寫一個數字：全部都用它，限制在 5 倍以內", 5.0, ThemeSpec.SpeedFor(s.Elements[1], v, "a.gif", false));
+            t.Equal("沒寫 speed：照檔案本身", 1.0, ThemeSpec.SpeedFor(ThemeSpec.Parse(Minimal, "mini", null).Elements[0], v, null, false));
         }
 
         static void Mistakes(TestKit t)

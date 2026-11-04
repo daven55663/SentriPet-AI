@@ -69,7 +69,7 @@
 
 | 類型 | 鍵 |
 |---|---|
-| `image` | `width`、`height`；`image`（一張圖）或 `states`（每種狀態一張，見下面）；`animate`：`none`、`bob`（上下飄）、`breathe`（呼吸） |
+| `image` | `width`、`height`；`image`（一張圖）或 `states`（每種狀態一張，見下面）；`animate`：`none`、`bob`（上下飄）、`breathe`（呼吸）；`speed`（GIF 動畫的速度，見「圖片」） |
 | `text` | `text`（可用記號）和／或 `states`（每種狀態一段文字，見下面）、`size`、`bold`、`color`、`align`（`left`／`center`／`right`）、`width`、`height`（比一行高就換行）、`font`（`ui`、`number`、`mono`） |
 | `bar` | `width`、`height`、`track`（空的部分）、`fill`、`radius`：填到剩下的比例 |
 | `ring` | `width`（直徑）、`thickness`、`track`、`fill`：繞到剩下的比例 |
@@ -129,8 +129,17 @@
 
 ## 圖片
 
-- PNG（可透明）、JPG、WebP 或 BMP，放在造型的資料夾裡（可以有子資料夾；不能用 `..` 或絕對路徑），最大 8 MB、4096 × 4096 像素。
+- PNG（可透明）、JPG、WebP、BMP 或 GIF，放在造型的資料夾裡（可以有子資料夾；不能用 `..` 或絕對路徑），最大 8 MB、4096 × 4096 像素。
 - 會依元素大小等比例縮放；畫成顯示大小的兩倍，高解析度螢幕上會比較清楚。
+- **GIF 動畫**會循環播放（2.7 起），每一格停留的時間照檔案設定；原本只播一次、最後一格要停好幾分鐘的 GIF，每格最多停 4 秒，桌寵才會持續動。
+  GIF 只解碼一次，並縮到元素大小的兩倍保存，所以大張的 GIF 也不會占太多記憶體。圖片元素的 `speed` 可以調整播放速度：
+  寫一個數字套用到全部，也可以依圖片檔、狀態或 `default` 分別設定（0.05～5，1 表示照檔案原本的速度）：
+
+```jsonc
+{ "type": "image", "x": 15, "y": 4, "width": 120, "height": 120,
+  "speed": { "dance.gif": 0.25, "working": 1.5, "default": 0.7 },
+  "states": { "great": "dance.gif", "working": "run.gif", "low": "tired.gif" } }
+```
 
 ## 寫錯的時候
 

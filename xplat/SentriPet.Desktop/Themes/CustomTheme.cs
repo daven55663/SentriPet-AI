@@ -34,6 +34,24 @@ namespace SentriPet
             public TranslateTransform Move;
             public ScaleTransform Scale;
             public double Phase;
+            public GifFrames Anim;             // an animated GIF being shown, its frame and the time in it
+            public int Frame;
+            public double FrameMs;
+            public double Speed = 1;
+        }
+
+        readonly Dictionary<string, GifFrames> animations = new Dictionary<string, GifFrames>();
+
+        /// <summary>An animated GIF's frames (null for a still picture or one frame), at most twice the element's size.</summary>
+        GifFrames Animation(string file, ElementSpec e)
+        {
+            if (file == null || spec.Folder == null || !file.EndsWith(".gif", StringComparison.OrdinalIgnoreCase)) return null;
+            GifFrames f;
+            if (animations.TryGetValue(file, out f)) return f;
+            try { f = GifFrames.Decode(System.IO.Path.Combine(spec.Folder, file), 2 * Math.Max(64, Math.Max(e.Width, e.Height))); }
+            catch (Exception ex) { Log.Warn("theme " + spec.Id + ": " + file + ": " + ex.Message); f = null; }
+            animations[file] = f;
+            return f;
         }
 
         class Card
@@ -223,7 +241,15 @@ namespace SentriPet
                         case "image":
                         {
                             string pic = ThemeSpec.PictureFor(e, v, done);
-                            if (pic != it.Picture) { it.Picture = pic; it.Img.Source = Picture(pic); }
+                            if (pic != it.Picture)
+                            {
+                                it.Picture = pic;
+                                it.Anim = Animation(pic, e);
+                                it.Frame = 0;
+                                it.FrameMs = 0;
+                                it.Img.Source = it.Anim != null ? it.Anim.Images[0] : Picture(pic);
+                            }
+                            it.Speed = ThemeSpec.SpeedFor(e, v, pic, done);
                             break;
                         }
                         case "text":
@@ -277,6 +303,18 @@ namespace SentriPet
             foreach (var card in cards)
                 foreach (var it in card.Items)
                 {
+                    // animated GIFs: on to the next frame when its time is up
+                    if (it.Anim != null && it.Control.IsVisible)
+                    {
+                        int before = it.Frame;
+                        it.FrameMs += dt * 1000 * it.Speed;
+                        while (it.FrameMs >= it.Anim.Ms[it.Frame])
+                        {
+                            it.FrameMs -= it.Anim.Ms[it.Frame];
+                            it.Frame = (it.Frame + 1) % it.Anim.Images.Length;
+                        }
+                        if (it.Frame != before) it.Img.Source = it.Anim.Images[it.Frame];
+                    }
                     if (it.Move == null || !it.Control.IsVisible) continue;
                     if (it.E.Animate == "bob")
                     {
@@ -289,6 +327,14 @@ namespace SentriPet
                         if (it.Scale.ScaleY != s) { it.Scale.ScaleX = 2 - s; it.Scale.ScaleY = s; }
                     }
                 }
+        }
+
+        /// <summary>Test hook: the frame of an animated GIF the main picture element of a pet's card shows now (-1: not animated).</summary>
+        internal int ShownFrame(string providerId)
+        {
+            var card = cards.FirstOrDefault(c => c.Id == providerId);
+            var it = card != null ? card.Items.FirstOrDefault(x => x.E == spec.MainPicture) : null;
+            return it != null && it.Anim != null ? it.Frame : -1;
         }
 
         /// <summary>Test hook: the picture the main picture element of a pet's card shows now.</summary>
@@ -309,6 +355,8 @@ namespace SentriPet
         {
             foreach (var b in pictures.Values) if (b != null) b.Dispose();
             pictures.Clear();
+            foreach (var a in animations.Values) if (a != null) a.Dispose();
+            animations.Clear();
         }
     }
 }

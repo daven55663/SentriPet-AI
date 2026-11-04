@@ -26,6 +26,7 @@ namespace SentriPet
         // image
         public string Image;                     // one picture (or States)
         public string Animate;                   // none, bob, breathe
+        public Dictionary<string, double> Speed = new Dictionary<string, double>();   // animated GIFs: how fast they play — by picture file, state or "default"
         // text
         public string Text, Align = "left", Font = "ui";   // Text: when States has nothing for the state
         public double Size = 12;
@@ -48,7 +49,7 @@ namespace SentriPet
         public static readonly string[] Types = { "image", "text", "bar", "ring", "rect" };
         public static readonly string[] StateNames = { "great", "good", "worried", "low", "empty", "unknown", "working", "done", "useit" };
         public static readonly string[] Conditions = { "working", "idle", "data", "nodata" };
-        public static readonly string[] ImageTypes = { ".png", ".jpg", ".jpeg", ".webp", ".bmp" };
+        public static readonly string[] ImageTypes = { ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif" };   // (a GIF can be animated)
         public static readonly string[] Placeholders = { "name", "pct", "used", "meter", "reset", "plan", "status" };
 
         public string Id, Folder, Name, Mood, Blurb;
@@ -325,6 +326,18 @@ namespace SentriPet
                         s.Problems.Add(L.F("{0}：animate 只能是 none、bob 或 breathe", where));
                         e.Animate = null;
                     }
+                    // how fast animated GIFs play: one number, or one per picture file, state and "default"
+                    var speed = Json.Get(o, "speed");
+                    var one = Json.Num(speed);
+                    if (one != null) e.Speed["default"] = Clamp(one.Value, 0.05, 5);
+                    else if (Json.Obj(speed) != null)
+                        foreach (var kv in Json.Obj(speed))
+                        {
+                            var x = Json.Num(kv.Value);
+                            if (x == null) continue;
+                            if (Array.IndexOf(StateNames, kv.Key) >= 0 || kv.Key == "default" || kv.Key.Contains(".")) e.Speed[kv.Key] = Clamp(x.Value, 0.05, 5);
+                            else s.Problems.Add(L.F("{0}：speed 的「{1}」不是狀態也不是圖片檔", where, kv.Key));
+                        }
                     break;
                 case "text":
                     // one text, or one per state (#28); each can also be one per language
@@ -391,7 +404,7 @@ namespace SentriPet
             }
             if (Array.IndexOf(ImageTypes, Path.GetExtension(f).ToLowerInvariant()) < 0)
             {
-                s.Problems.Add(L.F("{0}：{1} 不是 PNG、JPG、WebP 或 BMP 圖片", where, file));
+                s.Problems.Add(L.F("{0}：{1} 不是 PNG、JPG、WebP、BMP 或 GIF 圖片", where, file));
                 return null;
             }
             if (s.Folder != null)
@@ -421,25 +434,42 @@ namespace SentriPet
         }
 
         /// <summary>
-        /// An element's picture or text for a pet's state: "done" for a while after the AI finished a longer task (#34),
-        /// working, "useit" while a weekly/monthly quota should be spent before it resets (#35), its mood, then "default" —
-        /// each only when the element has one.
+        /// The state an element shows for a pet: "done" for a while after the AI finished a longer task (#34), working,
+        /// "useit" while a weekly/monthly quota should be spent before it resets (#35), its mood, then "default" — the first
+        /// the element has a picture or text for; null when it has none of them.
         /// </summary>
+        static string StateFor(ElementSpec e, ProviderView v, bool done)
+        {
+            if (done && e.States.ContainsKey("done")) return "done";
+            if (v.HasData && v.Active && e.States.ContainsKey("working")) return "working";
+            if (v.HasData && v.UseItLevel > 0 && e.States.ContainsKey("useit")) return "useit";
+            string mood = StateOf(v);
+            if (e.States.ContainsKey(mood)) return mood;
+            if (e.States.ContainsKey("default")) return "default";
+            return null;
+        }
+
+        /// <summary>An element's picture or text for a pet's state (see <see cref="StateFor"/>).</summary>
         static string ForState(ElementSpec e, ProviderView v, string otherwise, bool done)
         {
-            string p;
-            if (done && e.States.TryGetValue("done", out p)) return p;
-            if (v.HasData && v.Active && e.States.TryGetValue("working", out p)) return p;
-            if (v.HasData && v.UseItLevel > 0 && e.States.TryGetValue("useit", out p)) return p;
-            if (e.States.TryGetValue(StateOf(v), out p)) return p;
-            if (e.States.TryGetValue("default", out p)) return p;
-            return otherwise;
+            string state = StateFor(e, v, done);
+            return state != null ? e.States[state] : otherwise;
         }
 
         /// <summary>The picture for a pet; <paramref name="done"/>: its AI just finished a longer task (#34).</summary>
         public static string PictureFor(ElementSpec e, ProviderView v, bool done = false)
         {
             return ForState(e, v, e.Image ?? e.States.Values.FirstOrDefault(), done);
+        }
+
+        /// <summary>How fast an animated GIF plays now (1 = as the file says): set for the picture file, the state, or "default".</summary>
+        public static double SpeedFor(ElementSpec e, ProviderView v, string picture, bool done)
+        {
+            double s;
+            if (picture != null && e.Speed.TryGetValue(picture, out s)) return s;
+            if (e.Speed.TryGetValue(StateFor(e, v, done) ?? StateOf(v), out s)) return s;
+            if (e.Speed.TryGetValue("default", out s)) return s;
+            return 1;
         }
 
         /// <summary>The meter an element shows.</summary>

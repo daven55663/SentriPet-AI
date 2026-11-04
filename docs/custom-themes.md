@@ -70,7 +70,7 @@ one that runs out first), `secondary`, or a number (0 = the first quota of that 
 
 | Type | Keys |
 |---|---|
-| `image` | `width`, `height`; `image` (one picture) or `states` (a picture per state, below); `animate`: `none`, `bob` (floats up and down), `breathe` |
+| `image` | `width`, `height`; `image` (one picture) or `states` (a picture per state, below); `animate`: `none`, `bob` (floats up and down), `breathe`; `speed` (animated GIFs, under Pictures) |
 | `text` | `text` (with placeholders) and/or `states` (a text per state, below), `size`, `bold`, `color`, `align` (`left`/`center`/`right`), `width`, `height` (taller than one line wraps), `font` (`ui`, `number`, `mono`) |
 | `bar` | `width`, `height`, `track` (the empty part), `fill`, `radius` — filled up to what is left |
 | `ring` | `width` (the diameter), `thickness`, `track`, `fill` — a ring that goes round as far as what is left |
@@ -137,10 +137,20 @@ built-in lines stay in as well. The example *Little Cloud* has lines in every la
 
 ## Pictures
 
-- PNG (with transparency), JPG, WebP or BMP, inside the theme's folder (sub-folders are fine; `..` and absolute paths are
-  not), at most 8 MB and 4096 × 4096 pixels.
+- PNG (with transparency), JPG, WebP, BMP or GIF, inside the theme's folder (sub-folders are fine; `..` and absolute
+  paths are not), at most 8 MB and 4096 × 4096 pixels.
 - They are scaled to the element's size keeping their proportions; draw them at twice the size you show them for sharp
   results on high-DPI screens.
+- **Animated GIFs** play (since 2.7), looping, with each frame as long as the file says — a frame held for minutes (a
+  GIF meant to play once) is shown for at most 4 seconds. They are decoded once and kept at twice the element's size, so a
+  large GIF doesn't take much memory. `speed` on the image element sets how fast they play — one number for all of them,
+  or one per picture file, per state or `default` (0.05–5, 1 = as the file says):
+
+```jsonc
+{ "type": "image", "x": 15, "y": 4, "width": 120, "height": 120,
+  "speed": { "dance.gif": 0.25, "working": 1.5, "default": 0.7 },
+  "states": { "great": "dance.gif", "working": "run.gif", "low": "tired.gif" } }
+```
 
 ## When something is wrong
 

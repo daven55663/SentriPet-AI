@@ -80,6 +80,40 @@ namespace SentriPet
 
         // ------------------------------------------------------------------ themes
 
+        /// <summary>
+        /// A tiny animated GIF: 2×2 pixels, one frame per delay (in 1/100 s), frame i all in colour i (red, green, blue…).
+        /// Every pixel is written as its own code after a clear code, so the LZW data needs no table.
+        /// </summary>
+        internal static byte[] TinyGif(params int[] delays)
+        {
+            var b = new List<byte>();
+            b.AddRange(Encoding.ASCII.GetBytes("GIF89a"));
+            b.AddRange(new byte[] { 2, 0, 2, 0, 0xF1, 0, 0 });                 // 2×2, a global table of 4 colours
+            b.AddRange(new byte[] { 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0 });
+            for (int f = 0; f < delays.Length; f++)
+            {
+                b.AddRange(new byte[] { 0x21, 0xF9, 4, 0, (byte)(delays[f] & 255), (byte)(delays[f] >> 8), 0, 0 });
+                b.AddRange(new byte[] { 0x2C, 0, 0, 0, 0, 2, 0, 2, 0, 0, 2 });   // the frame, LZW with 2-bit colours (3-bit codes)
+                var codes = new List<int>();
+                for (int p = 0; p < 4; p++) { codes.Add(4); codes.Add(f % 4); }
+                codes.Add(5);
+                var data = new List<byte>();
+                int acc = 0, bits = 0;
+                foreach (int c in codes)
+                {
+                    acc |= c << bits;
+                    bits += 3;
+                    while (bits >= 8) { data.Add((byte)(acc & 255)); acc >>= 8; bits -= 8; }
+                }
+                if (bits > 0) data.Add((byte)acc);
+                b.Add((byte)data.Count);
+                b.AddRange(data);
+                b.Add(0);
+            }
+            b.Add(0x3B);
+            return b.ToArray();
+        }
+
         static int InkPixels(Bitmap bmp)
         {
             int w = bmp.PixelSize.Width, h = bmp.PixelSize.Height;
@@ -315,6 +349,24 @@ namespace SentriPet
                     editor.Clear("working");
                     t.Check("全部還原：states.json 刪掉", !File.Exists(System.IO.Path.Combine(cloudDir, ThemeSpec.PicksFile)) && editor.Picks.Count == 0);
                     editor.Close();
+
+                    // animated GIFs: decoded once (scaled down, a frame held for minutes cut to 4 s) and played in the theme
+                    string gifDir = System.IO.Path.Combine(t.TempDir("gif-theme"), "moving");
+                    Directory.CreateDirectory(gifDir);
+                    File.WriteAllBytes(System.IO.Path.Combine(gifDir, "run.gif"), TinyGif(10, 10, 60000));
+                    File.WriteAllText(System.IO.Path.Combine(gifDir, "theme.json"),
+                        "{ \"card\": { \"width\": 60, \"height\": 60, \"elements\": [ { \"type\": \"image\", \"width\": 40, \"height\": 40, \"image\": \"run.gif\", \"speed\": 2 } ] } }");
+                    using (var frames = GifFrames.Decode(System.IO.Path.Combine(gifDir, "run.gif"), 64))
+                        t.Check("GIF 的每一格都解得出來，停太久的那格最多 4 秒", frames != null && frames.Images.Length == 3 && frames.Ms[0] == 100 && frames.Ms[2] == 4000
+                                && frames.FrameAt(150) == 1 && frames.FrameAt(250) == 2, frames == null ? "null" : string.Join(",", frames.Ms));
+                    var moving = new CustomTheme(ThemeSpec.Load(gifDir));
+                    moving.Attach(new Snapshots.PreviewHost());
+                    moving.Update(MockData.A());
+                    int first = moving.ShownFrame("claude");
+                    moving.Tick(0.06);   // speed 2: 120 ms of the GIF, past its first 100-ms frame
+                    t.Check("造型裡的 GIF 會動，速度照 speed", first == 0 && moving.ShownFrame("claude") == 1, first + " → " + moving.ShownFrame("claude"));
+                    t.Check("動起來也畫得出來", InkPixels(Snapshots.RenderToBitmap(moving.Root, 1.0)) > 1000);
+                    moving.Detach();
                     var fakeTheme = ThemeCatalog.Get("custom:fake-picture").Create();
                     fakeTheme.Attach(new Snapshots.PreviewHost());
                     fakeTheme.Update(MockData.A());

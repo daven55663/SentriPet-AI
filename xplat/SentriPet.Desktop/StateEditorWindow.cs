@@ -9,6 +9,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 
 namespace SentriPet
 {
@@ -43,6 +44,12 @@ namespace SentriPet
         readonly Dictionary<string, Border> tiles = new Dictionary<string, Border>();
         ThemeSpec spec;
         string selected;
+        // animated GIFs move in the library and in the states
+        readonly Dictionary<string, GifFrames> gifs = new Dictionary<string, GifFrames>();
+        readonly List<KeyValuePair<Image, GifFrames>> movingLibrary = new List<KeyValuePair<Image, GifFrames>>();
+        readonly List<KeyValuePair<Image, GifFrames>> movingStates = new List<KeyValuePair<Image, GifFrames>>();
+        readonly System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
+        DispatcherTimer frames;
 
         /// <summary>The state → picture choices of the theme being edited (its states.json).</summary>
         public readonly Dictionary<string, string> Picks = new Dictionary<string, string>();
@@ -118,7 +125,9 @@ namespace SentriPet
             root.Children.Add(status);
             Page = root;
             Content = root;
-            Closed += (s, e) => ClearThumbs();
+            frames = new DispatcherTimer(TimeSpan.FromMilliseconds(60), DispatcherPriority.Background, (s, e) => Animate());
+            frames.Start();
+            Closed += (s, e) => { frames.Stop(); ClearThumbs(); };
 
             int start = themes.FindIndex(t => t.Id == themeId);
             if (themes.Count > 0) themeBox.SelectedIndex = Math.Max(0, start);
@@ -243,6 +252,7 @@ namespace SentriPet
         {
             library.Children.Clear();
             tiles.Clear();
+            movingLibrary.Clear();
             var files = ThemeSpec.Pictures(spec.Folder);
             if (files.Count == 0)
             {
@@ -263,6 +273,8 @@ namespace SentriPet
         Border Tile(string file)
         {
             var pic = new Image { Source = Thumb(file), Width = 84, Height = 84, Stretch = Stretch.Uniform };
+            var gif = Gif(file);
+            if (gif != null) movingLibrary.Add(new KeyValuePair<Image, GifFrames>(pic, gif));
             var name = new TextBlock
             {
                 Text = Path.GetFileNameWithoutExtension(file), FontSize = 11, Foreground = G.B(TextC), TextAlignment = TextAlignment.Center,
@@ -309,8 +321,36 @@ namespace SentriPet
 
         void ClearThumbs()
         {
+            movingLibrary.Clear();
+            movingStates.Clear();
             foreach (var b in thumbs.Values) if (b != null) b.Dispose();
             thumbs.Clear();
+            foreach (var g in gifs.Values) if (g != null) g.Dispose();
+            gifs.Clear();
+        }
+
+        /// <summary>The frames of a GIF in the library, small; null for other pictures.</summary>
+        GifFrames Gif(string file)
+        {
+            GifFrames g;
+            if (file == null || spec == null) return null;
+            if (gifs.TryGetValue(file, out g)) return g;
+            try { g = GifFrames.Decode(Path.Combine(spec.Folder, file), 168); }
+            catch (Exception ex) { Log.Warn("state editor gif " + file + ": " + ex.Message); g = null; }
+            gifs[file] = g;
+            return g;
+        }
+
+        void Animate()
+        {
+            double ms = clock.Elapsed.TotalMilliseconds;
+            foreach (var list in new[] { movingLibrary, movingStates })
+                foreach (var kv in list)
+                {
+                    if (kv.Value.Images == null) continue;
+                    var b = kv.Value.Images[kv.Value.FrameAt(ms)];
+                    if (kv.Key.Source != b) kv.Key.Source = b;
+                }
         }
 
         // ------------------------------------------------------------------ the states
@@ -351,6 +391,7 @@ namespace SentriPet
         void BuildStates()
         {
             stateList.Children.Clear();
+            movingStates.Clear();
             if (spec == null) return;
             foreach (var state in Order)
             {
@@ -364,7 +405,7 @@ namespace SentriPet
                 {
                     Width = 72, Height = 72, CornerRadius = new CornerRadius(10), Background = G.B(TileBg), BorderThickness = new Thickness(2),
                     BorderBrush = G.B(LineC), Cursor = new Cursor(StandardCursorType.Hand),
-                    Child = file != null ? new Image { Source = Thumb(file), Margin = new Thickness(4), Stretch = Stretch.Uniform }
+                    Child = file != null ? StatePicture(file)
                                          : (Control)new TextBlock { Text = "+", FontSize = 22, Foreground = G.B(SubC), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
                 };
                 string st = state;
@@ -409,6 +450,14 @@ namespace SentriPet
                 if (stateList.Children.Count > 0) stateList.Children.Add(new Border { Height = 1, Background = G.B(LineC) });
                 stateList.Children.Add(row);
             }
+        }
+
+        Image StatePicture(string file)
+        {
+            var img = new Image { Source = Thumb(file), Margin = new Thickness(4), Stretch = Stretch.Uniform };
+            var gif = Gif(file);
+            if (gif != null) movingStates.Add(new KeyValuePair<Image, GifFrames>(img, gif));
+            return img;
         }
 
         // ------------------------------------------------------------------ drag and drop
