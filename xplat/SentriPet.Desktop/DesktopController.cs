@@ -151,6 +151,16 @@ namespace SentriPet
                 if (Settings.DailyRandomTheme) PickDailyTheme(true);
             });
             second.Start();
+            StartUpdateChecks();
+            // started by the update (#39): say so
+            int uf = Array.IndexOf(args, "--updated-from");
+            if (uf >= 0 && uf + 1 < args.Length)
+            {
+                Log.Info("updated from " + args[uf + 1] + " to " + AppInfo.Version);
+                var hello = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+                hello.Tick += (s, e) => { hello.Stop(); window.Say(null, L.F("更新好了！現在是 {0} 版 ✦", AppInfo.Version)); };
+                hello.Start();
+            }
 
             // --smoke-test FILE: run for real for a while, then report whether it worked and quit (CI, on every system)
             int st = Array.IndexOf(args, "--smoke-test");
@@ -473,6 +483,76 @@ namespace SentriPet
             }
         }
 
+        // ------------------------------------------------------------------ new versions (#39)
+
+        UpdateWindow updateWindow;
+        DispatcherTimer updateTimer;
+        bool updateChecking;
+
+        /// <summary>Once a day (the first look shortly after starting): is there a newer release? Not in the dev profile.</summary>
+        void StartUpdateChecks()
+        {
+            if (AppPaths.Dev) return;
+            Updater.CleanUp(Environment.ProcessPath);
+            updateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(40) };
+            updateTimer.Tick += (s, e) =>
+            {
+                updateTimer.Interval = TimeSpan.FromHours(1);
+                if (Updater.Due(Settings, DateTime.UtcNow)) CheckForUpdates(false);
+            };
+            updateTimer.Start();
+        }
+
+        /// <summary>"Check for a new version" (the tray menu, the settings page): also offers a skipped version and says when there is none.</summary>
+        public void CheckForUpdates() { CheckForUpdates(true); }
+
+        void CheckForUpdates(bool asked)
+        {
+            if (updateChecking) return;
+            // not in the middle of a film or a quiet time; the next hour's look tries again
+            if (!asked && (IsQuiet || (Settings.HideOnFullscreen && window != null && Integration.ForegroundIsFullscreen(window)))) return;
+            updateChecking = true;
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                Release r = null;
+                Exception error = null;
+                try { r = Updater.Fetch(); }
+                catch (Exception ex) { error = ex; }
+                Dispatcher.UIThread.Post(() =>
+                {
+                    updateChecking = false;
+                    if (error != null)
+                    {
+                        Log.Warn("update check: " + error.Message);
+                        if (asked) window.Say(null, L.T("連不上 GitHub，等一下再查一次新版本吧"));
+                        return;
+                    }
+                    Settings.LastUpdateCheck = DateTime.UtcNow;
+                    Settings.Save();
+                    Log.Info("update check: latest " + (r != null ? r.Version : "none") + ", running " + AppInfo.Version + " (" + Updater.Kind + ")");
+                    if (Updater.Offer(r, Settings, asked)) ShowUpdate(r);
+                    else if (asked) window.Say(null, L.F("已經是最新版了（{0}）", AppInfo.Version));
+                });
+            });
+        }
+
+        void ShowUpdate(Release r)
+        {
+            if (updateWindow != null) { updateWindow.Activate(); return; }
+            updateWindow = new UpdateWindow(r, Updater.Kind, v =>
+            {
+                Settings.SkippedVersion = v;
+                Settings.Save();
+                Log.Info("update " + v + " skipped");
+            }, psi =>
+            {
+                System.Diagnostics.Process.Start(psi).Dispose();   // (when this fails, the window says so)
+                Quit();
+            });
+            updateWindow.Closed += (s, e) => updateWindow = null;
+            updateWindow.Show();
+        }
+
         // ------------------------------------------------------------------ tray and menus
 
         void CreateTray()
@@ -531,6 +611,7 @@ namespace SentriPet
                 m.Add(ct);
             }
             m.Add(Native(L.T("設定…"), OpenSettings));
+            m.Add(Native(L.T("檢查新版本"), CheckForUpdates));
             m.Add(new NativeMenuItemSeparator());
             m.Add(Native(L.T("結束"), Quit));
             return m;

@@ -128,9 +128,27 @@ cd SentriPet-<version>-linux-x64
 - Notifications use `notify-send` (Debian/Ubuntu: `sudo apt install libnotify-bin`).
 - There is no Claude desktop app for Linux: to see Claude's usage, turn on *Connect the Claude Code status line* (see the FAQ).
 
+### Automatic updates
+
+Since 2.7 SentriPet looks for new versions by itself: shortly after it starts and then once a day it asks GitHub for the
+latest release — only that question, without any usage data — and when a newer one is out it shows what changed, with
+*Update now*, *Later* and *Skip this version*. What *Update now* does depends on how SentriPet was installed:
+
+| Installed with | *Update now* |
+|---|---|
+| `install.cmd` or a downloaded zip (Windows) | downloads the new version, checks its size and SHA-256 against what GitHub lists, replaces the program and starts it again |
+| Scoop | closes SentriPet, runs `scoop update sentripet` in a console window and starts it again |
+| winget | the same with `winget upgrade` (new versions reach winget a few days later) |
+| Homebrew | closes SentriPet, runs `brew upgrade --cask sentripet` and opens it again |
+| a downloaded copy on macOS or Linux | opens the release page |
+
+Settings, themes and records are kept. Turn the check off in *Settings → General → Check for new versions*; *Check now*
+next to it (or *Check for a new version* in the tray menu) looks right away and also offers a version you skipped.
+During quiet hours or while a full-screen app is in front, the daily check waits.
+
 ### Update and uninstall
 
-- **Update**: `scoop update sentripet` / `brew upgrade --cask sentripet` (quit SentriPet first: right-click → Quit).
+- **Update**: automatic since 2.7 (above). By hand: `scoop update sentripet` / `brew upgrade --cask sentripet` (quit SentriPet first: right-click → Quit).
   A downloaded copy: replace the files with the new version (on Linux, run `install.sh` again). Your settings are kept.
 - **Uninstall**: turn off *Start at sign-in* in *Settings → General*, right-click the pet → *Quit*, then `scoop uninstall sentripet` /
   `brew uninstall --cask sentripet`, or delete the program and its settings folder (see [File locations](#file-locations)).
@@ -373,7 +391,8 @@ Click the tray icon, or start SentriPet again (a second start brings the running
 
 ## Where the numbers come from
 
-Everything stays on your computer. SentriPet never reads or sends sign-in credentials.
+Everything stays on your computer. SentriPet never reads or sends sign-in credentials. The only request of its own
+is the daily look for a new version (GitHub, the version number only; it can be turned off).
 
 | AI | Source | How often |
 |---|---|---|

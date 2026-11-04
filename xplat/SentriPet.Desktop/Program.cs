@@ -9,6 +9,7 @@ namespace SentriPet
     ///   SentriPet --dev               separate profile (settings, logs), for testing
     ///   SentriPet --snapshot DIR      render the themes off-screen to PNG (sample data), no window
     ///   SentriPet --demo FILE.gif     the animated tour for the README (sample data), no window
+    ///   SentriPet --install-update URL REPORT   test the self-update (#39) against a releases/latest URL
     ///   ... --lang en                 use a language (zh-TW, zh-CN, en, ja, ko; default: the setting / zh-TW for snapshots)
     /// </summary>
     static class Program
@@ -94,7 +95,18 @@ namespace SentriPet
                 UseLanguage("en");
                 return Demo.SocialCard(args);
             }
+            // --install-update <releases/latest URL> <report>: the whole self-update without a window, for testing (#39);
+            // the new program is started with --smoke-test <report>.smoke
+            if (mode == "--install-update")
+            {
+                AppPaths.UseDevProfile();
+                UseLanguage(L.Source);
+                return InstallUpdateTest(args.Length > 1 ? args[1] : null, args.Length > 2 ? args[2] : null);
+            }
             if (Array.IndexOf(args, "--dev") >= 0) AppPaths.UseDevProfile();
+            // started by an update: the copy it replaces is still quitting (#39)
+            int wait = Array.IndexOf(args, "--wait-pid");
+            if (wait >= 0 && wait + 1 < args.Length) Updater.WaitFor(args[wait + 1], 30000);
             // one copy per user: a second start asks the running one to show itself
             if (!Integration.ClaimSingleInstance(() => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
@@ -104,6 +116,30 @@ namespace SentriPet
             AppPaths.EnsureDataDirs();
             Log.Info("start " + AppInfo.Version + " (" + Os.Name + ", Avalonia)" + (AppPaths.Dev ? " (dev)" : ""));
             return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnExplicitShutdown);
+        }
+
+        static int InstallUpdateTest(string feed, string report)
+        {
+            var lines = new System.Collections.Generic.List<string> { AppInfo.Name + " " + AppInfo.Version + " install-update test, " + Updater.Kind + ", " + Environment.ProcessPath };
+            int code = 0;
+            try
+            {
+                var r = Updater.Fetch(feed);
+                lines.Add("release " + (r != null ? r.Version + " with " + r.Assets.Count + " file(s)" : "none"));
+                if (r == null || !Updater.IsNewer(r.Version, AppInfo.Version)) throw new UpdateException("not newer than " + AppInfo.Version);
+                var psi = Updater.InstallOver(r, Environment.ProcessPath, (text, part) => { if (part <= 0) lines.Add(text); }, System.Threading.CancellationToken.None,
+                                              "--smoke-test", report + ".smoke").GetAwaiter().GetResult();
+                lines.Add("start " + psi.FileName + " " + string.Join(" ", psi.ArgumentList));
+                System.Diagnostics.Process.Start(psi).Dispose();
+                lines.Add("PASS");
+            }
+            catch (Exception ex)
+            {
+                lines.Add("FAIL " + ex.Message);
+                code = 1;
+            }
+            if (report != null) System.IO.File.WriteAllLines(report, lines);
+            return code;
         }
 
         /// <summary>Also used by the Avalonia designer.</summary>

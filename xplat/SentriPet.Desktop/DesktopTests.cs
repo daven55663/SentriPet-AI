@@ -501,6 +501,30 @@ namespace SentriPet
                 t.Check("浮動泡泡量得出大小、不超過最大寬度", size.Width > 60 && size.Width < 300 && size.Height > 30, size.ToString());
                 t.Check("泡泡在秒數到了之前不會消失", bubble.Until > DateTime.UtcNow.AddSeconds(3));
             });
+            Progress = "update window";
+            t.Run("update window", () =>
+            {
+                // the new-version window (#39): what changed, and the buttons for each kind of copy
+                var r = new Release { Tag = "v99.0.0", Version = "99.0.0", Notes = "## 這一版的變化\n- **新功能**：自動更新\n\n## 開發與測試環境\n| CPU | x |", Page = "https://github.com/daven55663/SentriPet-AI/releases/tag/v99.0.0" };
+                string skipped = null;
+                ProcessStartInfo started = null;
+                var w = new UpdateWindow(r, InstallKind.Download, v => skipped = v, psi => started = psi);
+                w.Show();
+                for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
+                var texts = w.Page.GetLogicalDescendants().OfType<TextBlock>().Select(x => x.Text ?? "").ToList();
+                t.Check("新版本視窗：新舊版本號與這一版的變化", texts.Any(x => x.Contains("99.0.0") && x.Contains(AppInfo.Version)) && texts.Any(x => x.Contains("新功能：自動更新")) && !texts.Any(x => x.Contains("CPU")),
+                        string.Join(" | ", texts));
+                var buttons = w.Page.GetLogicalDescendants().OfType<Button>().ToList();
+                Func<string, Button> button = text => buttons.FirstOrDefault(b => (b.Content as string) == text);
+                t.Check("自己下載的版本：「前往下載頁」「稍後」「略過這個版本」", button(L.T("前往下載頁")) != null && button(L.T("稍後")) != null && button(L.T("略過這個版本")) != null);
+                t.Check("視窗量得出大小", w.Page.Bounds.Width > 400 && w.Page.Bounds.Height > 200, w.Page.Bounds.ToString());
+                button(L.T("略過這個版本")).RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                t.Check("略過這個版本：記下版本、關閉視窗、沒有開始更新", skipped == "99.0.0" && !w.IsVisible && started == null);
+                var self = new UpdateWindow(r, InstallKind.SelfUpdate, null, null);
+                t.Check("install.cmd 裝的版本：按鈕是「現在更新」", self.Page.GetLogicalDescendants().OfType<Button>().Any(b => (b.Content as string) == L.T("現在更新")) && !self.Busy);
+                var hows = Enum.GetValues(typeof(InstallKind)).Cast<InstallKind>().Select(UpdateWindow.HowText).ToList();
+                t.Check("每種安裝方式都有自己的說明", hows.All(h => h.Length > 10) && hows.Distinct().Count() == hows.Count);
+            });
             Progress = "scaled drawing";
             t.Run("scaled drawing", () =>
             {
@@ -736,6 +760,7 @@ namespace SentriPet
             public void OpenThemesFolder() { Changed++; }
             public void ReloadThemes() { Changed++; }
             public void OpenStateEditor() { Changed++; }
+            public void CheckForUpdates() { Changed++; }
             public string AddAccount(string kind, string folder) { Changed++; return AccountSetup.Problem(settings, kind, folder) ?? (AccountSetup.Add(settings, kind, folder) == null ? "?" : null); }
             public void RemoveAccount(Account a) { settings.Accounts.Remove(a); Changed++; }
             public void AccountChanged() { Changed++; }

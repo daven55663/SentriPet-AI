@@ -31,6 +31,7 @@ namespace SentriPet
             CodexTests.Run(t);
             ProviderTests.Run(t);
             ServiceTests.Run(t);
+            UpdaterTests.Run(t);
             PlatformTests.Run(t);
             I18nTests.Run(t);
         }

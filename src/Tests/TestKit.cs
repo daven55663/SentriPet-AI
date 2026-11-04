@@ -168,7 +168,7 @@ namespace SentriPet
     class FakeHttpServer : IDisposable
     {
         readonly TcpListener listener;
-        readonly Dictionary<string, KeyValuePair<int, string>> routes = new Dictionary<string, KeyValuePair<int, string>>();
+        readonly Dictionary<string, KeyValuePair<int, byte[]>> routes = new Dictionary<string, KeyValuePair<int, byte[]>>();
         public readonly List<string> Requests = new List<string>();
         volatile bool stopped;
 
@@ -185,7 +185,13 @@ namespace SentriPet
 
         public void Route(string path, int status, string body)
         {
-            lock (routes) routes[path] = new KeyValuePair<int, string>(status, body);
+            Route(path, status, Encoding.UTF8.GetBytes(body));
+        }
+
+        /// <summary>A file to download (any bytes).</summary>
+        public void Route(string path, int status, byte[] body)
+        {
+            lock (routes) routes[path] = new KeyValuePair<int, byte[]>(status, body);
         }
 
         void Loop()
@@ -217,11 +223,11 @@ namespace SentriPet
             lock (Requests) Requests.Add(text);
             string[] first = text.Split(new[] { "\r\n" }, StringSplitOptions.None)[0].Split(' ');
             string path = first.Length >= 2 ? first[1] : "/";
-            KeyValuePair<int, string> resp;
+            KeyValuePair<int, byte[]> resp;
             bool found;
             lock (routes) found = routes.TryGetValue(path, out resp);
-            if (!found) resp = new KeyValuePair<int, string>(404, "{\"error\":\"not found\"}");
-            var body = Encoding.UTF8.GetBytes(resp.Value);
+            if (!found) resp = new KeyValuePair<int, byte[]>(404, Encoding.UTF8.GetBytes("{\"error\":\"not found\"}"));
+            var body = resp.Value;
             var hdr = Encoding.ASCII.GetBytes("HTTP/1.1 " + resp.Key + " " + (resp.Key < 400 ? "OK" : "Error") +
                 "\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: " + body.Length + "\r\nConnection: close\r\n\r\n");
             stream.Write(hdr, 0, hdr.Length);

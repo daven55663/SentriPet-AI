@@ -39,6 +39,8 @@ namespace SentriPet
         void ReloadThemes();
         /// <summary>The state editor (#34): pick a picture per state of a custom theme by dragging.</summary>
         void OpenStateEditor();
+        /// <summary>New versions (#39): look now.</summary>
+        void CheckForUpdates();
         /// <summary>Other accounts (#26): add one (null, or why not), remove one, its name or colour changed, its status line.</summary>
         string AddAccount(string kind, string folder);
         void RemoveAccount(Account a);
@@ -1014,13 +1016,17 @@ namespace SentriPet
             foreach (var li in L.Languages) langs.Children.Add(LanguageChip(li.Code, li.Native));
             body.Children.Add(langs);
             Row(body, L.T("開機自動啟動"), Integration.AutostartHint, Toggle(S.AutoStart, v => { S.AutoStart = v; Integration.SetAutostart(v); SaveSoon(); }));
+            var update = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            update.Children.Add(Btn(L.T("立即檢查"), ctl.CheckForUpdates));
+            update.Children.Add(Toggle(S.CheckUpdates, v => { S.CheckUpdates = v; SaveSoon(); }));
+            Row(body, L.T("自動檢查新版本"), L.F("每天向 GitHub 查一次有沒有新版本，有的話會問你要不要更新（只送出查詢，不傳送任何用量資料）。目前是 {0} 版。", AppInfo.Version), update);
             var buttons = new WrapPanel { Margin = new Thickness(0, 12, 0, 4) };
             buttons.Children.Add(Btn(L.T("設定資料夾"), () => Integration.OpenPath(AppPaths.DataDir)));
             buttons.Children.Add(Btn(L.T("記錄檔"), () => Integration.OpenPath(Path.Combine(AppPaths.LogDir, "app.log"))));
             buttons.Children.Add(Btn(L.T("程式資料夾"), () => Integration.OpenPath(AppPaths.ExeDir)));
             body.Children.Add(new Border { Height = 1, Background = G.B(LineC) });
             body.Children.Add(buttons);
-            var about = Txt(L.T("資料來源：Claude 讀取桌面版自己記錄的用量，加上 Claude Code 的 token 數推算（重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證。"),
+            var about = Txt(L.T("資料來源：Claude 讀取桌面版自己記錄的用量，加上 Claude Code 的 token 數推算（重置時間為推算）；Codex 透過官方 codex app-server 即時查詢，並讀取本機對話紀錄；Copilot 讀取 CLI 的額度快取。本程式不讀取、也不傳送任何登入憑證；檢查新版本時只向 GitHub 查詢最新的版本號，不帶任何用量資料。"),
                 11.5, SubC, FontWeight.Normal);
             about.Margin = new Thickness(0, 4, 0, 12);
             body.Children.Add(about);

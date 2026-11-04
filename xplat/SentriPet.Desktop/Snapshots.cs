@@ -57,6 +57,7 @@ namespace SentriPet
             public void OpenThemesFolder() { }
             public void ReloadThemes() { }
             public void OpenStateEditor() { }
+            public void CheckForUpdates() { }
             public string AddAccount(string kind, string folder) { return null; }
             public void RemoveAccount(Account a) { }
             public void AccountChanged() { }
@@ -249,6 +250,32 @@ namespace SentriPet
                 {
                     try { Directory.Delete(editorDir, true); } catch { }
                     ThemeCatalog.LoadCustom(editorDir);   // (gone: no custom themes for the rest)
+                }
+                // the new-version window (#39)
+                try
+                {
+                    var sample = new Release
+                    {
+                        Tag = "v9.9.0", Version = "9.9.0", Page = Updater.ReleasesPage,
+                        Notes = "## " + L.T("這一版的變化") + "\n\n- **" + L.T("自動檢查新版本") + "** (#39): " + L.T("每天向 GitHub 查一次有沒有新版本，有的話會問你要不要更新（只送出查詢，不傳送任何用量資料）。目前是 {0} 版。").Replace("{0}", AppInfo.Version) +
+                                "\n- **GIF** (#38): " + L.T("下載中…"),
+                    };
+                    var win = new UpdateWindow(sample, InstallKind.SelfUpdate, null, null);
+                    win.Show();
+                    for (int i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
+                    var page = win.Page;
+                    var size = page.Bounds.Size;
+                    using (var rtb = new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height)), new Vector(96, 96)))
+                    {
+                        rtb.Render(page);
+                        rtb.Save(Path.Combine(outDir, "update-window.png"));
+                    }
+                    win.Close();
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    File.WriteAllText(Path.Combine(outDir, "update-window_error.txt"), ex.ToString());
                 }
                 // the usage report (#18), 7 and 30 days
                 try

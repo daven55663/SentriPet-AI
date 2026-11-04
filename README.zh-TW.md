@@ -133,9 +133,31 @@ cd SentriPet-<版本>-linux-x64
 - 通知用 `notify-send`（Debian／Ubuntu：`sudo apt install libnotify-bin`）。
 - Linux 沒有 Claude 桌面版：要看 Claude 的用量，請在 設定 → AI 服務 開啟「連接 Claude Code 狀態列」。
 
+### 自動更新
+
+自 2.7 版起，SentriPet 會自行檢查是否有新版本：程式啟動後不久先檢查一次，之後每天向 GitHub 查詢一次最新的發佈版本（Release），
+查詢內容僅限版本資訊，不附帶任何用量資料。發現較新的版本時，程式會開啟一個視窗列出這一版的變化，並提供「現在更新」、「稍後」與「略過這個版本」三個選項；
+選擇略過之後，每日的自動檢查不會再提示同一個版本，只有使用者自行查詢時才會再次出現，避免反覆打擾。
+
+「現在更新」的實際做法依安裝方式而定，如下表所示。以 `install.cmd` 安裝或自行解壓縮的 Windows 版會直接下載新版壓縮檔，
+先比對檔案大小與 GitHub 公布的安全雜湊演算法（Secure Hash Algorithm 256-bit, SHA-256）雜湊值，確認檔案未遭竄改後才替換程式並自動重新開啟；
+透過套件管理器安裝的版本則交由 Scoop、winget 或 Homebrew 執行更新，使套件管理器記錄的版本與實際安裝的版本保持一致。
+無論採用哪一種方式，設定、自訂造型與歷史紀錄都會保留。
+
+| 安裝方式 | 按下「現在更新」之後 |
+|---|---|
+| `install.cmd` 或自行下載的 zip（Windows） | 下載新版、核對大小與 SHA-256，替換程式後自動重新開啟 |
+| Scoop | 關閉 SentriPet，在命令視窗執行 `scoop update sentripet`，完成後重新開啟 |
+| winget | 做法同上，改為執行 `winget upgrade`；新版本通常數天後才會收錄於 winget |
+| Homebrew | 關閉 SentriPet，執行 `brew upgrade --cask sentripet` 後重新開啟 |
+| 自行下載的 macOS 或 Linux 版 | 開啟 GitHub 的發佈頁，由使用者下載後覆蓋舊版 |
+
+自動檢查預設為開啟，可在設定頁「一般」分區的「自動檢查新版本」關閉；同一列的「立即檢查」與系統匣選單的「檢查新版本」則可隨時手動查詢，
+此時也會再次提示先前略過的版本。為了不打擾使用者，勿擾時段內或前景為全螢幕程式時，每日的自動檢查會延到之後再進行。
+
 ### 更新與移除
 
-- **更新**：Scoop 用 `scoop update sentripet`、Homebrew 用 `brew upgrade --cask sentripet`（先在右鍵選單按「結束」）；
+- **更新**：2.7 版起可由程式自動更新（見上一節）。手動更新時，Scoop 用 `scoop update sentripet`、Homebrew 用 `brew upgrade --cask sentripet`（先在右鍵選單按「結束」）；
   自己下載的版本，下載新版覆蓋舊的檔案即可（Linux 重新執行 `install.sh`）。設定都會保留。
 - **移除**：設定 → 一般 關掉「開機自動啟動」，右鍵選單按「結束」，再執行 `scoop uninstall sentripet`／`brew uninstall --cask sentripet`，
   或刪掉程式與設定資料夾（位置見最下面的「檔案位置」）。從原始碼安裝的 Windows 版執行 `uninstall.cmd` 即可。
@@ -365,6 +387,9 @@ macOS 的全螢幕 App 會在自己的桌面空間裡，桌寵本來就不會出
 程式沒有數位簽章，按「其他資訊」→「仍要執行」。用 Scoop 安裝不會出現這個畫面。
 
 ## 資料從哪裡來（全部在本機，不讀、不傳任何登入憑證）
+
+用量資料全部在本機讀取，SentriPet 不讀取、也不傳送任何登入憑證。程式本身唯一的對外連線是每天向 GitHub 查詢一次最新的版本號，
+用以提示新版本，不附帶任何用量資料，並可在設定中關閉。
 
 | AI | 來源 | 更新頻率 |
 |---|---|---|

@@ -53,6 +53,9 @@ namespace SentriPet
         public bool FirstRunDone;
         public string TerminalColor = "green";
         public string Language = "auto";         // "auto" (the system's language) or zh-TW, zh-CN, en, ja, ko
+        public bool CheckUpdates = true;         // look for a new release once a day and offer it (#39, see Updater)
+        public string SkippedVersion;            // "skip this version"
+        public DateTime? LastUpdateCheck;        // UTC
 
         public bool IsEnabled(string id)
         {
@@ -116,6 +119,11 @@ namespace SentriPet
                 s.FirstRunDone = Json.Bool(Json.Get(o, "firstRunDone")) ?? false;
                 s.TerminalColor = Json.Str(Json.Get(o, "terminalColor")) ?? "green";
                 s.Language = Json.Str(Json.Get(o, "language")) ?? "auto";
+                s.CheckUpdates = Json.Bool(Json.Get(o, "checkUpdates")) ?? true;
+                s.SkippedVersion = Json.Str(Json.Get(o, "skippedVersion"));
+                DateTime checkedAt;
+                if (DateTime.TryParse(Json.Str(Json.Get(o, "lastUpdateCheck")) ?? "", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out checkedAt))
+                    s.LastUpdateCheck = DateTime.SpecifyKind(checkedAt, DateTimeKind.Utc);
                 var en = Json.Obj(Json.Get(o, "enabled"));
                 if (en != null) foreach (var kv in en) s.Enabled[kv.Key] = Json.Bool(kv.Value) ?? true;
                 var accounts = Json.Arr(Json.Get(o, "accounts"));
@@ -179,6 +187,9 @@ namespace SentriPet
                 o["firstRunDone"] = FirstRunDone;
                 o["terminalColor"] = TerminalColor;
                 o["language"] = Language;
+                o["checkUpdates"] = CheckUpdates;
+                if (!string.IsNullOrEmpty(SkippedVersion)) o["skippedVersion"] = SkippedVersion;
+                if (LastUpdateCheck.HasValue) o["lastUpdateCheck"] = LastUpdateCheck.Value.ToString("o", CultureInfo.InvariantCulture);
                 o["enabled"] = Enabled.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
                 o["order"] = Order.ToList();
                 if (Accounts.Count > 0) o["accounts"] = Accounts.Select(a => (object)a.ToJson()).ToList();

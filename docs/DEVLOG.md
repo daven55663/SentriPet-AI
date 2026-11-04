@@ -433,5 +433,18 @@ xplat/                新的跨平台版（.NET 10）
   - `CustomTheme` 在每一格的動畫時鐘裡換格；圖片元素的 `speed` 可以是一個數字，或依圖片檔、狀態、`default` 分別設定（0.05～5），
     `ThemeSpec.SpeedFor` 依序找圖片檔、目前狀態、`default`。狀態圖片編輯器的圖庫與狀態格也會播放。
   - 核心測試 788 → 794 項；自我測試加上「每一格都解得出來、停太久的那格最多 4 秒」與「造型裡的 GIF 會動、速度照 speed」。
+- 2026-11-04：**#39 自動更新**（使用者：像一般 App 一樣，打開時偵測到新版本就問要不要更新；選擇預設開啟、可以關掉）。
+  - `Updater`（核心）：每天一次（啟動後 40 秒先看一次）向 GitHub 的 `releases/latest` 查詢，User-Agent 是 `SentriPet/版本`，不帶任何用量資料；
+    開發用設定檔不自動檢查，勿擾時段與前景是全螢幕程式時延到下一個小時。設定 `checkUpdates`（預設開）、`skippedVersion`、`lastUpdateCheck`。
+  - 依安裝方式決定「現在更新」怎麼做：`install.cmd` 或自己解壓縮的 Windows 版下載 zip，核對 GitHub 公布的大小與 SHA-256（asset 的 `digest`），
+    把執行中的程式改名成 `.old`（Windows 允許改名、不允許覆寫），複製新檔案，失敗就換回舊的；再用 `--updated-from 舊版 --wait-pid 舊行程`
+    啟動新程式，新程式等舊的結束才搶單一執行的鎖，下次啟動清掉 `.old` 和下載的檔案。Scoop、winget 在看得到的命令視窗裡執行
+    `scoop update sentripet`／`winget upgrade`（不替使用者接受任何條款），Homebrew 執行 `brew upgrade --cask sentripet`，之後再啟動；
+    macOS／Linux 自己下載的版本與從原始碼建置的版本只開發佈頁。winget 自己替換會讓 winget 記錄的版本落後、之後被降級，所以交給 winget。
+  - 視窗 `UpdateWindow`：只列發佈說明裡「這一版的變化」那一段（去掉 Markdown），「現在更新／稍後／略過這個版本」；略過的版本只有自己按「檢查新版本」時才會再出現。
+  - 測試：核心 794 → 863 項（版本比較、排程、略過、releases JSON、說明、安裝方式判斷、各套件管理器的指令、對本機假伺服器下載與驗證、替換與失敗時換回）；
+    自我測試加上更新視窗；另外在這台電腦用 `--install-update` 實際跑一次：發佈成單一檔案放到暫存資料夾，假的 GitHub 提供 99.0.0，
+    下載、驗證、替換後新程式自動啟動，煙霧測試全部通過、`.old` 留著、新檔案到位。
+  - 第一個能自動更新的是 2.7.0；之前的版本沒有這個功能，要再手動更新一次。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。
