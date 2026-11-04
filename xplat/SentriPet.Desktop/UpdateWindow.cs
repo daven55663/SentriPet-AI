@@ -126,7 +126,7 @@ namespace SentriPet
                 case InstallKind.SelfUpdate: return L.T("按「現在更新」會下載新版，確認檔案和 GitHub 公布的 SHA-256 相符後替換，再自動重新開啟；設定、造型和紀錄都會保留。");
                 case InstallKind.Scoop: return L.T("這份是用 Scoop 安裝的：按「現在更新」會關閉 SentriPet，在命令視窗執行 scoop update sentripet，完成後自動重新開啟。");
                 case InstallKind.Winget: return L.T("這份是用 winget 安裝的：按「現在更新」會關閉 SentriPet，在命令視窗執行 winget upgrade，完成後自動重新開啟。winget 的套件庫通常要幾天後才會收錄新版本。");
-                case InstallKind.Homebrew: return L.T("這份是用 Homebrew 安裝的：按「現在更新」會關閉 SentriPet，執行 brew upgrade --cask sentripet，完成後自動重新開啟。");
+                case InstallKind.Homebrew: return L.T("這份是用 Homebrew 安裝的：按「現在更新」會關閉 SentriPet，執行 brew upgrade --cask sentripet，完成後自動重新開啟。Homebrew 若要求先信任這個 tap，請先在終端機執行一次 brew trust daven55663/sentripet。");
                 case InstallKind.Development: return L.T("這是從原始碼建置的版本，不會自動替換；按「前往下載頁」可以看新版本。");
                 default: return L.T("這份要自己下載安裝：按「前往下載頁」會打開 GitHub 的發佈頁，下載後覆蓋舊版即可，設定都會保留。");
             }

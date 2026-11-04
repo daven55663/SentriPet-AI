@@ -657,11 +657,11 @@
   "按「現在更新」會下載新版，確認檔案和 GitHub 公布的 SHA-256 相符後替換，再自動重新開啟；設定、造型和紀錄都會保留。": "'지금 업데이트'를 누르면 새 버전을 내려받아 GitHub의 SHA-256과 같은지 확인한 뒤 바꾸고 자동으로 다시 시작해요. 설정, 테마, 기록은 그대로 남아요.",
   "這份是用 Scoop 安裝的：按「現在更新」會關閉 SentriPet，在命令視窗執行 scoop update sentripet，完成後自動重新開啟。": "Scoop으로 설치한 버전이에요. '지금 업데이트'를 누르면 SentriPet을 닫고 명령 창에서 scoop update sentripet을 실행한 뒤 자동으로 다시 시작해요.",
   "這份是用 winget 安裝的：按「現在更新」會關閉 SentriPet，在命令視窗執行 winget upgrade，完成後自動重新開啟。winget 的套件庫通常要幾天後才會收錄新版本。": "winget으로 설치한 버전이에요. '지금 업데이트'를 누르면 SentriPet을 닫고 명령 창에서 winget upgrade를 실행한 뒤 자동으로 다시 시작해요. winget에는 보통 며칠 뒤에 새 버전이 올라와요.",
-  "這份是用 Homebrew 安裝的：按「現在更新」會關閉 SentriPet，執行 brew upgrade --cask sentripet，完成後自動重新開啟。": "Homebrew로 설치한 버전이에요. '지금 업데이트'를 누르면 SentriPet을 닫고 brew upgrade --cask sentripet을 실행한 뒤 자동으로 다시 시작해요.",
   "這是從原始碼建置的版本，不會自動替換；按「前往下載頁」可以看新版本。": "소스 코드로 빌드한 버전이라 자동으로 바꾸지 않아요. '다운로드 페이지로'에서 새 버전을 볼 수 있어요.",
   "這份要自己下載安裝：按「前往下載頁」會打開 GitHub 的發佈頁，下載後覆蓋舊版即可，設定都會保留。": "이 버전은 직접 내려받아 설치해요. '다운로드 페이지로'를 누르면 GitHub 릴리스 페이지가 열리고, 받은 파일로 덮어쓰면 설정은 그대로 남아요.",
   "完成！正在重新開啟…": "완료! 다시 시작하는 중…",
   "找不到 Homebrew（brew）": "Homebrew(brew)를 찾을 수 없어요",
   "更新失敗：{0}": "업데이트 실패: {0}",
-  "可以改從 GitHub 的發佈頁下載。": "GitHub 릴리스 페이지에서 내려받을 수도 있어요."
+  "可以改從 GitHub 的發佈頁下載。": "GitHub 릴리스 페이지에서 내려받을 수도 있어요.",
+  "這份是用 Homebrew 安裝的：按「現在更新」會關閉 SentriPet，執行 brew upgrade --cask sentripet，完成後自動重新開啟。Homebrew 若要求先信任這個 tap，請先在終端機執行一次 brew trust daven55663/sentripet。": "Homebrew로 설치한 버전이에요. '지금 업데이트'를 누르면 SentriPet을 닫고 brew upgrade --cask sentripet을 실행한 뒤 자동으로 다시 시작해요. Homebrew가 이 tap을 먼저 신뢰하라고 하면 터미널에서 brew trust daven55663/sentripet을 한 번 실행해 주세요."
 }

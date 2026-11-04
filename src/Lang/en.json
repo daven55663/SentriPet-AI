@@ -657,11 +657,11 @@
   "按「現在更新」會下載新版，確認檔案和 GitHub 公布的 SHA-256 相符後替換，再自動重新開啟；設定、造型和紀錄都會保留。": "Update now downloads the new version, checks it against the SHA-256 GitHub lists, puts it in place and starts again; your settings, themes and records stay.",
   "這份是用 Scoop 安裝的：按「現在更新」會關閉 SentriPet，在命令視窗執行 scoop update sentripet，完成後自動重新開啟。": "This copy was installed with Scoop: Update now closes SentriPet, runs scoop update sentripet in a console window and starts it again afterwards.",
   "這份是用 winget 安裝的：按「現在更新」會關閉 SentriPet，在命令視窗執行 winget upgrade，完成後自動重新開啟。winget 的套件庫通常要幾天後才會收錄新版本。": "This copy was installed with winget: Update now closes SentriPet, runs winget upgrade in a console window and starts it again afterwards. New versions usually reach winget a few days later.",
-  "這份是用 Homebrew 安裝的：按「現在更新」會關閉 SentriPet，執行 brew upgrade --cask sentripet，完成後自動重新開啟。": "This copy was installed with Homebrew: Update now closes SentriPet, runs brew upgrade --cask sentripet and starts it again afterwards.",
   "這是從原始碼建置的版本，不會自動替換；按「前往下載頁」可以看新版本。": "This copy was built from the source and isn't replaced automatically; Go to the download page shows the new version.",
   "這份要自己下載安裝：按「前往下載頁」會打開 GitHub 的發佈頁，下載後覆蓋舊版即可，設定都會保留。": "This copy is updated by hand: Go to the download page opens the release on GitHub; replace the old files with the new ones and your settings stay.",
   "完成！正在重新開啟…": "Done! Starting again…",
   "找不到 Homebrew（brew）": "Homebrew (brew) wasn't found",
   "更新失敗：{0}": "The update failed: {0}",
-  "可以改從 GitHub 的發佈頁下載。": "You can download it from the release page on GitHub instead."
+  "可以改從 GitHub 的發佈頁下載。": "You can download it from the release page on GitHub instead.",
+  "這份是用 Homebrew 安裝的：按「現在更新」會關閉 SentriPet，執行 brew upgrade --cask sentripet，完成後自動重新開啟。Homebrew 若要求先信任這個 tap，請先在終端機執行一次 brew trust daven55663/sentripet。": "This copy was installed with Homebrew: Update now closes SentriPet, runs brew upgrade --cask sentripet and starts it again afterwards. If Homebrew asks for the tap to be trusted first, run brew trust daven55663/sentripet once in Terminal."
 }

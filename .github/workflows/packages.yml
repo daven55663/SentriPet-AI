@@ -63,6 +63,8 @@ jobs:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # brew audit asks the GitHub API (anonymous calls hit the rate limit)
         run: |
           brew tap daven55663/sentripet "$GITHUB_WORKSPACE"
+          # Homebrew loads casks from a third-party tap only once it is trusted (as the README tells users to do)
+          brew trust daven55663/sentripet
           brew style --cask daven55663/sentripet/sentripet
           brew audit --cask --online daven55663/sentripet/sentripet || echo "::warning::brew audit reported problems (see above)"
           # the Intel package too (this runner is Apple silicon): download and check its SHA-256

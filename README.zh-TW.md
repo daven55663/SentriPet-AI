@@ -70,9 +70,11 @@ scoop install sentripet
 
 ```
 brew tap daven55663/sentripet https://github.com/daven55663/SentriPet-AI
+brew trust daven55663/sentripet
 brew install --cask sentripet
 ```
 
+Homebrew 只會從使用者信任過的第三方 tap 安裝軟體，所以第一次需要執行 `brew trust` 信任這個 tap，之後更新不必再做。
 Homebrew 安裝時會移除 macOS 的隔離標記，所以不會出現「無法確認開發者」的阻擋（這個 App 沒有 Apple 開發者簽章）。
 
 ### 下載安裝檔

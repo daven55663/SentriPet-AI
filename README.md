@@ -73,9 +73,11 @@ scoop install sentripet
 
 ```
 brew tap daven55663/sentripet https://github.com/daven55663/SentriPet-AI
+brew trust daven55663/sentripet
 brew install --cask sentripet
 ```
 
+Homebrew installs casks from a tap outside its own only after you trust it (`brew trust`, once).
 SentriPet is not signed with an Apple Developer ID; the Homebrew cask removes the download quarantine,
 so macOS does not block it as coming from an unidentified developer.
 
