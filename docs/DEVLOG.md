@@ -453,5 +453,13 @@ xplat/                新的跨平台版（.NET 10）
   新版自動啟動（記錄檔「updated from 2.6.0 to 2.7.0」），`.old` 已清掉，自訂造型照常載入。
   套件管理器測試：Scoop、winget 通過；Homebrew 失敗——Homebrew 現在只從信任過的第三方 tap 載入 cask（`brew trust daven55663/sentripet`），
   工作流程、README、發佈說明和更新視窗的 Homebrew 說明都加上這一步，再重跑一次套件管理器測試。
+- 2026-11-11：**#40 讀不到 Claude 桌面版的用量**（使用者回報）。Claude 桌寵一直顯示「找不到用量紀錄：請開啟 Claude 桌面版」，終端機帳號的 Claude CLI 則正常。
+  - 原因：商店版 Claude 桌面版（5.1231.2.0）把資料從套件的虛擬化資料夾 `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude`
+    搬到 `%LOCALAPPDATA%\Claude-Data\claude_pzs8sxrjxfjjc`，舊資料夾只留下 `.user-data-left` 標記檔。`plan-usage-history.json` 的格式沒有改變
+    （`version`、`samples`，10/14 以來的 66 筆都還在），但桌寵只找 `%APPDATA%\Claude` 與 LocalCache 兩處，所以找不到檔案。
+  - 修正：`ClaudeProvider.HistoryCandidates()` 加上 `%LOCALAPPDATA%\Claude-Data\Claude_*\plan-usage-history.json`；舊位置保留給還沒搬資料的版本，
+    `FindHistory()` 原本就會在找到的檔案中取最新的一份。
+  - 驗證：核心測試增加 3 項，共 866 項（舊版位置、新版位置、兩份都在時讀較新的那份），自我測試 158 項全部通過；`--probe` 讀到桌面版 16:04 的真實紀錄。
+    以 `install.cmd` 重新安裝後，Claude 桌寵恢復顯示，來源為「Claude 桌面版快取」，每週 97%。
 - 還沒做、需要實機才能確認的：Mac／Linux 實體電腦上的長時間試用（拖曳、系統匣、通知、開機啟動、滑鼠穿透、macOS 的眼睛）；
   Linux 上的 Claude 用量要開啟「連接 Claude Code 狀態列」。

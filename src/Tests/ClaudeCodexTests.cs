@@ -55,6 +55,7 @@ namespace SentriPet
             try
             {
                 Transcripts(t);
+                HistoryLocation(t);
                 History(t);
                 Estimate(t);
                 TwoAccounts(t);
@@ -65,6 +66,39 @@ namespace SentriPet
                 ClaudeProvider.HistoryOverride = null;
                 ClaudeStatusLine.FileOverride = null;
             }
+        }
+
+        /// <summary>
+        /// Where the Store (MSIX) desktop app keeps plan-usage-history.json: older versions in the package's LocalCache,
+        /// newer ones (5.1231) in %LOCALAPPDATA%\Claude-Data\claude_&lt;publisher id&gt;. Both are found; the newest file is read.
+        /// </summary>
+        static void HistoryLocation(TestKit t)
+        {
+            t.Section("Claude 桌面版用量紀錄的位置");
+            t.Run("History location", () =>
+            {
+                if (!Os.Windows) { t.Skip("桌面版（MSIX）的資料夾", "只有 Windows 的商店版會搬資料夾"); return; }
+                string old = Environment.GetEnvironmentVariable("LOCALAPPDATA");
+                try
+                {
+                    string local = t.TempDir("claude-local");
+                    Environment.SetEnvironmentVariable("LOCALAPPDATA", local);
+                    ClaudeProvider.HistoryOverride = null;
+                    string cache = Path.Combine(local, "Packages", "Claude_pzs8sxrjxfjjc", "LocalCache", "Roaming", "Claude", "plan-usage-history.json");
+                    string moved = Path.Combine(local, "Claude-Data", "claude_pzs8sxrjxfjjc", "plan-usage-history.json");
+                    var now = DateTime.UtcNow;
+                    WriteHistory(cache, new List<Dictionary<string, object>> { Sample(now.AddDays(-1), "org", 5, 50) });
+                    File.SetLastWriteTimeUtc(cache, now.AddDays(-1));
+                    t.Equal("舊版：套件的 LocalCache", cache, ClaudeProvider.FindHistory());
+
+                    WriteHistory(moved, new List<Dictionary<string, object>> { Sample(now, "org", 20, 97) });
+                    File.SetLastWriteTimeUtc(moved, now.AddMinutes(1));
+                    var all = ClaudeProvider.HistoryCandidates().ToList();
+                    t.Check("新版：Claude-Data 也會找", all.Contains(moved) && all.Contains(cache), string.Join(" | ", all));
+                    t.Equal("兩份都在時讀比較新的那份", moved, ClaudeProvider.FindHistory());
+                }
+                finally { Environment.SetEnvironmentVariable("LOCALAPPDATA", old); }
+            });
         }
 
         /// <summary>A reply line as Claude Code writes it, saying where the session runs (#36).</summary>

@@ -55,4 +55,6 @@ Processes started from the Claude desktop app's tools inherit its package file v
 - read the real settings/logs via `\\localhost\C$\Users\%USERNAME%\AppData\Roaming\SentriPet\...`;
 - don't create files under AppData from the tool shell.
 
+The desktop app's own data (incl. `plan-usage-history.json`) lived in that LocalCache folder (`...\LocalCache\Roaming\Claude`) until version 5.1231 moved it to `%LOCALAPPDATA%\Claude-Data\claude_pzs8sxrjxfjjc\` (only a `.user-data-left` marker stays behind). `ClaudeProvider.HistoryCandidates()` looks in both and reads the newest file.
+
 Record progress in `docs/DEVLOG.md`. The development/test machine and tool versions are in `docs/environment.md` and `docs/environment.zh-TW.md` (linked from both READMEs) — update both when they change, and copy the table into each release's notes (the user asked for it).

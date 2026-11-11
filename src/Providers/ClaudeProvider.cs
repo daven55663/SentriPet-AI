@@ -74,16 +74,21 @@ namespace SentriPet
 
         public override int IntervalSeconds { get { return 10; } }
 
-        static IEnumerable<string> HistoryCandidates()
+        internal static IEnumerable<string> HistoryCandidates()
         {
             // %APPDATA%\Claude on Windows, ~/Library/Application Support/Claude on macOS, ~/.config/Claude on Linux
             yield return Path.Combine(AppPaths.AppData, "Claude", "plan-usage-history.json");
             if (!Os.Windows) yield break;
+            // the Store (MSIX) app: older versions write through the package's file virtualization into LocalCache;
+            // newer ones (seen with 5.1231, 2026-11-11) move their data out to %LOCALAPPDATA%\Claude-Data\claude_<publisher id>
+            // and leave only a ".user-data-left" marker behind. The newest file wins (FindHistory).
             foreach (var p in AppPaths.Glob(@"%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\plan-usage-history.json"))
+                yield return p;
+            foreach (var p in AppPaths.Glob(@"%LOCALAPPDATA%\Claude-Data\Claude_*\plan-usage-history.json"))
                 yield return p;
         }
 
-        static string FindHistory()
+        internal static string FindHistory()
         {
             if (HistoryOverride != null) return File.Exists(HistoryOverride) ? HistoryOverride : null;
             string best = null;
